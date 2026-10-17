@@ -98,6 +98,12 @@ geometry         T_WB (``source_ns`` = its measurement exposure). Source ``road_
                  plane height plus a fitting-only body-to-road height offset (frozen
                  artifact, A/C) and the plane roll/pitch. Otherwise ``none``. C carries it
                  in SearchSnapshot/Estimate; A/B use it to compose T_WB. Never from GT.
+Ground motion    C passes ``previous_snapshot`` and ``current_snapshot`` at the two image
+                 exposures, with valid auxiliary geometry, to ``estimate``. Cache the
+                 previous exposure's causal state; predict the current prior before this
+                 group's updates. Do not relabel a group-time posterior as an earlier
+                 exposure. The auxiliary z includes the frozen body-to-road height offset;
+                 B needs no hidden height default or separate artifact lookup.
 Anchor delivery  C's scheduler freezes the source Observation and SearchSnapshot in an
                  AnchorRequest; the AnchorResult holds source-image correspondences only,
                  never a pose. At the first group with t_ns >= delivery_not_before_ns
@@ -1292,6 +1298,16 @@ class AuxiliaryGeometry(_Record):
         )
 
 
+def _check_auxiliary(value: object, name: str, *, t_ns: int) -> AuxiliaryGeometry:
+    auxiliary = _check_record(value, AuxiliaryGeometry, name)
+    if auxiliary.source_ns is not None and auxiliary.source_ns > t_ns:
+        raise ContractError(
+            f"{name}.source_ns: {auxiliary.source_ns} is after t_ns {t_ns}; "
+            "auxiliary geometry cannot come from later evidence"
+        )
+    return auxiliary
+
+
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True, eq=False)
 class RoadPatch(_Record):
     """Local road plane from A's RoadGeometry for one queried pose.
@@ -1340,11 +1356,12 @@ class RoadPatch(_Record):
 class SearchSnapshot(_Record):
     """Frozen estimator prior at ``t_ns`` for LK seeding, reference search and anchor jobs.
 
-    ``Estimator.snapshot(t_ns)`` returns the constant-velocity prediction at the group time
-    without changing the estimator. ``state`` is a read-only float64 (6,) copy in
+    ``Estimator.snapshot(t_ns)`` returns the constant-velocity prediction without changing
+    the estimator. C also caches exposure-aligned snapshots for ground motion. ``state``
+    is a read-only float64 (6,) copy in
     ``STATE_FIELDS`` order with yaw wrapped to (-pi, pi]; ``P`` is its symmetric positive
     semidefinite 6 x 6 covariance, stored as a read-only float64 copy. ``auxiliary`` is the
-    auxiliary geometry carried with the prior.
+    auxiliary geometry carried with the prior; its source time cannot exceed ``t_ns``.
     """
 
     t_ns: int
@@ -1355,12 +1372,12 @@ class SearchSnapshot(_Record):
     auxiliary: AuxiliaryGeometry
 
     def __post_init__(self) -> None:
-        _normalize(self, "t_ns", as_ns)
+        t_ns = _normalize(self, "t_ns", as_ns)
         _normalize(self, "state", _check_state)
         _normalize(self, "P", check_covariance, len(STATE_FIELDS))
         _normalize(self, "status", _check_enum, Status)
         _normalize(self, "branch", _check_enum, Branch)
-        _normalize(self, "auxiliary", _check_record, AuxiliaryGeometry)
+        _normalize(self, "auxiliary", _check_auxiliary, t_ns=t_ns)
 
 
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True, eq=False)
@@ -1376,7 +1393,7 @@ class Estimate(_Record):
     snake_case code such as "accepted", "no_evidence" or "innovation_gate".
     ``max_support_exposure_ns`` is the latest exposure of the images whose evidence was
     applied: None exactly for (initial_pose,) and (prediction_only,), otherwise at most
-    ``t_ns``.
+    ``t_ns``. Auxiliary geometry likewise cannot have a source time after ``t_ns``.
     """
 
     t_ns: int
@@ -1399,7 +1416,7 @@ class Estimate(_Record):
         _normalize(self, "branch", _check_enum, Branch)
         kinds = _normalize(self, "evidence_kinds", _check_evidence_kinds)
         _normalize(self, "reason", check_reason)
-        _normalize(self, "auxiliary", _check_record, AuxiliaryGeometry)
+        _normalize(self, "auxiliary", _check_auxiliary, t_ns=t_ns)
         support_ns = _normalize(self, "max_support_exposure_ns", as_ns, optional=True)
 
         kinds_text = _kinds_text(kinds)
@@ -2255,7 +2272,10 @@ class GroupEvidence(_Record):
     records and ``unused`` accepted records that C did not consume, each with C's reason.
     Every record, and a reset's confirmation, must be measured on this group's own image of
     its camera, so neither stale nor future evidence enters the group, and no record object
-    may appear twice. ``consumed_kinds()`` names the consumed hierarchy level.
+    may appear twice, including a consumed reset confirmation. A consumed pose or reset
+    confirmation must match its image's calibration; incompatible evidence can still be
+    logged in ``rejected`` or ``unused``. A reset's group id/time must match this group.
+    ``consumed_kinds()`` names the consumed hierarchy level.
     """
 
     frame_set: FrameSet
@@ -2321,6 +2341,7 @@ def _validate_group(group: GroupEvidence) -> None:
     """
     frame_set = group.frame_set
     exposure = {image.camera_id: image.exposure_ns for image in frame_set.images}
+    calibration = {image.camera_id: image.calibration_id for image in frame_set.images}
 
     def current(camera_id: str, measured_ns: int, what: str) -> None:
         # Current-image rule; measured_ns <= t_ns follows because t_ns == max(exposure.values()).
@@ -2340,6 +2361,15 @@ def _validate_group(group: GroupEvidence) -> None:
         camera_id, measured_ns = _measured_image(record, f"GroupEvidence.{what}")
         current(camera_id, measured_ns, what)
 
+    def check_pose(record: PoseEvidence | HandoffEvidence, what: str) -> None:
+        check(record, what)
+        expected = calibration[record.camera_id]
+        if record.calibration_id != expected:
+            raise ContractError(
+                f"GroupEvidence.{what}.calibration_id: {record.calibration_id!r} differs "
+                f"from the current image's {expected!r}"
+            )
+
     if group.pose is not None:
         _require_accepted_as(group.pose, "GroupEvidence.pose")
         if isinstance(group.pose, PoseEvidence) and group.pose.source is not PoseSource.TRACKING:
@@ -2348,7 +2378,7 @@ def _validate_group(group: GroupEvidence) -> None:
                 f"'tracking', got {group.pose.source.value!r}; handoff poses enter as "
                 "HandoffEvidence and candidate poses through a RecoveryReset"
             )
-        check(group.pose, "pose")
+        check_pose(group.pose, "pose")
     for slot, record in (("motion", group.motion), ("border", group.border)):
         if record is not None:
             _require_accepted_as(record, f"GroupEvidence.{slot}")
@@ -2364,8 +2394,12 @@ def _validate_group(group: GroupEvidence) -> None:
                 "GroupEvidence.reset: a recovery reset is the only consumed evidence of its "
                 "group; the pose, motion and border slots must be empty"
             )
-        confirmation = group.reset.confirmation
-        current(confirmation.camera_id, confirmation.exposure_ns, "reset.confirmation")
+        if (group.reset.group_id, group.reset.t_ns) != (group.group_id, group.t_ns):
+            raise ContractError(
+                f"GroupEvidence.reset: group_id/t_ns ({group.reset.group_id}, "
+                f"{group.reset.t_ns}) must match ({group.group_id}, {group.t_ns})"
+            )
+        check_pose(group.reset.confirmation, "reset.confirmation")
     for index, record in enumerate(group.rejected):  # earlier entries: rejected and current
         what = f"rejected[{index}]"
         if record.accepted:
@@ -2385,6 +2419,8 @@ def _validate_group(group: GroupEvidence) -> None:
 
     consumed = (("pose", group.pose), ("motion", group.motion), ("border", group.border))
     placed = [(slot, record) for slot, record in consumed if record is not None]
+    if group.reset is not None:
+        placed.append(("reset.confirmation", group.reset.confirmation))
     placed += [(f"rejected[{index}]", record) for index, record in enumerate(group.rejected)]
     placed += [
         (f"unused[{index}].evidence", item.evidence) for index, item in enumerate(group.unused)
@@ -2752,14 +2788,32 @@ class AnchorWorker(Protocol):
 class GroundMotionEstimator(Protocol):
     """Owner B (``camloc/vision.py``): planar ground motion between two same-camera images.
 
-    C calls it only when no selected in-gate full pose exists, with the group's RoadPatch.
+    C calls it only when no selected in-gate full pose exists, with the group's RoadPatch
+    and causal snapshots at each image's own exposure (not at the group time). Compose
+    each T_WB from snapshot x/y/yaw and auxiliary z/roll/pitch, then T_WC = T_WB @ T_BC.
+    The world-frame plane can then be intersected with rays at both exposures. Auxiliary
+    z already includes the fitting-only frozen body-to-road height offset when derived
+    from the road; B must not assume the body origin lies on the road.
     """
 
     def estimate(
-        self, previous: Observation, current: Observation, patch: RoadPatch
+        self,
+        previous: Observation,
+        current: Observation,
+        patch: RoadPatch,
+        *,
+        previous_snapshot: SearchSnapshot,
+        current_snapshot: SearchSnapshot,
     ) -> MotionEvidence:
-        """Same camera, previous.exposure_ns < current.exposure_ns; invalid patch -> rejected
-        evidence."""
+        """Same camera/calibration/preprocessing, previous.exposure_ns < current.exposure_ns.
+
+        Snapshot times must equal their respective image exposures, and both auxiliary
+        geometries must be valid and compatible with the patch. Missing/invalid geometry,
+        incompatible patch or mismatched times/calibration/preprocessing -> rejected
+        MotionEvidence with an explicit reason, never an assumed metric scale. The current
+        snapshot is a causal prediction before this group's measurements; the previous
+        snapshot comes from C's preceding-exposure cache, never a later posterior.
+        """
         ...
 
 

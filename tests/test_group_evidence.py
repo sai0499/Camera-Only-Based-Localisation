@@ -232,6 +232,51 @@ def test_group_rejects_future_evidence():
         factories.make_group_evidence(border=future)
 
 
+@pytest.mark.parametrize("build", [factories.make_pose_evidence, factories.make_handoff_evidence])
+def test_group_rejects_consumed_pose_with_another_calibration(build):
+    pose = build(calibration_id="other_calibration")
+    with pytest.raises(c.ContractError, match=r"^GroupEvidence\.pose\.calibration_id:"):
+        factories.make_group_evidence(pose=pose)
+
+
+def test_group_rejects_reset_confirmation_with_another_calibration():
+    confirmation = factories.make_pose_evidence(
+        source=c.PoseSource.CANDIDATE, calibration_id="other_calibration"
+    )
+    reset = factories.make_recovery_reset(confirmation=confirmation)
+    with pytest.raises(c.ContractError, match=r"^GroupEvidence\.reset\.confirmation\.calibration_id:"):
+        factories.make_group_evidence(reset=reset)
+
+
+def test_group_preserves_incompatible_calibration_in_diagnostics():
+    unused = factories.make_unused_evidence(
+        evidence=factories.make_pose_evidence(calibration_id="other_calibration"),
+        reason="calibration_mismatch",
+    )
+    rejected = factories.make_pose_evidence(
+        accepted=False, calibration_id="other_calibration", reason="calibration_mismatch"
+    )
+    group = factories.make_group_evidence(unused=(unused,), rejected=(rejected,))
+    assert group.consumed_kinds() == (c.EvidenceKind.PREDICTION_ONLY,)
+    assert group.unused[0].reason == group.rejected[0].reason == "calibration_mismatch"
+
+
+@pytest.mark.parametrize(
+    "overrides", [{"group_id": 999}, {"t_ns": EXPOSURE_NS + 1_000_000_000}]
+)
+def test_group_rejects_reset_naming_another_group_or_time(overrides):
+    reset = factories.make_recovery_reset(**overrides)
+    with pytest.raises(c.ContractError, match=r"^GroupEvidence\.reset: .*must match"):
+        factories.make_group_evidence(reset=reset)
+
+
+def test_group_rejects_reset_confirmation_also_listed_as_unused():
+    reset = factories.make_recovery_reset()
+    unused = factories.make_unused_evidence(evidence=reset.confirmation)
+    with pytest.raises(c.ContractError, match=r"already appears as reset\.confirmation"):
+        factories.make_group_evidence(reset=reset, unused=(unused,))
+
+
 def test_group_rejects_accepted_record_in_rejected():
     with pytest.raises(c.ContractError, match=r"^GroupEvidence\.rejected\[0\]: .*accepted"):
         factories.make_group_evidence(rejected=(factories.make_pose_evidence(),))

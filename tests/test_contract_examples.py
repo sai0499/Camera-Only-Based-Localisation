@@ -327,7 +327,9 @@ PROTOCOL_METHODS = {
         "reset": ("reset",),
     },
     c.AnchorWorker: {"run": ("request",)},
-    c.GroundMotionEstimator: {"estimate": ("previous", "current", "patch")},
+    c.GroundMotionEstimator: {
+        "estimate": ("previous", "current", "patch", "previous_snapshot", "current_snapshot")
+    },
     c.Estimator: {"snapshot": ("t_ns",), "step": ("evidence",)},
 }
 
@@ -340,6 +342,16 @@ def test_protocol_signatures(protocol):
         assert tuple(p.name for p in parameters) == ("self", *expected), method
         assert all(p.annotation is not p.empty for p in parameters[1:]), method
         assert signature.return_annotation is not signature.empty, method
+
+
+def test_ground_motion_requires_explicit_exposure_geometry():
+    signature = inspect.signature(c.GroundMotionEstimator.estimate)
+    with pytest.raises(TypeError):
+        signature.bind(None, f.make_observation(), f.make_observation(), FakeRoad())
+    for name in ("previous_snapshot", "current_snapshot"):
+        parameter = signature.parameters[name]
+        assert parameter.kind is inspect.Parameter.KEYWORD_ONLY
+        assert parameter.default is inspect.Parameter.empty
 
 
 def _protocol_classes() -> dict[str, ast.ClassDef]:
@@ -499,7 +511,7 @@ class FakeWorker:
 
 
 class FakeMotion:
-    def estimate(self, previous, current, patch):
+    def estimate(self, previous, current, patch, *, previous_snapshot, current_snapshot):
         return f.make_motion_evidence(
             camera_id=current.camera_id,
             previous_ns=previous.exposure_ns,
@@ -558,7 +570,11 @@ def test_fakes_only_return_rejected_evidence():
     tracker.observe(observation)
     pose = tracker.track(observation, snapshot, aux)
     patch = FakeRoad().road_patch(120.0, -35.0, 0.25, c.Branch.TRACK)
-    motion = FakeMotion().estimate(previous, observation, patch)
+    motion = FakeMotion().estimate(
+        previous, observation, patch,
+        previous_snapshot=f.make_search_snapshot(t_ns=previous.exposure_ns),
+        current_snapshot=snapshot,
+    )
     border = FakeBorders().border_evidence(observation, snapshot, aux)
     request = f.make_anchor_request(source_exposure_ns=E - c.DELIVERY_MIN_DELAY_NS)
     result = FakeWorker().run(request)

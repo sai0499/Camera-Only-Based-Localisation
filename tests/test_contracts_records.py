@@ -1209,6 +1209,20 @@ def test_search_snapshot_valid_build_stores_read_only_state_and_covariance():
     assert snapshot.auxiliary.valid is True
 
 
+@pytest.mark.parametrize("build", [_snapshot, _estimate])
+@pytest.mark.parametrize("source", [c.AuxSource.PNP, c.AuxSource.ROAD_PATCH])
+def test_state_records_reject_future_auxiliary_geometry(build, source):
+    with pytest.raises(c.ContractError, match=r"auxiliary\.source_ns: .*after t_ns"):
+        build(auxiliary=_aux_valid(source=source, source_ns=RECORD_NS + 1))
+
+
+@pytest.mark.parametrize("build", [_snapshot, _estimate])
+@pytest.mark.parametrize("source_ns", [RECORD_NS - 1, RECORD_NS])
+def test_state_records_preserve_causal_auxiliary_source_time(build, source_ns):
+    record = build(auxiliary=_aux_valid(source_ns=source_ns))
+    assert record.auxiliary.source_ns == source_ns
+
+
 def test_search_snapshot_rejects_a_non_psd_covariance():
     with pytest.raises(c.ContractError, match=r"^SearchSnapshot\.P: "):
         _snapshot(P=np.diag([-1.0, 1.0, 1.0, 1.0, 1.0, 1.0]))
