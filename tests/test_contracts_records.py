@@ -5,6 +5,9 @@ rejection names exactly that field: messages start with ``"<Record>.<field>: "``
 FrameSet invariants live in a separate property test. These tests write nothing.
 """
 
+import dataclasses
+import enum
+import json
 import math
 
 import numpy as np
@@ -923,3 +926,906 @@ def test_property_6_frame_set_invariants():
             runs[rule] += 1
     starved = {name: total for name, total in runs.items() if total < FRAME_SET_MIN_RUNS}
     assert not starved, f"seed {FRAME_SET_SEED}: under {FRAME_SET_MIN_RUNS} runs: {starved}"
+
+# ---------------------------------------------------------------------------------------
+# State and geometry records: RoadPatch, TrackProjection, AuxiliaryGeometry,
+# SearchSnapshot and Estimate (Requirements 12.5, 12.6; informally 2.4, 6.1-6.3, 12.1-12.4)
+#
+# These records have no builder in contract_factories (other agents own that file), so the
+# small local builders below construct them directly. Each builder returns a valid record;
+# a test overrides exactly one field so a rejection names that field: "<Record>.<field>: ".
+# ---------------------------------------------------------------------------------------
+
+RECORD_NS = EXPOSURE_NS  # a 19-digit stamp a float could not hold exactly
+UP_NORMAL = np.array([0.0, 0.0, 1.0])
+
+
+def _psd_cov(n=len(c.STATE_FIELDS)):
+    """Return a symmetric positive-definite (n, n) float64 covariance."""
+    return np.diag(np.arange(1.0, n + 1.0))
+
+
+def _state(yaw=0.3):
+    """Return a valid 6-vector estimator state in STATE_FIELDS order."""
+    return np.array([1.0, 2.0, yaw, 0.5, -0.5, 0.1])
+
+
+def _aux_valid(source=c.AuxSource.PNP, **overrides):
+    """Return a valid AuxiliaryGeometry; ROAD_PATCH sources also name a patch id."""
+    fields = {
+        "source": source,
+        "source_ns": RECORD_NS,
+        "z_m": 0.2,
+        "roll_rad": 0.01,
+        "pitch_rad": -0.02,
+        "road_patch_id": "patch-1" if source is c.AuxSource.ROAD_PATCH else None,
+        "valid": True,
+        "reason": "valid",
+    }
+    fields.update(overrides)
+    return c.AuxiliaryGeometry(**fields)
+
+
+def _road_patch(**overrides):
+    """Return a valid RoadPatch on the track branch."""
+    fields = {
+        "patch_id": "patch-1",
+        "branch": c.Branch.TRACK,
+        "query_xy": np.array([1.0, 2.0]),
+        "point_W": np.array([1.0, 2.0, 0.0]),
+        "normal_W": UP_NORMAL,
+        "support": 42,
+        "residual_m": 0.05,
+        "valid": True,
+        "reason": "valid",
+    }
+    fields.update(overrides)
+    return c.RoadPatch(**fields)
+
+
+def _road_patch_invalid(**overrides):
+    """Return an invalid RoadPatch with every optional value None."""
+    fields = {
+        "patch_id": "patch-1",
+        "branch": c.Branch.UNKNOWN,
+        "query_xy": np.array([1.0, 2.0]),
+        "point_W": None,
+        "normal_W": None,
+        "support": 0,
+        "residual_m": None,
+        "valid": False,
+        "reason": "off_route",
+    }
+    fields.update(overrides)
+    return c.RoadPatch(**fields)
+
+
+def _projection(**overrides):
+    """Return a valid TrackProjection on the track route."""
+    fields = {
+        "t_ns": RECORD_NS,
+        "reference_map_id": "ref-map",
+        "route_id": "track",
+        "s_m": 12.5,
+        "n_m": -0.3,
+        "epsi_rad": 0.1,
+        "segment_index": 7,
+        "xy_reconstruction_residual_m": 0.02,
+        "valid": True,
+        "reason": "valid",
+    }
+    fields.update(overrides)
+    return c.TrackProjection(**fields)
+
+
+def _snapshot(**overrides):
+    """Return a valid SearchSnapshot."""
+    fields = {
+        "t_ns": RECORD_NS,
+        "state": _state(),
+        "P": _psd_cov(),
+        "status": c.Status.TRACKING,
+        "branch": c.Branch.TRACK,
+        "auxiliary": _aux_valid(),
+    }
+    fields.update(overrides)
+    return c.SearchSnapshot(**fields)
+
+
+def _estimate(**overrides):
+    """Return a valid pnp Estimate (group_id set, support stamp at most t_ns)."""
+    fields = {
+        "t_ns": RECORD_NS,
+        "group_id": 3,
+        "state": _state(),
+        "P": _psd_cov(),
+        "status": c.Status.TRACKING,
+        "branch": c.Branch.TRACK,
+        "evidence_kinds": (c.EvidenceKind.PNP,),
+        "reason": "accepted",
+        "auxiliary": _aux_valid(),
+        "max_support_exposure_ns": RECORD_NS - 1,
+    }
+    fields.update(overrides)
+    return c.Estimate(**fields)
+
+
+# ---- RoadPatch (Requirements 12.5, 12.6) ----------------------------------------------
+
+
+def test_road_patch_valid_is_accepted_and_stores_read_only_float64_copies():
+    source = np.array([1.0, 2.0, 0.0])
+    patch = _road_patch(point_W=source)
+    assert patch.valid is True and patch.reason == "valid"
+    assert patch.branch is c.Branch.TRACK
+    for field in ("query_xy", "point_W", "normal_W"):
+        stored = getattr(patch, field)
+        assert stored.dtype == np.float64 and stored.flags.writeable is False
+    assert not np.shares_memory(patch.point_W, source)
+    assert source.flags.writeable is True  # the caller's array is untouched
+
+
+def test_road_patch_invalid_with_everything_none_is_accepted():
+    patch = _road_patch_invalid()
+    assert patch.valid is False and patch.reason == "off_route"
+    assert patch.point_W is None and patch.normal_W is None and patch.residual_m is None
+    assert patch.branch is c.Branch.UNKNOWN
+
+
+def test_road_patch_rejects_a_downward_normal():
+    with pytest.raises(c.ContractError, match=r"^RoadPatch\.normal_W: .*point up"):
+        _road_patch(normal_W=np.array([0.0, 0.0, -1.0]))
+
+
+def test_road_patch_rejects_a_non_unit_normal():
+    with pytest.raises(c.ContractError, match=r"^RoadPatch\.normal_W: "):
+        _road_patch(normal_W=np.array([0.0, 0.0, 2.0]))
+
+
+def test_road_patch_rejects_a_negative_residual():
+    with pytest.raises(c.ContractError, match=r"^RoadPatch\.residual_m: "):
+        _road_patch(residual_m=-0.01)
+
+
+def test_road_patch_rejects_the_unknown_branch_when_valid():
+    with pytest.raises(c.ContractError, match=r"^RoadPatch\.branch: .*valid patch"):
+        _road_patch(branch=c.Branch.UNKNOWN)
+
+
+@pytest.mark.parametrize("field", ["point_W", "normal_W", "residual_m"])
+def test_road_patch_valid_requires_plane_values(field):
+    # The valid=True completeness check is a record-level message naming the missing field.
+    with pytest.raises(c.ContractError, match=rf"^RoadPatch: valid=True requires .*{field}"):
+        _road_patch(**{field: None})
+
+
+# ---- TrackProjection (Requirements 12.5, 12.6) ----------------------------------------
+
+
+@pytest.mark.parametrize("route_id", c.ROUTE_IDS)
+def test_track_projection_valid_on_each_route_id(route_id):
+    projection = _projection(route_id=route_id)
+    assert projection.valid is True and projection.route_id == route_id
+    assert type(projection.route_id) is str
+
+
+@pytest.mark.parametrize(
+    "route_id",
+    ["Track", "road", "", None, 0],
+    ids=["mixed_case", "unknown", "empty", "none", "int"],
+)
+def test_track_projection_rejects_a_bad_route_id(route_id):
+    with pytest.raises(c.ContractError, match=r"^TrackProjection\.route_id: "):
+        _projection(route_id=route_id)
+
+
+def test_track_projection_rejects_a_negative_arc_length():
+    with pytest.raises(c.ContractError, match=r"^TrackProjection\.s_m: "):
+        _projection(s_m=-0.1)
+
+
+def test_track_projection_rejects_a_negative_segment_index():
+    with pytest.raises(c.ContractError, match=r"^TrackProjection\.segment_index: "):
+        _projection(segment_index=-1)
+
+
+@pytest.mark.parametrize("field", list(c._PROJECTION_VALUE_FIELDS))
+def test_track_projection_valid_requires_every_value(field):
+    # The valid=True completeness check is a record-level message naming the missing field.
+    with pytest.raises(c.ContractError, match=rf"^TrackProjection: valid=True requires .*{field}"):
+        _projection(**{field: None})
+
+
+def test_track_projection_stores_epsi_wrapped():
+    projection = _projection(epsi_rad=3.0 * math.pi)  # 3 pi wraps to pi
+    assert projection.epsi_rad == pytest.approx(math.pi)
+    assert -math.pi < projection.epsi_rad <= math.pi
+
+
+# ---- AuxiliaryGeometry (Requirements 12.4 informally, 2.4) ----------------------------
+
+
+def test_auxiliary_geometry_unavailable_is_the_invalid_none_record():
+    aux = c.AuxiliaryGeometry.unavailable("no_pnp_yet")
+    assert aux.source is c.AuxSource.NONE and aux.valid is False
+    assert aux.reason == "no_pnp_yet"
+    assert aux.source_ns is None and aux.z_m is None
+    assert aux.roll_rad is None and aux.pitch_rad is None and aux.road_patch_id is None
+
+
+def test_auxiliary_geometry_valid_pnp_record():
+    aux = _aux_valid(source=c.AuxSource.PNP)
+    assert aux.source is c.AuxSource.PNP and aux.valid is True
+    assert aux.road_patch_id is None
+    assert type(aux.source_ns) is int and aux.source_ns == RECORD_NS
+
+
+@pytest.mark.parametrize("field", ["source_ns", "z_m", "roll_rad", "pitch_rad"])
+def test_auxiliary_geometry_valid_pnp_requires_pose_values(field):
+    with pytest.raises(c.ContractError, match=r"^AuxiliaryGeometry: valid=True"):
+        _aux_valid(source=c.AuxSource.PNP, **{field: None})
+
+
+def test_auxiliary_geometry_valid_road_patch_record_names_the_patch():
+    aux = _aux_valid(source=c.AuxSource.ROAD_PATCH)
+    assert aux.source is c.AuxSource.ROAD_PATCH and aux.valid is True
+    assert aux.road_patch_id == "patch-1"
+
+
+def test_auxiliary_geometry_valid_road_patch_requires_the_patch_id():
+    with pytest.raises(c.ContractError, match=r"^AuxiliaryGeometry: valid=True"):
+        _aux_valid(source=c.AuxSource.ROAD_PATCH, road_patch_id=None)
+
+
+def test_auxiliary_geometry_source_none_cannot_be_valid():
+    with pytest.raises(c.ContractError, match=r"^AuxiliaryGeometry: source 'none' cannot be valid"):
+        c.AuxiliaryGeometry(
+            source=c.AuxSource.NONE,
+            source_ns=None,
+            z_m=None,
+            roll_rad=None,
+            pitch_rad=None,
+            road_patch_id=None,
+            valid=True,
+            reason="valid",
+        )
+
+
+def test_auxiliary_geometry_stores_roll_and_pitch_wrapped():
+    aux = _aux_valid(roll_rad=3.0 * math.pi, pitch_rad=-3.0 * math.pi)
+    assert aux.roll_rad == pytest.approx(math.pi)
+    assert aux.pitch_rad == pytest.approx(math.pi)  # -3 pi wraps to pi, not -pi
+
+
+# ---- SearchSnapshot and Estimate (Requirements 6.1-6.3, 12.1-12.3 informally) ---------
+
+
+def test_search_snapshot_valid_build_stores_read_only_state_and_covariance():
+    snapshot = _snapshot()
+    assert snapshot.t_ns == RECORD_NS
+    assert snapshot.state.dtype == np.float64 and snapshot.state.flags.writeable is False
+    assert snapshot.P.shape == (len(c.STATE_FIELDS), len(c.STATE_FIELDS))
+    assert snapshot.P.flags.writeable is False
+    assert snapshot.auxiliary.valid is True
+
+
+def test_search_snapshot_rejects_a_non_psd_covariance():
+    with pytest.raises(c.ContractError, match=r"^SearchSnapshot\.P: "):
+        _snapshot(P=np.diag([-1.0, 1.0, 1.0, 1.0, 1.0, 1.0]))
+
+
+@pytest.mark.parametrize("length", [5, 7], ids=["five", "seven"])
+def test_search_snapshot_rejects_a_mis_sized_state(length):
+    with pytest.raises(c.ContractError, match=r"^SearchSnapshot\.state: "):
+        _snapshot(state=np.zeros(length))
+
+
+def test_search_snapshot_wraps_yaw_into_the_stored_state():
+    snapshot = _snapshot(state=_state(yaw=3.0 * math.pi))  # 3 pi wraps to pi
+    assert snapshot.state[2] == pytest.approx(math.pi)
+    assert -math.pi < snapshot.state[2] <= math.pi
+
+
+def test_estimate_valid_build():
+    estimate = _estimate()
+    assert estimate.group_id == 3 and estimate.t_ns == RECORD_NS
+    assert estimate.evidence_kinds == (c.EvidenceKind.PNP,)
+    assert estimate.max_support_exposure_ns == RECORD_NS - 1
+    assert estimate.state.flags.writeable is False
+
+
+def test_estimate_rejects_a_non_psd_covariance():
+    with pytest.raises(c.ContractError, match=r"^Estimate\.P: "):
+        _estimate(P=np.diag([-1.0, 1.0, 1.0, 1.0, 1.0, 1.0]))
+
+
+@pytest.mark.parametrize("length", [5, 7], ids=["five", "seven"])
+def test_estimate_rejects_a_mis_sized_state(length):
+    with pytest.raises(c.ContractError, match=r"^Estimate\.state: "):
+        _estimate(state=np.zeros(length))
+
+
+def test_estimate_wraps_yaw_into_the_stored_state():
+    estimate = _estimate(state=_state(yaw=-3.0 * math.pi))  # -3 pi wraps to pi
+    assert estimate.state[2] == pytest.approx(math.pi)
+    assert -math.pi < estimate.state[2] <= math.pi
+
+
+def test_estimate_group_id_is_none_only_for_the_initialization_estimate():
+    initial = _estimate(
+        group_id=None,
+        evidence_kinds=(c.EvidenceKind.INITIAL_POSE,),
+        reason="initialized",
+        max_support_exposure_ns=None,
+    )
+    assert initial.group_id is None
+    # A pnp estimate (not the initialization) may not drop its group id.
+    with pytest.raises(c.ContractError, match=r"^Estimate\.group_id: "):
+        _estimate(group_id=None)
+
+
+def test_estimate_initial_pose_rejects_a_support_stamp():
+    with pytest.raises(c.ContractError, match=r"^Estimate\.max_support_exposure_ns: "):
+        _estimate(
+            group_id=None,
+            evidence_kinds=(c.EvidenceKind.INITIAL_POSE,),
+            reason="initialized",
+            max_support_exposure_ns=RECORD_NS,
+        )
+
+
+def test_estimate_prediction_only_has_no_support_stamp_and_keeps_its_group_id():
+    estimate = _estimate(
+        evidence_kinds=(c.EvidenceKind.PREDICTION_ONLY,),
+        reason="no_evidence",
+        max_support_exposure_ns=None,
+    )
+    assert estimate.group_id == 3 and estimate.max_support_exposure_ns is None
+    # prediction_only may not carry a support stamp.
+    with pytest.raises(c.ContractError, match=r"^Estimate\.max_support_exposure_ns: "):
+        _estimate(
+            evidence_kinds=(c.EvidenceKind.PREDICTION_ONLY,),
+            reason="no_evidence",
+            max_support_exposure_ns=RECORD_NS,
+        )
+
+
+def test_estimate_pnp_requires_a_support_stamp_at_most_t_ns():
+    with pytest.raises(c.ContractError, match=r"^Estimate\.max_support_exposure_ns: "):
+        _estimate(max_support_exposure_ns=None)
+    with pytest.raises(c.ContractError, match=r"^Estimate\.max_support_exposure_ns: "):
+        _estimate(max_support_exposure_ns=RECORD_NS + 1)  # after t_ns
+
+
+def test_estimate_accepts_a_support_stamp_equal_to_t_ns():
+    estimate = _estimate(max_support_exposure_ns=RECORD_NS)
+    assert estimate.max_support_exposure_ns == RECORD_NS
+
+
+@pytest.mark.parametrize(
+    "kinds",
+    [
+        pytest.param((c.EvidenceKind.PNP, c.EvidenceKind.BORDER), id="pnp_border"),
+        pytest.param((c.EvidenceKind.BORDER, c.EvidenceKind.GROUND_MOTION), id="reversed_pair"),
+        pytest.param((), id="empty"),
+        pytest.param((c.EvidenceKind.INITIAL_POSE, c.EvidenceKind.PNP), id="initial_plus_pnp"),
+    ],
+)
+def test_estimate_rejects_a_disallowed_evidence_kinds_tuple(kinds):
+    with pytest.raises(c.ContractError, match=r"^Estimate\.evidence_kinds: "):
+        _estimate(evidence_kinds=kinds)
+
+
+# ---- require_accepted on geometry records (Requirement 12.5, 12.6) --------------------
+
+
+def test_require_accepted_passes_valid_geometry_records():
+    patch = _road_patch()
+    projection = _projection()
+    assert c.require_accepted(patch) is patch
+    assert c.require_accepted(projection) is projection
+
+
+def test_require_accepted_rejects_invalid_geometry_records():
+    with pytest.raises(c.RejectedEvidenceError, match=r"^RoadPatch: off_route"):
+        c.require_accepted(_road_patch_invalid())
+    invalid_projection = _projection(valid=False, reason="off_route", s_m=None)
+    with pytest.raises(c.RejectedEvidenceError, match=r"^TrackProjection: off_route"):
+        c.require_accepted(invalid_projection)
+
+# ---------------------------------------------------------------------------------------
+# Property 15: Estimate consistency (Requirements 12.1, 12.2, 12.3)
+#
+# For random state, covariance, evidence_kinds, group id and support stamp, Estimate
+# constructs exactly when every rule holds: the state is a finite float64 (6,) with yaw
+# stored wrapped; P is a symmetric PSD 6 x 6; evidence_kinds is one of the eight allowed
+# tuples; group_id is None iff the kinds are (initial_pose,); and max_support_exposure_ns
+# is None iff the kinds are (initial_pose,) or (prediction_only,) and otherwise an int at
+# most t_ns. Each iteration draws a valid combination and checks it builds, then breaks
+# exactly one rule and checks it is rejected. The expected outcome comes from the
+# generator, never from Estimate.
+# ---------------------------------------------------------------------------------------
+
+ESTIMATE_SEED = 20261019
+ESTIMATE_ITERATIONS = 200
+ESTIMATE_MIN_RUNS = 20  # coverage floor of every violation rule
+
+STATE_LEN = len(c.STATE_FIELDS)
+YAW_INDEX = c.STATE_FIELDS.index("yaw_rad")
+# The eight allowed evidence_kinds tuples, split by their group-id and support-stamp rules.
+NO_GROUP_KINDS = ((c.EvidenceKind.INITIAL_POSE,),)
+NO_SUPPORT_KINDS = ((c.EvidenceKind.INITIAL_POSE,), (c.EvidenceKind.PREDICTION_ONLY,))
+ALLOWED_ESTIMATE_KINDS = (
+    (c.EvidenceKind.INITIAL_POSE,),
+    (c.EvidenceKind.PNP,),
+    (c.EvidenceKind.HANDOFF_PNP,),
+    (c.EvidenceKind.RECOVERY_RESET,),
+    (c.EvidenceKind.GROUND_MOTION,),
+    (c.EvidenceKind.BORDER,),
+    (c.EvidenceKind.GROUND_MOTION, c.EvidenceKind.BORDER),
+    (c.EvidenceKind.PREDICTION_ONLY,),
+)
+# evidence_kinds tuples that Estimate must reject outright (disallowed combinations).
+DISALLOWED_ESTIMATE_KINDS = (
+    (),
+    (c.EvidenceKind.PNP, c.EvidenceKind.BORDER),
+    (c.EvidenceKind.BORDER, c.EvidenceKind.GROUND_MOTION),
+    (c.EvidenceKind.INITIAL_POSE, c.EvidenceKind.PNP),
+    (c.EvidenceKind.PNP, c.EvidenceKind.PNP),
+    (c.EvidenceKind.HANDOFF_PNP, c.EvidenceKind.GROUND_MOTION),
+    (c.EvidenceKind.RECOVERY_RESET, c.EvidenceKind.BORDER),
+)
+ESTIMATE_RULES = (
+    "disallowed_kinds",
+    "group_id_none_mismatch",
+    "group_id_set_mismatch",
+    "support_present_mismatch",
+    "support_absent_mismatch",
+    "support_after_t_ns",
+    "non_psd_P",
+    "wrong_state_length",
+)
+
+
+def _random_state(rng):
+    """Return a writable finite float64 (6,) state (yaw drawn well outside (-pi, pi])."""
+    state = rng.uniform(-50.0, 50.0, size=STATE_LEN)
+    state[YAW_INDEX] = rng.uniform(-5.0 * math.pi, 5.0 * math.pi)  # exercises the wrap
+    return state
+
+
+def _random_psd(rng, n=STATE_LEN):
+    """Return a symmetric positive-definite float64 (n, n) covariance via A A^T + I."""
+    a = rng.standard_normal((n, n))
+    return a @ a.T + np.eye(n)
+
+
+def _random_non_psd(rng, n=STATE_LEN):
+    """Return a symmetric float64 (n, n) matrix with a clearly negative eigenvalue."""
+    q = factories.random_rotation(rng) if n == 3 else np.linalg.qr(rng.standard_normal((n, n)))[0]
+    eigenvalues = np.abs(rng.standard_normal(n)) + 1.0
+    eigenvalues[int(rng.integers(n))] = -(abs(float(rng.standard_normal())) + 1.0)
+    return q @ np.diag(eigenvalues) @ q.T
+
+
+def _valid_estimate_fields(rng, k):
+    """Return iteration ``k``'s valid Estimate fields with a drawn allowed kinds tuple."""
+    kinds = ALLOWED_ESTIMATE_KINDS[k % len(ALLOWED_ESTIMATE_KINDS)]
+    t_ns = RECORD_NS + int(rng.integers(0, 10**9))
+    group_id = None if kinds in NO_GROUP_KINDS else int(rng.integers(0, 10**6))
+    if kinds in NO_SUPPORT_KINDS:
+        support_ns = None
+        reason = "initialized" if kinds == (c.EvidenceKind.INITIAL_POSE,) else "no_evidence"
+    else:
+        support_ns = t_ns - int(rng.integers(0, t_ns - RECORD_NS + 1))  # in [RECORD_NS, t_ns]
+        reason = "accepted"
+    return {
+        "t_ns": t_ns,
+        "group_id": group_id,
+        "state": _random_state(rng),
+        "P": _random_psd(rng),
+        "status": c.Status.TRACKING,
+        "branch": c.Branch.TRACK,
+        "evidence_kinds": kinds,
+        "reason": reason,
+        "auxiliary": _aux_valid(),
+        "max_support_exposure_ns": support_ns,
+    }
+
+
+def _estimate_violations(rng, fields):
+    """Yield (rule, ``fields`` with that one rule broken) for every applicable rule."""
+    kinds = fields["evidence_kinds"]
+
+    def broken(**changes):
+        return {**fields, **changes}
+
+    bad_kinds = DISALLOWED_ESTIMATE_KINDS[int(rng.integers(len(DISALLOWED_ESTIMATE_KINDS)))]
+    yield "disallowed_kinds", broken(evidence_kinds=bad_kinds)
+
+    # group_id: None iff kinds == (initial_pose,). Flip exactly that binding.
+    if kinds in NO_GROUP_KINDS:
+        yield "group_id_set_mismatch", broken(group_id=int(rng.integers(0, 10**6)))
+    else:
+        yield "group_id_none_mismatch", broken(group_id=None)
+
+    # max_support_exposure_ns: None iff kinds in {(initial_pose,), (prediction_only,)}.
+    if kinds in NO_SUPPORT_KINDS:
+        yield "support_present_mismatch", broken(max_support_exposure_ns=fields["t_ns"])
+    else:
+        yield "support_absent_mismatch", broken(max_support_exposure_ns=None)
+        yield "support_after_t_ns", broken(max_support_exposure_ns=fields["t_ns"] + 1)
+
+    yield "non_psd_P", broken(P=_random_non_psd(rng))
+    length = STATE_LEN + int(rng.choice((-1, 1)))
+    yield "wrong_state_length", broken(state=rng.standard_normal(length))
+
+
+# Feature: shared-contracts, Property 15: Estimate consistency
+def test_property_15_estimate_consistency():
+    """An Estimate is constructed exactly when every field rule holds.
+
+    The generator draws an allowed evidence_kinds tuple and a consistent group id and
+    support stamp, so each valid combination must build and store yaw wrapped into (-pi,
+    pi]; breaking exactly one rule (a disallowed kinds tuple, a group-id presence mismatch,
+    a support-stamp presence mismatch, a support stamp after t_ns, a non-PSD covariance or
+    a mis-sized state) must raise a ContractError. Outcomes come from the generator.
+
+    **Validates: Requirements 12.1, 12.2, 12.3**
+    """
+    runs = dict.fromkeys(ESTIMATE_RULES, 0)
+    for k in range(ESTIMATE_ITERATIONS):
+        rng = factories.seeded_rng(ESTIMATE_SEED, k)
+        fields = _valid_estimate_fields(rng, k)
+        where = f"seed {ESTIMATE_SEED}, iteration {k}, kinds {fields['evidence_kinds']}"
+        try:
+            estimate = c.Estimate(**fields)
+        except c.ContractError as error:
+            pytest.fail(f"{where} valid: rejected: {error}")
+        expected_yaw = c.wrap_angle(fields["state"][YAW_INDEX])
+        assert estimate.state[YAW_INDEX] == pytest.approx(expected_yaw), f"{where} valid: yaw"
+        assert -math.pi < estimate.state[YAW_INDEX] <= math.pi, f"{where} valid: yaw range"
+        assert estimate.state.flags.writeable is False, f"{where} valid: state writable"
+        assert estimate.group_id == fields["group_id"], f"{where} valid: group_id"
+        assert estimate.max_support_exposure_ns == fields["max_support_exposure_ns"], (
+            f"{where} valid: support stamp"
+        )
+        for rule, bad in _estimate_violations(rng, fields):
+            with pytest.raises(c.ContractError):
+                c.Estimate(**bad)
+            runs[rule] += 1
+    starved = {name: total for name, total in runs.items() if total < ESTIMATE_MIN_RUNS}
+    assert not starved, f"seed {ESTIMATE_SEED}: under {ESTIMATE_MIN_RUNS} runs: {starved}"
+
+# ---------------------------------------------------------------------------------------
+# Property 17: Immutability (Requirements 13.2, 13.3)
+#
+# For a representative record of each type, assigning to any field raises
+# (FrozenInstanceError or TypeError), writing into any stored numpy array raises
+# (read-only ValueError), and mutating the caller's input arrays after construction leaves
+# the stored small arrays unchanged, because records copy them read-only. Observation's
+# image and mask are the deliberate exception: they are the caller's own buffers marked
+# read-only (not copies), so the test confirms the caller's buffer itself became read-only.
+# ---------------------------------------------------------------------------------------
+
+IMMUTABILITY_SEED = 20261020
+IMMUTABILITY_ITERATIONS = 120
+
+
+def _scratch_image():
+    """Return a fresh writable canonical image whose pixels carry an identifiable pattern."""
+    image = factories.canonical_image()
+    image[0, 0, 0] = 123
+    return image
+
+
+def _scratch_mask():
+    """Return a fresh writable canonical mask with one pixel cleared."""
+    mask = factories.canonical_mask()
+    mask[0, 0] = False
+    return mask
+
+
+def _immutability_cases(rng):
+    """Return (label, record, scratch) tuples for one iteration.
+
+    ``scratch`` maps a stored array field to the writable source array passed in, so the
+    test can mutate the source and assert the stored copy did not change. Observation uses
+    the caller-buffer convention for image and mask, so those are omitted from ``scratch``.
+    """
+    cases = []
+
+    # Observation: image/mask are the caller's own buffers (marked read-only, not copied);
+    # K and T_BC are private read-only copies.
+    image, mask = _scratch_image(), _scratch_mask()
+    k_source, t_source = factories.canonical_K(), factories.camera_to_body()
+    observation = factories.make_observation(
+        image=image, valid_mask=mask, K=k_source, T_BC=t_source
+    )
+    cases.append(("Observation", observation, {"K": k_source, "T_BC": t_source}))
+
+    # FrameSet: a frozen record holding nested ImageMessages and no small array of its own.
+    cases.append(("FrameSet", factories.make_frame_set(), {}))
+
+    # PoseEvidence: id arrays and T_WB are read-only copies of the caller's arrays.
+    track_ids = np.array([0, 1, 2], dtype=np.int64)
+    landmark_ids = np.array([10, 11, 12], dtype=np.int64)
+    t_wb = np.eye(4)
+    pose = factories.make_pose_evidence(
+        track_ids=track_ids, landmark_ids=landmark_ids, T_WB=t_wb
+    )
+    cases.append(
+        ("PoseEvidence", pose, {"track_ids": track_ids, "landmark_ids": landmark_ids, "T_WB": t_wb})
+    )
+
+    # Estimate: state and P are read-only copies of the caller's arrays.
+    state, cov = _state(yaw=float(rng.uniform(-math.pi, math.pi))), _psd_cov()
+    estimate = _estimate(state=state, P=cov)
+    cases.append(("Estimate", estimate, {"state": state, "P": cov}))
+
+    # RoadPatch: query_xy, point_W and normal_W are read-only copies of the caller's arrays.
+    query = np.array([1.0, 2.0])
+    point = np.array([1.0, 2.0, 0.0])
+    normal = np.array([0.0, 0.0, 1.0])
+    patch = _road_patch(query_xy=query, point_W=point, normal_W=normal)
+    cases.append(
+        ("RoadPatch", patch, {"query_xy": query, "point_W": point, "normal_W": normal})
+    )
+
+    # GroupEvidence: a frozen record built from nested records, no small array of its own.
+    cases.append(("GroupEvidence", factories.make_group_evidence(), {}))
+
+    return cases
+
+
+def _assert_field_assignment_raises(label, record, where):
+    """Assert that assigning to each dataclass field of ``record`` is rejected."""
+    for field in dataclasses.fields(record):
+        with pytest.raises((dataclasses.FrozenInstanceError, TypeError)):
+            setattr(record, field.name, getattr(record, field.name))
+
+
+def _assert_stored_arrays_read_only(label, record, where):
+    """Assert that every stored numpy array on ``record`` refuses an in-place write."""
+    for field in dataclasses.fields(record):
+        value = getattr(record, field.name)
+        if isinstance(value, np.ndarray):
+            assert value.flags.writeable is False, f"{where} {label}.{field.name}: writable"
+            flat = value.reshape(-1)
+            if flat.size:
+                with pytest.raises(ValueError, match="read-only"):
+                    flat[0] = flat[0]
+
+
+# Feature: shared-contracts, Property 17: Immutability
+def test_property_17_immutability():
+    """Every record is frozen, its stored arrays are read-only and copied from the caller.
+
+    For a representative record of each type, assigning any field raises, writing into any
+    stored numpy array raises, and mutating the caller's source arrays after construction
+    leaves the stored small arrays unchanged. Observation keeps the caller's own image and
+    mask buffers (marked read-only rather than copied), so those two are checked as buffers
+    that became read-only instead of as copies.
+
+    **Validates: Requirements 13.2, 13.3**
+    """
+    seen = set()
+    for k in range(IMMUTABILITY_ITERATIONS):
+        rng = factories.seeded_rng(IMMUTABILITY_SEED, k)
+        for label, record, scratch in _immutability_cases(rng):
+            where = f"seed {IMMUTABILITY_SEED}, iteration {k}, record {label}"
+            seen.add(label)
+            _assert_field_assignment_raises(label, record, where)
+            _assert_stored_arrays_read_only(label, record, where)
+            # Mutating the caller's source arrays must not change the stored copies.
+            for field_name, source in scratch.items():
+                stored = getattr(record, field_name)
+                before = np.array(stored)
+                assert source.flags.writeable is True, f"{where}.{field_name}: source frozen"
+                source.reshape(-1)[0] += 7.0
+                np.testing.assert_array_equal(
+                    getattr(record, field_name),
+                    before,
+                    err_msg=f"{where}.{field_name}: stored copy changed with its source",
+                )
+    expected = {"Observation", "FrameSet", "PoseEvidence", "Estimate", "RoadPatch", "GroupEvidence"}
+    assert seen == expected, f"covered {sorted(seen)}, expected {sorted(expected)}"
+
+# ---------------------------------------------------------------------------------------
+# Property 18: JSON-safe summaries (Requirements 13.4, 13.5)
+#
+# For a representative record of every record type, json.dumps(record.summary(),
+# allow_nan=False) succeeds; integer stamps decode back to the identical Python ints;
+# enum fields appear as their string values; and no image, mask, JPEG payload or array of
+# more than SUMMARY_MAX_ARRAY_ITEMS elements is listed as data (each is shape/dtype or
+# {"bytes": n}). A large PoseEvidence/Correspondences exercises the big-array path and an
+# ImageMessage/Observation the image and bytes paths.
+# ---------------------------------------------------------------------------------------
+
+SUMMARY_SEED = 20261021
+SUMMARY_ITERATIONS = 100
+MAX_ITEMS = c.SUMMARY_MAX_ARRAY_ITEMS
+
+# Record fields that hold integer nanosecond stamps and must survive the JSON round trip.
+STAMP_FIELDS = {
+    "ImageMessage": ("exposure_ns", "arrival_ns"),
+    "InputEvent": ("log_ns", "reference_ns"),
+    "Observation": ("exposure_ns", "arrival_ns"),
+    "SearchSnapshot": ("t_ns",),
+    "Estimate": ("t_ns", "max_support_exposure_ns"),
+    "TrackProjection": ("t_ns",),
+    "Correspondences": ("exposure_ns",),
+    "PoseEvidence": ("exposure_ns",),
+    "AnchorRequest": ("source_exposure_ns", "delivery_not_before_ns"),
+    "AnchorResult": ("source_exposure_ns", "worker_duration_ns"),
+    "RecoveryReset": ("t_ns",),
+}
+
+
+def _large_correspondences(n):
+    """Return Correspondences with ``n`` rows (ids beyond MAX_ITEMS go to the big-array path)."""
+    rng = factories.seeded_rng(SUMMARY_SEED, 999, n)
+    pixels = np.column_stack(
+        (rng.uniform(0.0, float(W - 1), size=n), rng.uniform(0.0, float(H - 1), size=n))
+    )
+    return factories.make_correspondences(
+        keypoint_ids=np.arange(n, dtype=np.int64),
+        pixels=pixels,
+        landmark_ids=np.arange(1000, 1000 + n, dtype=np.int64),
+    )
+
+
+def _large_pose_evidence(n):
+    """Return an accepted tracking PoseEvidence with ``n`` > MAX_ITEMS inliers."""
+    return factories.make_pose_evidence(
+        inlier_count=n,
+        track_ids=np.arange(n, dtype=np.int64),
+        landmark_ids=np.arange(5000, 5000 + n, dtype=np.int64),
+    )
+
+
+def _representative_records():
+    """Return one valid record of every contract record type, keyed by class name."""
+    big = MAX_ITEMS + 5  # just over the shape/dtype threshold
+    records = [
+        factories.make_image_message(),
+        factories.make_input_event(reference_ns=RECORD_NS),
+        factories.make_calibration(),
+        factories.make_observation(),
+        factories.make_frame_set(),
+        c.AuxiliaryGeometry.unavailable("not_estimated"),
+        _aux_valid(),
+        _road_patch(),
+        _road_patch_invalid(),
+        _snapshot(),
+        _estimate(),
+        _projection(),
+        factories.make_correspondences(),
+        _large_correspondences(big),
+        factories.make_pose_evidence(),
+        _large_pose_evidence(big),
+        factories.make_handoff_evidence(),
+        factories.make_motion_evidence(),
+        factories.make_border_evidence(),
+        factories.make_anchor_request(),
+        factories.make_anchor_result(),
+        factories.make_recovery_reset(),
+        factories.make_unused_evidence(),
+        factories.make_group_evidence(),
+    ]
+    by_type: dict[str, object] = {}
+    for record in records:
+        by_type.setdefault(type(record).__name__, record)
+    return by_type
+
+
+# The 20 record classes that Property 18 must cover with at least one representative.
+EXPECTED_RECORD_TYPES = frozenset(
+    {
+        "ImageMessage",
+        "InputEvent",
+        "CameraCalibration",
+        "Observation",
+        "FrameSet",
+        "AuxiliaryGeometry",
+        "RoadPatch",
+        "SearchSnapshot",
+        "Estimate",
+        "TrackProjection",
+        "Correspondences",
+        "PoseEvidence",
+        "HandoffEvidence",
+        "MotionEvidence",
+        "BorderEvidence",
+        "AnchorRequest",
+        "AnchorResult",
+        "RecoveryReset",
+        "UnusedEvidence",
+        "GroupEvidence",
+    }
+)
+
+
+def _assert_no_raw_array_data(summary, where, path="summary"):
+    """Walk a JSON-safe summary and assert no list is longer than MAX_ITEMS entries.
+
+    Large arrays, images and masks must be reduced to {"shape": ..., "dtype": ...} and
+    byte payloads to {"bytes": n}, so no raw data list of more than MAX_ITEMS items (and
+    in particular no image, mask or JPEG payload) survives anywhere in the structure.
+    """
+    if isinstance(summary, dict):
+        if "shape" in summary and "dtype" in summary:
+            return  # a reduced array descriptor; its shape list is metadata, not data
+        if set(summary) == {"bytes"}:
+            assert isinstance(summary["bytes"], int), f"{where} {path}.bytes"
+            return
+        for key, value in summary.items():
+            _assert_no_raw_array_data(value, where, f"{path}.{key}")
+    elif isinstance(summary, list):
+        assert len(summary) <= MAX_ITEMS, f"{where} {path}: raw data list of {len(summary)} items"
+        for index, value in enumerate(summary):
+            _assert_no_raw_array_data(value, where, f"{path}[{index}]")
+
+
+def _collect_enum_values(record):
+    """Return the string value expected for each top-level enum field of ``record``."""
+    expected = {}
+    for field in dataclasses.fields(record):
+        value = getattr(record, field.name)
+        if isinstance(value, enum.Enum):
+            expected[field.name] = value.value
+    return expected
+
+
+# Feature: shared-contracts, Property 18: JSON-safe summaries
+def test_property_18_json_safe_summaries():
+    """Every record summarizes to a value that survives strict JSON, keeping ints and enums.
+
+    For one representative of every record type: json.dumps(summary, allow_nan=False)
+    succeeds, integer stamps decode back to the identical ints, enum fields appear as their
+    string values and no image, mask, JPEG payload or array longer than
+    SUMMARY_MAX_ARRAY_ITEMS appears as data (each is shape/dtype or {"bytes": n}). A large
+    PoseEvidence and Correspondences drive the big-array path; an ImageMessage and
+    Observation drive the image and bytes paths.
+
+    **Validates: Requirements 13.4, 13.5**
+    """
+    seen = set()
+    for k in range(SUMMARY_ITERATIONS):
+        records = _representative_records()
+        for name, record in records.items():
+            where = f"seed {SUMMARY_SEED}, iteration {k}, record {name}"
+            seen.add(name)
+            summary = record.summary()
+            assert summary["record"] == name, f"{where}: record tag"
+            text = json.dumps(summary, allow_nan=False)
+            decoded = json.loads(text)  # Python json keeps integers exact
+
+            for field_name in STAMP_FIELDS.get(name, ()):
+                original = getattr(record, field_name)
+                if original is None:
+                    assert decoded[field_name] is None, f"{where}.{field_name}: lost None"
+                    continue
+                round_tripped = decoded[field_name]
+                assert type(round_tripped) is int, f"{where}.{field_name}: not an int"
+                assert round_tripped == original, f"{where}.{field_name}: {round_tripped} != "
+                assert int(original) == original, f"{where}.{field_name}: exactness"
+
+            for field_name, value in _collect_enum_values(record).items():
+                assert summary[field_name] == value, f"{where}.{field_name}: enum value"
+                assert isinstance(summary[field_name], str), f"{where}.{field_name}: enum type"
+
+            _assert_no_raw_array_data(decoded, where)
+
+    # ImageMessage keeps its payload out of data: the JPEG is a {"bytes": n} descriptor.
+    message = factories.make_image_message()
+    assert message.summary()["data"] == {"bytes": len(factories.JPEG_PAYLOAD)}
+    # Observation keeps image and mask as shape/dtype descriptors, never as pixel lists.
+    observation = factories.make_observation()
+    for field_name in ("image", "valid_mask"):
+        descriptor = observation.summary()[field_name]
+        assert set(descriptor) == {"shape", "dtype"}, f"Observation.{field_name}: not shape/dtype"
+
+    assert seen == set(EXPECTED_RECORD_TYPES), (
+        f"covered {sorted(seen)}, expected {sorted(EXPECTED_RECORD_TYPES)}"
+    )

@@ -24,6 +24,9 @@ htmlcov/
 *.log
 *.zip
 
+# Kiro spec and session state, shared manually rather than through Git.
+/.kiro/
+
 # Local credentials and editor/session state.
 .env
 .env.*

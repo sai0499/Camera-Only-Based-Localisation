@@ -884,3 +884,228 @@ def test_property_3_canonical_angle_wrap():
             want = c.wrap_angle(given)
             message = f"{case}: {field} stores {value!r} for input {given!r}, not {want!r}"
             assert _same_float(value, want), message
+
+
+# ---------------------------------------------------------------------------------------
+# Property 4: rigid transform acceptance (Requirements 3.1, 3.2, 4.4)
+# ---------------------------------------------------------------------------------------
+
+RIGID_SEED = 20261016
+RIGID_ITERATIONS = 150
+RIGID_TRANSLATION_RANGE = 1e4  # metres; large magnitudes exercise the finite-translation path
+
+
+def _check_rigid_accepted(k: int, case: str, T_in: np.ndarray) -> None:
+    """Check that ``check_rigid`` returns a read-only float64 (4, 4) copy equal to ``T_in``."""
+    returned = c.check_rigid(T_in, "T_AB")
+    assert returned.dtype == np.float64, f"{case} returned dtype {returned.dtype}, not float64"
+    assert returned.shape == (4, 4), f"{case} returned shape {returned.shape}, not (4, 4)"
+    assert np.array_equal(returned, T_in), f"{case} returned a transform unequal to its input"
+    assert returned.flags.writeable is False, f"{case} returned a writeable transform"
+    assert returned is not T_in, f"{case} returned the input object, not a copy"
+
+
+def _check_rigid_rejected(k: int, case: str, T_bad: object) -> None:
+    """Check that ``check_rigid`` raises a ContractError naming the field for ``T_bad``."""
+    try:
+        c.check_rigid(T_bad, "T_AB")
+    except c.ContractError as exc:
+        assert str(exc).startswith("T_AB: "), f"{case}: message {exc!r} does not name the field"
+        return
+    except Exception as exc:
+        pytest.fail(f"{case} raised {exc!r}, expected ContractError")
+    pytest.fail(f"{case} was accepted, expected ContractError")
+
+
+# Feature: shared-contracts, Property 4: Rigid transform acceptance
+def test_property_4_rigid_transform_acceptance():
+    """``check_rigid`` accepts rigid transforms and rejects every structural violation.
+
+    For any random rotation R (orthonormal, det +1) and finite translation t up to large
+    magnitudes, ``check_rigid([[R, t], [0, 1]])`` returns a read-only float64 (4, 4) copy
+    equal to the input (a copy, not the same object). Any perturbation applied alone to a
+    fresh valid T raises a ``ContractError`` naming the field: a reflection (det -1), a
+    uniform or tiny scale beyond ROTATION_TOL, a shear past ROTATION_TOL, a last row off by
+    more than LAST_ROW_TOL, a non-finite entry or a wrong shape. A valid Python list is
+    accepted (``check_rigid`` converts array-likes), so only genuinely invalid inputs are
+    used for rejection.
+
+    **Validates: Requirements 3.1, 3.2, 4.4**
+    """
+    for k in range(RIGID_ITERATIONS):
+        rng = factories.seeded_rng(RIGID_SEED, k)
+        rotation = factories.random_rotation(rng)
+        translation = rng.uniform(-RIGID_TRANSLATION_RANGE, RIGID_TRANSLATION_RANGE, 3)
+        T_in = factories.rigid(rotation, translation)
+        prefix = f"seed {RIGID_SEED} iteration {k}"
+
+        # Accept: the random rigid transform, a near-identity and near-pi rotation, the
+        # closed-form inverse, and an otherwise valid Python list (array-like conversion).
+        _check_rigid_accepted(k, f"{prefix}: random rigid", T_in)
+        near_identity = factories.rigid(
+            factories.random_rotation(factories.seeded_rng(RIGID_SEED, k, 1)), translation
+        )
+        _check_rigid_accepted(k, f"{prefix}: near-identity/near-pi rotation A", near_identity)
+        near_pi = factories.rigid(
+            factories.random_rotation(factories.seeded_rng(RIGID_SEED, k, 2)), translation
+        )
+        _check_rigid_accepted(k, f"{prefix}: near-identity/near-pi rotation B", near_pi)
+        _check_rigid_accepted(k, f"{prefix}: rigid_inverse", factories.rigid_inverse(T_in))
+        _check_rigid_accepted(k, f"{prefix}: Python list", T_in.tolist())
+
+        # Reject: a reflection (negate one column so det = -1).
+        column = int(rng.integers(3))
+        reflected = rotation.copy()
+        reflected[:, column] = -reflected[:, column]
+        _check_rigid_rejected(k, f"{prefix}: reflection column {column}", factories.rigid(reflected, translation))
+
+        # Reject: a uniform scale by 1.01 and a tiny scale by 1 + 1e-5, both past ROTATION_TOL.
+        for scale in (1.01, 1.0 + 1e-5):
+            _check_rigid_rejected(
+                k, f"{prefix}: uniform scale {scale}", factories.rigid(rotation * scale, translation)
+            )
+
+        # Reject: a shear that pushes max|R^T R - I| just past ROTATION_TOL. Adding
+        # s * (col j) to col i makes the (i, j) Gram entry s (columns are orthonormal), so
+        # s a touch above ROTATION_TOL violates the orthonormality check.
+        i, j = rng.permutation(3)[:2]
+        sheared = rotation.copy()
+        sheared[:, i] = sheared[:, i] + 1.0001e-6 * sheared[:, j]
+        _check_rigid_rejected(k, f"{prefix}: shear columns {i},{j}", factories.rigid(sheared, translation))
+
+        # Reject: last rows outside LAST_ROW_TOL (1e-9): a 1e-6 nudge, a 1e-3 third entry,
+        # and a 1e-7 first entry.
+        for last_row in ([1e-6, 0.0, 0.0, 1.0], [0.0, 0.0, 1e-3, 1.0], [1e-7, 0.0, 0.0, 1.0]):
+            T_bad = T_in.copy()
+            T_bad[3] = last_row
+            _check_rigid_rejected(k, f"{prefix}: last row {last_row}", T_bad)
+
+        # Reject: a NaN or inf inserted at a drawn cell.
+        row, col = int(rng.integers(4)), int(rng.integers(4))
+        for bad_value in (np.nan, np.inf):
+            T_bad = T_in.copy()
+            T_bad[row, col] = bad_value
+            _check_rigid_rejected(k, f"{prefix}: {bad_value} at [{row},{col}]", T_bad)
+
+        # Reject: wrong shapes.
+        for shape in ((3, 4), (4, 3), (3, 3), (4, 4, 1)):
+            _check_rigid_rejected(k, f"{prefix}: shape {shape}", np.zeros(shape))
+
+# ---------------------------------------------------------------------------------------
+# Property 5: covariance acceptance (Requirements 3.3, 3.4, 3.5)
+# ---------------------------------------------------------------------------------------
+
+COV_SEED = 20261017
+COV_ITERATIONS = 150
+
+
+def _check_cov_accepted(case: str, P_in: np.ndarray, n: int | None) -> None:
+    """Check ``check_covariance`` returns a read-only float64 (n, n) copy equal to ``P_in``."""
+    returned = c.check_covariance(P_in, n, name="P")
+    assert returned.dtype == np.float64, f"{case} returned dtype {returned.dtype}, not float64"
+    assert returned.shape == P_in.shape, f"{case} returned shape {returned.shape}, not {P_in.shape}"
+    assert np.array_equal(returned, P_in), f"{case} returned a matrix unequal to its input"
+    assert returned.flags.writeable is False, f"{case} returned a writeable matrix"
+    assert returned is not P_in, f"{case} returned the input object, not a copy"
+
+
+def _check_cov_rejected(case: str, P_bad: object, n: int | None) -> None:
+    """Check ``check_covariance`` raises a ContractError naming the field for ``P_bad``."""
+    try:
+        c.check_covariance(P_bad, n, name="P")
+    except c.ContractError as exc:
+        assert str(exc).startswith("P"), f"{case}: message {exc!r} does not name the field"
+        return
+    except Exception as exc:
+        pytest.fail(f"{case} raised {exc!r}, expected ContractError")
+    pytest.fail(f"{case} was accepted, expected ContractError")
+
+
+# Feature: shared-contracts, Property 5: Covariance acceptance
+def test_property_5_covariance_acceptance():
+    """``check_covariance`` accepts symmetric PSD matrices and rejects every violation.
+
+    For a random real A of various sizes, ``P = A @ A.T`` is symmetric PSD, so
+    ``check_covariance(P)`` returns a read-only float64 (n, n) copy equal to the input (a
+    distinct object). ``definite=True`` succeeds exactly when the minimum eigenvalue is > 0:
+    a full-rank square A gives a positive-definite P, while a rank-deficient A (a zeroed
+    column) gives a PSD but singular P that ``definite=True`` rejects. Both the ``n`` and
+    ``n=None`` forms are exercised. Perturbing a fresh valid P alone raises a
+    ``ContractError`` naming the field: asymmetry past SYMMETRY_TOL * scale, a negative
+    eigenvalue past PSD_TOL * scale, a NaN or inf entry, a non-square shape, a wrong ``n``,
+    and (with ``definite=True``) a singular PSD matrix.
+
+    **Validates: Requirements 3.3, 3.4, 3.5**
+    """
+    for k in range(COV_ITERATIONS):
+        rng = factories.seeded_rng(COV_SEED, k)
+        prefix = f"seed {COV_SEED} iteration {k}"
+        n = int(rng.integers(1, 7))  # various n in 1..6
+        # Full-rank square A -> P is symmetric positive definite.
+        A = rng.standard_normal((n, n)) + n * np.eye(n)
+        P = A @ A.T
+        scale = max(1.0, float(np.max(np.abs(P))))
+        smallest = float(np.linalg.eigvalsh(0.5 * P + 0.5 * P.T)[0])
+
+        # Accept: PSD acceptance in both the sized and unsized forms.
+        _check_cov_accepted(f"{prefix}: A@A.T with n", P, n)
+        _check_cov_accepted(f"{prefix}: A@A.T no n", P, None)
+
+        # definite=True succeeds exactly when the minimum eigenvalue is > 0.
+        returned = c.check_covariance(P, n, name="P", definite=True)
+        assert smallest > 0.0 and returned.flags.writeable is False, (
+            f"{prefix}: full-rank A@A.T has min eigenvalue {smallest:.3g}, definite should pass"
+        )
+        assert returned is not P and np.array_equal(returned, P), f"{prefix}: definite copy differs"
+
+        # Rank-deficient A (a zeroed column) -> PSD but singular. The matrix is rebuilt from
+        # its own eigendecomposition with the smallest eigenvalue set just inside the PSD
+        # tolerance band (-0.5 * PSD_TOL * scale): strictly below 0, so definite=True rejects
+        # it robustly despite ~1e-16 reconstruction roundoff, yet >= -PSD_TOL * scale, so PSD
+        # acceptance still succeeds.
+        A_singular = A.copy()
+        A_singular[:, int(rng.integers(n))] = 0.0
+        raw_singular = A_singular @ A_singular.T
+        singular_scale = max(1.0, float(np.max(np.abs(raw_singular))))
+        eigenvalues, eigenvectors = np.linalg.eigh(0.5 * raw_singular + 0.5 * raw_singular.T)
+        eigenvalues[0] = -0.5 * c.PSD_TOL * singular_scale  # eigh returns them ascending
+        P_singular = eigenvectors @ np.diag(eigenvalues) @ eigenvectors.T
+        P_singular = 0.5 * P_singular + 0.5 * P_singular.T  # symmetric to machine precision
+        min_singular = float(np.linalg.eigvalsh(P_singular)[0])
+        assert min_singular < 0.0, (
+            f"{prefix}: rank-deficient P should be non-definite, min eigenvalue {min_singular:.3g}"
+        )
+        _check_cov_accepted(f"{prefix}: rank-deficient PSD", P_singular, n)
+        try:
+            c.check_covariance(P_singular, n, name="P", definite=True)
+        except c.ContractError as exc:
+            assert str(exc).startswith("P"), f"{prefix}: definite rejection {exc!r} does not name P"
+        else:
+            pytest.fail(f"{prefix}: singular PSD accepted with definite=True")
+
+        # Reject: break symmetry at one off-diagonal well past SYMMETRY_TOL * scale.
+        if n >= 2:
+            i, j = rng.permutation(n)[:2]
+            P_asym = P.copy()
+            P_asym[i, j] += 1.0 + 10.0 * c.SYMMETRY_TOL * scale
+            _check_cov_rejected(f"{prefix}: asymmetric [{i},{j}]", P_asym, n)
+
+        # Reject: make an eigenvalue negative past tolerance (shift P by more than its min
+        # eigenvalue), and a strongly negative diagonal entry.
+        lam = smallest + 1.0 + c.PSD_TOL * scale
+        _check_cov_rejected(f"{prefix}: negative eigenvalue shift", P - lam * np.eye(n), None)
+        P_neg_diag = P.copy()
+        d = int(rng.integers(n))
+        P_neg_diag[d, d] = -scale - 1.0
+        _check_cov_rejected(f"{prefix}: negative diagonal [{d},{d}]", P_neg_diag, n)
+
+        # Reject: a NaN or inf entry at a drawn cell (symmetrically, to isolate the finite check).
+        for bad_value in (np.nan, np.inf):
+            P_bad = P.copy()
+            r1, r2 = int(rng.integers(n)), int(rng.integers(n))
+            P_bad[r1, r2] = P_bad[r2, r1] = bad_value
+            _check_cov_rejected(f"{prefix}: {bad_value} at [{r1},{r2}]", P_bad, None)
+
+        # Reject: a non-square shape, and a correct square matrix given the wrong ``n``.
+        _check_cov_rejected(f"{prefix}: non-square", rng.standard_normal((n, n + 1)), None)
+        _check_cov_rejected(f"{prefix}: wrong n", P, n + 1)
