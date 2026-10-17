@@ -14,9 +14,11 @@ Implemented:
   trigger decisions use source time only; the injected clock is read only for the worker
   watchdog and runtime fields. Purpose order recovery > front > rear > warm, one request per
   group, rolling per-purpose and total caps (normal/recovery). Delivery happens at the first
-  group with `t_ns >= delivery_not_before_ns`. Synchronous and single-thread executor modes
+  group with `t_ns >= delivery_not_before_ns`. Synchronous and background worker modes
   give the same logical schedule. A backend fault disables the scheduler for the rest of the
   run without raising; stale results are never fused.
+  Both modes use one daemon worker thread with a bounded wait. A stuck native/GPU call is
+  abandoned, never reused, and disables further jobs; it cannot block process shutdown.
 - `camloc.recovery.RecoveryManager(policy=None)`: holds at most one candidate
   (an accepted `tracking` pose or handoff pose logged unused with reason `innovation_gate`).
   It confirms into a `RecoveryReset` only from a Confirmation_Pose at least
@@ -31,7 +33,9 @@ Implemented:
   the unchanged Stage 2 loop (`_run_basic`) runs and its output is byte-identical. Otherwise
   `_run_stage4` passes the scheduler's `GroupContext` to the frontend, routes evidence
   through the recovery manager, settles handoffs (ADOPT/CANDIDATE/DISCARD), resets the
-  tracker/projector after a reset, and writes scheduler and recovery diagnostics.
+  tracker/projector after a reset, and writes scheduler and recovery diagnostics. An optional
+  projector now writes both current route reports per output; failures produce ProjectionError
+  diagnostics without changing the pose CSV.
   `scheduler.close()` runs in `finally`; diagnostics are written only on a normal finish.
 
 Notable implementation choices:
@@ -47,15 +51,15 @@ Notable implementation choices:
 
 ## Open questions
 
-1. Tracking-by-age requires an actual applied Full_Pose. The InitialPose fallback is used
-   only for the 3 s Lost rule. This keeps
-   `test_border_updates_only_lateral_and_yaw_and_is_source_time_limited` (which expects
-   Degraded) valid. Confirm, or amend Req 8.2 to say "the latest applied Full_Pose".
-2. `validate_submission` brackets with `searchsorted(side="left")`, so a row at exactly
+Tracking-by-age now requires an applied full pose within 0.5 s and current accepted ground
+tracking. Prediction-only and border-only groups use Degraded/Recovering until Lost applies.
+InitialPose is not counted as an accepted full pose. No shared-record change is needed.
+
+1. `validate_submission` brackets with `searchsorted(side="left")`, so a row at exactly
    `tg[0]` is not evaluated. The synthetic smoke test starts GT at the InitialPose time,
-   0.5 ms before the first group, so `evaluated == submitted`. Req 2.1 needs amending to
-   "first GT timestamp <= first group t_ns".
-3. A HandoffEvidence whose nested pose confirms a reset is settled DISCARD (the estimate
+   0.5 ms before the first group, so `evaluated == submitted`. Preserve that evaluator
+   boundary: first GT timestamp must precede the first evaluated group.
+2. A HandoffEvidence whose nested pose confirms a reset is settled DISCARD (the estimate
    kinds are `(recovery_reset,)`), followed by `tracker.reset(reset)`. Say if ADOPT is
    preferred.
 
@@ -70,7 +74,8 @@ changed until A/B agree.
 
 ## Verification boundary
 
-`.venv/Scripts/python.exe -B -m pytest -q`: **767 passed**, none skipped or xfailed.
+Original Stage 4 gate at `fc0d512`: `.venv/Scripts/python.exe -B -m pytest -q`: **767 passed**,
+none skipped or xfailed. See [A+C integration status](A_C_INTEGRATION_STATUS.md) for current checks.
 New/changed Stage 4 files: `tests/test_scheduler.py` 23, `tests/test_recovery.py` 20,
 `tests/test_runner_stage4.py` 13, `tests/test_smoke_run.py` 5, `tests/test_filter.py` 51
 (112 total). `.venv/Scripts/ruff.exe check camloc scripts tests run.py`: all checks passed.

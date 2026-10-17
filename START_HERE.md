@@ -1,6 +1,6 @@
 # Start here: TrackCode Apex
 
-This is the shared development workspace for the three-person camera-localization team. Shared contracts and Team C's filter/streaming core are implemented; [Stage 2 status](task_docs/STAGE2_STATUS.md) records the tested API and pending A/B integration; [Stage 4 status](task_docs/STAGE4_STATUS.md) records the scheduler, recovery and status machine. The evaluation adapter and native-coordinate reconciliation already work. Raw-camera localization accuracy and runtime remain unestablished.
+This is the shared development workspace for the three-person camera-localization team. A's input/geometry/borders/route modules and C's contracts/filter/scheduler/recovery/runner are integrated on `dev/implementation`; [A+C integration status](task_docs/A_C_INTEGRATION_STATUS.md) records the fixes, checks and remaining B boundary. [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. The evaluation adapter and native-coordinate reconciliation already work. Raw-camera localization accuracy and runtime remain unestablished.
 
 ## Set up your machine
 

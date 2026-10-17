@@ -9,7 +9,8 @@ Per group the runner calls ``begin_group`` (delivery at the Delivery_Group, the 
 with ``t_ns >= delivery_not_before_ns``), lets the frontend ``propose`` through the returned
 ``GroupContext`` and then calls ``end_group`` (the Group_Boundary: release, creation,
 replacement, expiry and dispatch). ``AnchorWorker.run`` is called only inside ``end_group``,
-synchronously (default) or on one single-thread executor; a job's outcome is inspected only
+synchronously (default) or in the background, using one daemon worker thread with a bounded
+wait in either mode. A job's outcome is inspected only
 at its Delivery_Group, so both modes give the same logical schedule. A Backend_Fault
 disables the scheduler for the rest of the run; nothing is raised for it.
 
@@ -23,6 +24,7 @@ import collections
 import concurrent.futures
 import dataclasses
 import math
+import threading
 import time
 from collections.abc import Callable
 from typing import Any
@@ -283,11 +285,6 @@ class AnchorScheduler:
         self.policy = policy
         self.threaded = threaded
         self._clock = clock
-        self._executor = (
-            concurrent.futures.ThreadPoolExecutor(max_workers=1, thread_name_prefix="camloc-anchor")
-            if threaded
-            else None
-        )
 
         self._started = False
         self._finished = False
@@ -484,12 +481,12 @@ class AnchorScheduler:
         self.close()
 
     def close(self) -> None:
-        """Shut the executor down without waiting; idempotent."""
+        """Ignore unfinished work without joining a potentially stuck backend; idempotent."""
         if self._closed:
             return
         self._closed = True
-        if self._executor is not None:
-            self._executor.shutdown(wait=False, cancel_futures=True)
+        if self._in_flight is not None and self._in_flight.future is not None:
+            self._in_flight.future.cancel()
 
     # -- rate limits and trigger ------------------------------------------------------
 
@@ -606,11 +603,26 @@ class AnchorScheduler:
         self._in_flight = job
         self._counts["anchor_dispatched"] += 1
         self._event("dispatched", group_id, request, reason="dispatched")
-        if self._executor is None:
-            job.sync_outcome = _call_worker(self._worker, request, self._clock)
-        else:
-            job.dispatch_clock_ns = self._clock()
-            job.future = self._executor.submit(_call_worker, self._worker, request, self._clock)
+        future = concurrent.futures.Future()
+        job.dispatch_clock_ns = self._clock()
+        job.future = future
+
+        def work():
+            if future.set_running_or_notify_cancel():
+                try:
+                    future.set_result(_call_worker(self._worker, request, self._clock))
+                except BaseException as exc:
+                    future.set_exception(exc)
+
+        # A timed-out native/GPU call cannot be killed safely. Disable subsequent jobs;
+        # a daemon also prevents that one abandoned call from hanging process shutdown.
+        threading.Thread(target=work, name="camloc-anchor", daemon=True).start()
+        if not self.threaded:
+            try:
+                job.sync_outcome = self._future_outcome(future, self.policy.watchdog_ns / 1e9)
+            except concurrent.futures.TimeoutError:
+                job.sync_outcome = ("timeout", None, None)
+            job.future = None
 
     # -- delivery ---------------------------------------------------------------------
 
@@ -685,7 +697,7 @@ class AnchorScheduler:
             return future.result(timeout=timeout)
         except concurrent.futures.TimeoutError:
             raise
-        except Exception as exc:  # the wrapper captures worker errors; this is a safety net
+        except BaseException as exc:  # includes SystemExit raised in the isolated worker thread
             return "exception", exc, None
 
     def _fault(

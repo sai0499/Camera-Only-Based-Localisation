@@ -118,6 +118,16 @@ def kinds(events: list[dict]) -> list[tuple[str, str]]:
     return [(e["kind"], e["reason"]) for e in events]
 
 
+def test_candidate_must_belong_to_current_image_calibration():
+    manager = RecoveryManager()
+    bad = pose(F0, calibration_id="different-camera-calibration")
+    evidence = group(frame(0, F0), unused=(gated(bad),))
+    unchanged, outcome = manager.process(evidence, FixedPrior())
+    assert unchanged is evidence and outcome.reset is None
+    assert not manager.search_active()
+    assert manager.drain_diagnostics()[0]["reason"] == "calibration_mismatch"
+
+
 # ---------------------------------------------------------------------------------------
 # Example tests (task 5.2)
 # ---------------------------------------------------------------------------------------

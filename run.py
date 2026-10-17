@@ -298,6 +298,20 @@ def _run_stage4(
                     for target in (tracker, projector):
                         if target is not None:
                             target.reset(stepped.reset)
+                if projector is not None:
+                    try:
+                        projections = projector.project(estimate)
+                        if (not isinstance(projections, tuple) or len(projections) != 2
+                                or any(not isinstance(p, c.TrackProjection) for p in projections)
+                                or tuple(p.route_id for p in projections) != c.ROUTE_IDS
+                                or any(p.t_ns != estimate.t_ns for p in projections)
+                                or projections[0].reference_map_id != projections[1].reference_map_id):
+                            raise c.ContractError("projector must return current track/pit projections")
+                        for projection in projections:
+                            record(projection.summary())
+                    except Exception as exc:
+                        record({"record": "ProjectionError", "group_id": group_id,
+                                "exception": type(exc).__name__, "detail": str(exc)})
                 # 11-12. Group_Boundary, then this group's diagnostics.
                 if scheduler is not None:
                     scheduler.end_group(estimate, frontend_failed=frontend_failed)

@@ -337,13 +337,14 @@ def fingerprint(estimator):
              estimator._last_fused_ns, estimator._reset_ns))
 
 
-def reference_status(aux_valid, now, last_visual, last_full, initial_ns, full_consumed, flag):
+def reference_status(aux_valid, now, last_visual, last_full, initial_ns, full_consumed, flag,
+                     ground_tracking=False):
     """Independent restatement of the design's status precedence (integer ns ages)."""
     visual_age = now - (initial_ns if last_visual is None else last_visual)
     full_age = now - (initial_ns if last_full is None else last_full)
     if not aux_valid or visual_age > 1_000_000_000 or full_age > 3_000_000_000:
         return c.Status.LOST
-    if full_consumed or (last_full is not None and full_age <= 500_000_000):
+    if full_consumed or (ground_tracking and last_full is not None and full_age <= 500_000_000):
         return c.Status.TRACKING
     return c.Status.RECOVERING if flag else c.Status.DEGRADED
 
@@ -362,18 +363,20 @@ def run_blackout(last_dark_ms, flag):
 
 
 @pytest.mark.parametrize("flag", [False, True])
-def test_short_blackout_stays_tracking(flag):
+def test_short_blackout_is_not_reported_as_usable_tracking(flag):
     statuses = run_blackout(500, flag)
     assert set(statuses) == {0, 100, 200, 300, 400, 500, 600}
-    assert all(status is c.Status.TRACKING for status in statuses.values())
+    assert statuses[0] is statuses[600] is c.Status.TRACKING
+    fallback = c.Status.RECOVERING if flag else c.Status.DEGRADED
+    assert all(statuses[ms] is fallback for ms in range(100, 600, 100))
 
 
 @pytest.mark.parametrize("flag", [False, True])
 def test_one_second_blackout_degrades_or_recovers_but_is_not_lost(flag):
     statuses = run_blackout(1000, flag)
     fallback = c.Status.RECOVERING if flag else c.Status.DEGRADED
-    assert all(statuses[ms] is c.Status.TRACKING for ms in range(0, 600, 100))
-    assert all(statuses[ms] is fallback for ms in range(600, 1100, 100))
+    assert statuses[0] is c.Status.TRACKING
+    assert all(statuses[ms] is fallback for ms in range(100, 1100, 100))
     assert statuses[1000] is not c.Status.LOST
     assert statuses[1100] is c.Status.TRACKING
 
@@ -476,7 +479,7 @@ def test_property_status_precedence_and_process_noise(monkeypatch):
                     aux_valid = True
             assert result.auxiliary.valid is aux_valid
             expected = reference_status(aux_valid, t, last_visual, last_full, initial_ns,
-                                        full_consumed, flag)
+                                        full_consumed, flag, c.EvidenceKind.GROUND_MOTION in applied)
             assert result.status is expected, (iteration, index, kind)
             assert isinstance(estimator._last_fused_ns, int)
             seen.add(expected)

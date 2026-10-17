@@ -199,6 +199,8 @@ class RecoveryManager:
         new_sources: list[_Source] = []
         confirmations: list[_Source] = []
         verifications: list[_Source] = []
+        current_images = {(image.camera_id, image.exposure_ns): image.calibration_id
+                          for image in evidence.frame_set.images}
         for index, item in enumerate(evidence.unused):
             source = _new_source(item, index)
             if source is not None:
@@ -297,6 +299,14 @@ class RecoveryManager:
 
         # 4. Candidate creation or replacement (the pose slot is empty here).
         candidate_handoff: c.HandoffEvidence | None = None
+        if held is None:
+            valid_sources = []
+            for source in new_sources:
+                if current_images.get((source.pose.camera_id, source.pose.exposure_ns)) != source.pose.calibration_id:
+                    verification(None, source.pose, "calibration_mismatch")
+                else:
+                    valid_sources.append(source)
+            new_sources = valid_sources
         if held is None and new_sources:
             source = new_sources[0]
             held = _Held(source.pose, g, source.handoff)

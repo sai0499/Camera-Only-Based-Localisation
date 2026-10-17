@@ -13,6 +13,9 @@ from __future__ import annotations
 import dataclasses
 import functools
 import math
+import subprocess
+import sys
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -41,6 +44,38 @@ SEQUENCE_KINDS = ("dispatched", "delivered", "replaced", "expired", "cancelled")
 QUEUE_KINDS = SEQUENCE_KINDS + ("created", "rate_limited", "proposals_discarded")
 BASE_GROUPS = 90
 ITERATIONS = 100
+
+
+@pytest.mark.parametrize("threaded", [False, True])
+def test_stuck_worker_watchdog_allows_run_and_process_to_finish(threaded):
+    # A subprocess proves shutdown too: executor non-daemon threads otherwise hang here.
+    code = f'''
+import sys, threading
+sys.path.insert(0, "tests")
+from test_scheduler import Run, exact_stream
+from camloc.scheduler import SchedulerPolicy
+from camloc import contracts as c
+class Stuck:
+    def run(self, request):
+        threading.Event().wait()
+run = Run(exact_stream(10, 3), Stuck(), threaded={threaded!r},
+          policy=SchedulerPolicy(watchdog_ns=50_000_000))
+ctx = run.begin(0)
+run.propose(ctx, 0, c.AnchorPurpose.FRONT_ANCHOR, track_count=0)
+run.end(0)
+assert run.begin(1).results == ()
+assert run.scheduler.faulted
+run.end(1)
+run.begin(2)
+run.end(2)
+run.finish()
+assert run.scheduler.counts()["anchor_dispatched"] == 1
+print("bounded")
+'''
+    result = subprocess.run([sys.executable, "-B", "-c", code],
+                            cwd=Path(__file__).resolve().parents[1], capture_output=True,
+                            text=True, timeout=10, check=True)
+    assert result.stdout.strip() == "bounded"
 
 
 # ---------------------------------------------------------------------------------------

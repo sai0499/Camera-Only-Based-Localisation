@@ -30,9 +30,10 @@ Implemented:
 The process-noise multiplier is 1 while Tracking, 4 while Degraded/Recovering, and 10
 while Lost. These are documented engineering defaults, not fitted uncertainty. A consumed
 full pose sets Tracking; usable fallback sets Degraded; missing geometry, >1 s without
-usable visual evidence, or >3 s without full-position confirmation sets Lost. Full Stage-4
-tracking/recovery transitions and confirmed recovery resets are not implemented here.
-Passing a reset fails explicitly. No Recovering status is fabricated without active search.
+usable visual evidence, or >3 s without full-position confirmation sets Lost. The subsequent
+[Stage 4 implementation](STAGE4_STATUS.md) adds confirmed recovery resets and active-search
+Recovering states. Prediction-only output is Degraded/Recovering until a Lost rule applies;
+recent full-pose age alone does not establish usable tracking.
 
 ## Call boundary
 

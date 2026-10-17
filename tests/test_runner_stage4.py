@@ -242,7 +242,8 @@ def test_settle_dispositions_and_reset_calls_follow_the_committed_group(tmp_path
     ]
     resets = [arg for name, _, arg in tracker.calls if name in ("reset", "projector_reset")]
     assert resets[0] is resets[1] and resets[0].group_id == 5
-    assert [call[0] for call in projector.calls] == ["reset"]
+    assert [call[0] for call in projector.calls].count("reset") == 1
+    assert [call[1] for call in projector.calls if call[0] == "project"] == list(range(len(frames)))
     # Recovery manager without a scheduler: events are written, counts are extended.
     recovery = [r["kind"] for r in out["records"] if r["record"] == "RecoveryEvent"]
     assert recovery == ["candidate_created", "candidate_confirmed"]
@@ -350,10 +351,14 @@ def test_default_path_identity(tmp_path):
         tracker_only = run(tmp_path, frames, frontend, tracker=tracker)
         projector = s4.FakeProjector()
         projector_only = run(tmp_path, frames, frontend, projector=projector)
-        for out in (default, tracker_only, projector_only):
+        for out in (default, tracker_only):
             assert out["csv"] == basic["csv"] and out["jsonl"] == basic["jsonl"]
             assert out["counts"] == basic["counts"] and set(out["counts"]) == BASE_KEYS
-        assert tracker.calls == [] and projector.calls == []
+        assert projector_only["csv"] == basic["csv"] and projector_only["counts"] == basic["counts"]
+        assert [r for r in projector_only["records"] if r["record"] != "ProjectionError"] == basic["records"]
+        assert sum(r["record"] == "ProjectionError" for r in projector_only["records"]) == len(frames)
+        assert tracker.calls == []
+        assert all(call[0] == "project" for call in projector.calls)
         assert frontend.arg_counts == [2] * (4 * len(frames))
 
 

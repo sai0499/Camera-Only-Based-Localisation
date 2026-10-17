@@ -7,6 +7,7 @@ Read [FINAL_BUILD_PLAN.md](FINAL_BUILD_PLAN.md) to build. It is the authoritativ
 | `FINAL_BUILD_PLAN.md` | Current system, records, ownership, thresholds, failure actions and acceptance gates |
 | `STAGE2_STATUS.md` | Implemented C-only filter/streaming API, synthetic checks and pending A/B integration |
 | `STAGE4_STATUS.md` | Implemented C anchor scheduler, recovery manager, status machine, synthetic checks and open questions |
+| `A_C_INTEGRATION_STATUS.md` | A's reviewed merge into C, input/geometry/worker fixes, combined checks and remaining B integration |
 | `build_split.json` | Frozen exact fitting/tuning/holdout boundaries and source identities; do not edit |
 | `research/FINAL_RESEARCH_REVIEW.md` | Primary-source comparisons and final design reasoning |
 | `research/Dataset_Audit.md` | Full recording inventory, camera/geometry/timing observations |

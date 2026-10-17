@@ -60,15 +60,15 @@ def _pose_values(transform):
                      math.atan2(transform[1, 0], transform[0, 0])])
 
 
-def _status(aux_valid, visual_age_ns, full_age_ns, full_consumed, has_full_pose, search_active):
+def _status(aux_valid, visual_age_ns, full_age_ns, full_consumed, usable_tracking, search_active):
     """Status precedence: Lost, then Tracking, then Recovering, then Degraded (integer ns ages).
 
     Ages fall back to the InitialPose time, but the InitialPose is not a Full_Pose: Tracking
-    by age needs an applied PnP, handoff PnP or reset (``has_full_pose``).
+    by age also needs current accepted ground tracking; prediction/border-only is degraded.
     """
     if not aux_valid or visual_age_ns > c.NS_PER_S or full_age_ns > 3 * c.NS_PER_S:
         return c.Status.LOST
-    if full_consumed or (has_full_pose and full_age_ns <= c.NS_PER_S // 2):
+    if full_consumed or (usable_tracking and full_age_ns <= c.NS_PER_S // 2):
         return c.Status.TRACKING
     if search_active:
         return c.Status.RECOVERING
@@ -290,7 +290,8 @@ class CameraFilter:
         visual_age = now - (last_visual if last_visual is not None else self.initial_pose.timestamp_ns)
         full_age = now - (last_pnp if last_pnp is not None else self.initial_pose.timestamp_ns)
         full_consumed = any(k in kinds for k in (c.EvidenceKind.PNP, c.EvidenceKind.HANDOFF_PNP))
-        status = _status(aux.valid, visual_age, full_age, full_consumed, last_pnp is not None,
+        usable_tracking = last_pnp is not None and c.EvidenceKind.GROUND_MOTION in kinds
+        status = _status(aux.valid, visual_age, full_age, full_consumed, usable_tracking,
                          recovery_search_active)
         result = c.Estimate(
             t_ns=now, group_id=evidence.group_id, state=state, P=(P + P.T) * 0.5,
