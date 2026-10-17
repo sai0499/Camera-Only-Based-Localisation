@@ -316,7 +316,7 @@ def test_border_residual_penalizes_lost_and_masked_samples():
     pixels = np.array([[20., 20.], [np.nan, np.nan], [30., 30.]])
     mask = np.ones(distance.shape, bool)
     mask[30, 30] = False
-    residual, retained, total = borders._sample_distance(distance, pixels, valid_mask=mask)
+    residual, retained, total, _, _, _ = borders._sample_distance(distance, pixels, valid_mask=mask)
     assert residual == pytest.approx(40 / 3)
     assert (retained, total) == (1, 3)
 
@@ -335,6 +335,57 @@ def test_oriented_edges_reject_perpendicular_association():
     horizontal = borders._sample_distance(distance, pixels, orientation_bins=np.array([0]))[0]
     assert vertical < 2
     assert horizontal == borders._DT_TRUNCATION_PX
+
+
+def test_losing_third_contour_prevents_acceptance_despite_high_retention():
+    pixels = np.column_stack([np.arange(100), np.ones(100)])
+    pixels[-1] = np.nan
+    labels = np.array([0] * 50 + [1] * 49 + [2])
+    residual, retained, total, supported, contours, _ = borders._sample_distance(
+        np.zeros((464, 960), np.float32), pixels, contour_ids=labels)
+    assert (retained, total, supported, contours) == (99, 100, 99, 2)
+    assert residual == borders._DT_TRUNCATION_PX
+
+
+def test_visible_samples_without_image_edge_support_do_not_count_as_matches():
+    distance = np.full((464, 960), borders._DT_TRUNCATION_PX, np.float32)
+    distance[1, :20] = 0
+    pixels = np.column_stack([np.arange(100), np.ones(100)])
+    labels = np.arange(100) % 3
+    residual, retained, _, supported, contours, _ = borders._sample_distance(
+        distance, pixels, contour_ids=labels)
+    assert (retained, supported, contours) == (100, 20, 3)
+    assert residual == borders._DT_TRUNCATION_PX
+
+
+def test_supported_border_correction_recovers_known_lateral_and_yaw_shift():
+    import dataclasses
+    import cv2
+
+    k, t_bc = _synthetic_calibration()
+    # Near and far surveyed runs, with the intervening physical border occluded.
+    xs = np.r_[np.linspace(3.5, 5, 20), np.linspace(30, 50, 30)]
+    pair = tuple(_border(np.column_stack([xs, side * 1.5 + 0.004 * xs**2, np.zeros(len(xs))]),
+                         str(side), False) for side in (1, -1))
+    observation = _observation(k, t_bc)
+    image = observation.image.copy()
+    true_pose = borders._compose_T_WB(0, 0.5, 0.02, _aux())
+    for line in pair:
+        for points in (line.points_W[:20], line.points_W[20:]):
+            pixels = borders._project_samples(points, true_pose, t_bc, k)
+            pixels = pixels[np.isfinite(pixels).all(axis=1)]
+            inside = (pixels[:, 0] >= 0) & (pixels[:, 0] < 960) & (pixels[:, 1] >= 0) & (pixels[:, 1] < 464)
+            cv2.polylines(image, [np.rint(pixels[inside]).astype(np.int32)], False, (255, 255, 255), 2)
+    observation = dataclasses.replace(observation, image=image)
+    road = _road_from({Branch.TRACK: pair})
+    source = borders.make_border_source(road, allow_correction=True)
+    evidence = source.border_evidence(observation, _snapshot(0, 0, 0, Branch.TRACK), _aux())
+    assert evidence.accepted
+    assert evidence.lateral_coordinate_m == pytest.approx(0.5, abs=0.2)
+    assert evidence.yaw_rad == pytest.approx(0.02, abs=np.deg2rad(0.5))
+    assert evidence.support_samples >= 30 and evidence.support_contours >= 3
+    default = borders.make_border_source(road)
+    assert default.border_evidence(observation, _snapshot(0, 0, 0, Branch.TRACK), _aux()).reason == "diagnostic_only_pending_review"
 
 
 def test_border_search_cannot_win_inside_mask():

@@ -237,7 +237,7 @@ def test_settle_dispositions_and_reset_calls_follow_the_committed_group(tmp_path
     assert sequence == [
         ("frontend", 3), ("settle", 3, 1, D.ADOPT), ("settle", 3, 2, D.DISCARD),
         ("frontend", 4), ("settle", 4, 3, D.CANDIDATE), ("settle", 4, 4, D.DISCARD),
-        ("frontend", 5), ("settle", 5, 5, D.DISCARD), ("reset", 5), ("projector_reset", 5),
+        ("frontend", 5), ("settle", 5, 5, D.CANDIDATE), ("reset", 5), ("projector_reset", 5),
         ("frontend", 6), ("frontend", 7),
     ]
     resets = [arg for name, _, arg in tracker.calls if name in ("reset", "projector_reset")]

@@ -186,6 +186,9 @@ class GroupContext:
                 f"{where}.observation: (camera_id, exposure_ns, calibration_id) {image} is not "
                 "an image of this frame set"
             )
+        source = next(m for m in self._frame_set.images if m.camera_id == observation.camera_id)
+        if observation.source_id != source.source_id:
+            raise c.ContractError(f"{where}.observation: source_id differs from this group's image")
         required = _PURPOSE_CAMERAS.get(purpose)
         if required is not None and observation.camera_id != required:
             raise c.ContractError(
@@ -336,8 +339,8 @@ class AnchorScheduler:
 
     def start(self, initial_pose: c.InitialPose) -> None:
         """Set the front refresh clock from the one InitialPose; once, before any group."""
-        if self._started or self._last_group is not None or self._finished:
-            raise c.ContractError("AnchorScheduler.start: already started")
+        if self._started or self._last_group is not None or self._finished or self._closed:
+            raise c.ContractError("AnchorScheduler.start: already started or closed")
         if not isinstance(initial_pose, c.InitialPose):
             raise c.ContractError(
                 f"AnchorScheduler.start: expected an InitialPose, got {type(initial_pose).__name__}"
@@ -485,8 +488,21 @@ class AnchorScheduler:
         if self._closed:
             return
         self._closed = True
-        if self._in_flight is not None and self._in_flight.future is not None:
-            self._in_flight.future.cancel()
+        group_id = None if self._last_group is None else self._last_group[0]
+        if self._open is not None:
+            self._open._open = False
+            self._open = None
+        if self._in_flight is not None:
+            job, self._in_flight = self._in_flight, None
+            if job.future is not None:
+                job.future.cancel()
+            if job.delivered_at is None:
+                self._counts["anchor_cancelled"] += 1
+                self._event("cancelled", group_id, job.request, reason="run_aborted")
+        if self._pending is not None:
+            request, self._pending = self._pending.request, None
+            self._counts["anchor_cancelled"] += 1
+            self._event("cancelled", group_id, request, reason="run_aborted")
 
     # -- rate limits and trigger ------------------------------------------------------
 
@@ -540,6 +556,14 @@ class AnchorScheduler:
                     continue
                 if purpose is c.AnchorPurpose.FRONT_ANCHOR and not self._front_trigger(proposal):
                     continue
+                cap = self._rate_block(purpose, proposal.observation.exposure_ns, recovery_mode)
+                if cap is not None:
+                    self._counts["anchor_rate_limited"] += 1
+                    self._event("rate_limited", group_id, reason="rate_limited", stage="create",
+                                cap=cap, purpose=purpose.value,
+                                camera_id=proposal.observation.camera_id, source_group_id=group_id,
+                                source_exposure_ns=proposal.observation.exposure_ns)
+                    continue
                 chosen = proposal
                 break
             if chosen is not None:
@@ -547,15 +571,6 @@ class AnchorScheduler:
         if chosen is None:
             return
         s = chosen.observation.exposure_ns
-        cap = self._rate_block(chosen.purpose, s, recovery_mode)
-        if cap is not None:
-            # The first eligible candidate is rate limited: no request for this group.
-            self._counts["anchor_rate_limited"] += 1
-            self._event("rate_limited", group_id, reason="rate_limited", stage="create",
-                        cap=cap, purpose=chosen.purpose.value,
-                        camera_id=chosen.observation.camera_id, source_group_id=group_id,
-                        source_exposure_ns=s)
-            return
         assert self._snapshot is not None
         request = c.AnchorRequest(
             job_id=self._next_job_id,

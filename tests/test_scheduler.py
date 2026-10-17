@@ -336,7 +336,7 @@ class QueueModel:
                 continue
             if blocked(self.window, purpose.value, s, recovery):
                 self.events.append(("rate_limited", gid, None, ("create", purpose.value)))
-                return
+                continue
             job, self.next_id = self.next_id, self.next_id + 1
             self.events.append(("created", gid, job, None))
             if self.pending is not None:
@@ -683,13 +683,15 @@ def test_property_6_refresh_trigger_and_deferral():
                     limited = [e for e in evs if e["kind"] == "rate_limited"
                                and e["stage"] == "create"]
                     if blocked(window, P.FRONT_ANCHOR.value, s, recovery):
-                        assert not created and len(limited) == 1
+                        assert not front_created and limited
                         assert limited[0]["purpose"] == P.FRONT_ANCHOR.value
+                        for event in created:
+                            assert not blocked(window, event["purpose"], event["source_exposure_ns"], recovery)
                         tally["deferred"] += 1
                     else:
                         assert front_created and not limited
                         tally["created"] += 1
-                    if not recovery:
+                    if not recovery and front_created:
                         assert all(e["purpose"] != P.REAR_ANCHOR.value for e in created)
                 elif not trig:
                     tally["not_triggered"] += 1

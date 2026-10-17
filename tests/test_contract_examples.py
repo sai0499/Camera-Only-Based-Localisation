@@ -324,6 +324,7 @@ PROTOCOL_METHODS = {
         "handoff": ("result", "current"),
         "settle": ("handoff", "disposition"),
         "verify_candidate": ("observation",),
+        "drop_candidate": ("reason",),
         "reset": ("reset",),
     },
     c.AnchorWorker: {"run": ("request",)},
@@ -489,6 +490,9 @@ class FakeTracker:
 
     def verify_candidate(self, observation):
         return None  # no candidate held
+
+    def drop_candidate(self, reason):
+        return None
 
     def reset(self, reset):
         return None

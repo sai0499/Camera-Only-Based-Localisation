@@ -2801,9 +2801,22 @@ class MappedTracker(Protocol):
         held."""
         ...
 
+    def drop_candidate(self, reason: str) -> None:
+        """Release only the uncommitted candidate; keep active tracks and image history.
+
+        C calls this after candidate timeout, motion rejection/replacement or tracking
+        reacquisition, before settling a replacement handoff. Safe when no candidate is held.
+        """
+        ...
+
     def reset(self, reset: RecoveryReset) -> None:
-        """After confirmed recovery: promote the candidate set and drop tracks of the old
-        hypothesis."""
+        """Promote tracks for reset.confirmation and drop the old active hypothesis.
+
+        A confirming handoff is first settled CANDIDATE, so this promotes its current
+        correspondence set. Candidate verification must likewise retain its current tracks.
+        A tracking-source confirmation already has current tracks. Clear candidate state
+        after promotion; never restore an older candidate's pose or track set.
+        """
         ...
 
 

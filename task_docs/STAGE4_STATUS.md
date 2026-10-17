@@ -4,8 +4,9 @@ This builds on [STAGE2_STATUS.md](STAGE2_STATUS.md). The source of implementatio
 requirements remains `FINAL_BUILD_PLAN.md`. This file records what is implemented and the
 integration boundary; it is not a localization result. Everything A/B provide is reached
 only through the `AnchorWorker`, `MappedTracker` and `TrackProjector` Protocols, exercised
-with test-only fakes in `tests/stage4_fakes.py`. No production module returns a pose of its
-own. `camloc/contracts.py` is unchanged.
+with test-only fakes in `tests/stage4_fakes.py` until B's modules arrive. A's real input,
+geometry and route adapter are integrated. Visual evidence must come from the declared
+frontend; no fabricated pose provider is supplied.
 
 Implemented:
 
@@ -19,12 +20,16 @@ Implemented:
   run without raising; stale results are never fused.
   Both modes use one daemon worker thread with a bounded wait. A stuck native/GPU call is
   abandoned, never reused, and disables further jobs; it cannot block process shutdown.
+  Priority applies to proposals that pass their rate caps: a capped front proposal cannot
+  block an eligible rear/warm proposal. All proposals must match the current source ID.
 - `camloc.recovery.RecoveryManager(policy=None)`: holds at most one candidate
   (an accepted `tracking` pose or handoff pose logged unused with reason `innovation_gate`).
   It confirms into a `RecoveryReset` only from a Confirmation_Pose at least
   `RECOVERY_CONFIRM_MIN_NS` later, with matching identities and calibration, and within
   inclusive motion bounds. Timeout, replacement, discard, rejection and confirmation are
   each logged as one append-only `RecoveryEvent`. It reads only `estimator.snapshot`.
+  The runner checks innovation before this decision, so a selected but out-of-gate pose
+  cannot falsely announce tracking reacquisition and erase the held candidate.
 - `camloc.filter.CameraFilter`: full Tracking/Degraded/Recovering/Lost status machine and
   a confirmed `RecoveryReset` that re-initializes state at its confirmation exposure.
   `step(evidence, recovery_search_active=...)` only selects Recovering over Degraded. A
@@ -36,7 +41,9 @@ Implemented:
   tracker/projector after a reset, and writes scheduler and recovery diagnostics. An optional
   projector now writes both current route reports per output; failures produce ProjectionError
   diagnostics without changing the pose CSV.
-  `scheduler.close()` runs in `finally`; diagnostics are written only on a normal finish.
+  Cleanup closes jobs and drains diagnostics before JSONL closes on both normal and fatal
+  paths. Fatal source/filter/tracker errors preserve the written prefix, cancel remaining
+  jobs with `run_aborted`, and append `RunAborted`; only a completed run gets `RunSummary`.
 
 Notable implementation choices:
 
@@ -49,30 +56,74 @@ Notable implementation choices:
 - Without a scheduler, `recovery_search_active` is always False, so Recovering is never
   fabricated.
 
-## Open questions
+## Resolved decisions, 18 October 2026
 
 Tracking-by-age now requires an applied full pose within 0.5 s and current accepted ground
 tracking. Prediction-only and border-only groups use Degraded/Recovering until Lost applies.
 InitialPose is not counted as an accepted full pose. No shared-record change is needed.
 
-1. `validate_submission` brackets with `searchsorted(side="left")`, so a row at exactly
-   `tg[0]` is not evaluated. The synthetic smoke test starts GT at the InitialPose time,
-   0.5 ms before the first group, so `evaluated == submitted`. Preserve that evaluator
-   boundary: first GT timestamp must precede the first evaluated group.
-2. A HandoffEvidence whose nested pose confirms a reset is settled DISCARD (the estimate
-   kinds are `(recovery_reset,)`), followed by `tracker.reset(reset)`. Say if ADOPT is
-   preferred.
+1. **Keep the evaluator boundary and every camera output.** The unchanged evaluator uses
+   `searchsorted(side="left")`, so a prediction exactly at its first GT timestamp has no
+   preceding bracket and is excluded from `evaluated`. It remains in `submitted` and the
+   original CSV. Report both counts; never shift timestamps, remove the row or move the
+   episode to manufacture equality. When genuine GT brackets every camera group, the
+   counts agree. `test_first_gt_boundary_exclusion_never_changes_camera_output` covers
+   the exact-boundary case, and the existing smoke test covers fully bracketed output.
+2. **Stage a confirming handoff as CANDIDATE, then reset.** After the filter commits the
+   confirmed reset, settle its current confirming handoff as `CANDIDATE`, then call
+   `tracker.reset(reset)` once. The tracker promotes the tracks for `reset.confirmation`
+   and clears the old hypothesis/candidate metadata. `DISCARD` loses the current refresh;
+   `ADOPT` followed by an older-candidate promotion can restore stale tracks. Ordinary
+   in-gate handoff fusion still uses `ADOPT`; unrelated/rejected handoffs use `DISCARD`.
+   Candidate verification and tracking-source confirmations must likewise retain their
+   current checked tracks for reset. The projector resets before the new route report.
 
-## Protocol proposal for A/B
+## Required tracker lifecycle for B
 
-`MappedTracker` has no call to drop a held candidate after a recovery timeout or motion
-discard. Currently a later `verify_candidate` pose with no held candidate is logged as
-`verification_rejected` (`no_candidate_held`) and ignored. Proposal: add
-`MappedTracker.drop_candidate(reason: str) -> None`, called by the runner when the recovery
-manager discards or times out its candidate. This is a proposal only; `contracts.py` is not
-changed until A/B agree.
+The previous proposal is now an explicit C-owned protocol requirement:
+`MappedTracker.drop_candidate(reason: str) -> None`. It clears only the uncommitted track
+set, preserving active tracks and bounded image history. It must be safe with no candidate.
+C calls it once when recovery times out, rejects/replaces a candidate for inconsistent
+motion, or reacquires normal tracking. It runs after the group commits and before settling
+a replacement handoff. A confirmed reset promotes its confirmation instead of dropping it.
+
+The runner rejects a tracker without this method before creating output files. B must
+implement it and the documented `reset` promotion semantics before integration. Data-record
+fields, calibration/preprocessing identities and the Estimator protocol are unchanged by
+this protocol revision. Tests use a stateful tracker to check which current set is promoted.
+
+Normal/recovery anchor ceilings remain 3/4 jobs per source second. Warm retrieval must share
+an eligible anchor slot: an empty `reference_ids` requests retrieval inside that job. B/C's
+frontend must schedule that work within the existing budget, rather than adding a fourth
+normal job outside the cap.
+
+Border corrections remain disabled pending physical-border review. The acceptance path now
+counts image-supported samples/contours, rejects a lost third contour even at high overall
+retention, and checks conditioning on the actual matched set at the selected pose. A
+projected point with no compatible image edge is not counted as support.
+
+## Remaining implementation gates
+
+- B's production map/tracker/worker/retrieval/ground motion and their actual lifecycle
+  behavior are not available in this checkout. Test fakes verify C's calls, not B's behavior.
+- The production evidence-building frontend and raw-MCAP CLI still need assembly with B.
+  A's factories, route reports and C's stream API are exercised together without inventing
+  visual evidence. Do not treat that prediction-only integration test as localization.
+- Frozen fitting-only body-to-road height, bodywork/traffic masks and physical-border image
+  association still need fitting/review. Ground/border startup must reject missing geometry.
+- Run-level diagnostics validation, paced latency/queue qualification and replay/demo tooling
+  remain subsequent C work. Reuse the existing offline scorer; no evaluator changes or GT
+  callbacks belong in the inference path. An aborted CSV alone is not a completed-run gate.
+- End-to-end tuning accuracy, loss/recovery quality, competition GPU runtime and native
+  higher-rate support remain unverified until the production visual path is available.
 
 ## Verification boundary
+
+Latest recheck, 18 October: **865 passed**, none skipped or xfailed; Ruff and whitespace
+checks passed. Command: `.venv/Scripts/python.exe -B -m pytest -q --basetemp tmp/stage4_full_recheck`.
+`tests/test_stage4_decisions.py` covers the resolved lifecycle, exact evaluator boundary,
+eligible-job priority and fatal-run cleanup. `tests/test_borders.py` covers actual matched
+support and a positive synthetic lateral/yaw recovery while preserving the default stop rule.
 
 Original Stage 4 gate at `fc0d512`: `.venv/Scripts/python.exe -B -m pytest -q`: **767 passed**,
 none skipped or xfailed. See [A+C integration status](A_C_INTEGRATION_STATUS.md) for current checks.
@@ -85,4 +136,4 @@ evaluation sources, organizer assets and dependency pins are unchanged.
 
 This is synthetic software and timing verification only. It makes no claim of localization
 accuracy, runtime performance or native high-rate support. Those gates remain open until
-A/B's frontend, worker and tracker are integrated and measured on the recording.
+B's visual frontend, worker and tracker are integrated and measured on the recording.

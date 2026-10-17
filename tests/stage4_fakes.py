@@ -375,6 +375,9 @@ class FakeTracker:
         self._log("verify_candidate", observation)
         return None if self._verify is None else self._verify(observation)
 
+    def drop_candidate(self, reason: str) -> None:
+        self._log("drop_candidate", reason)
+
     def reset(self, reset: c.RecoveryReset) -> None:
         self._log("reset", reset, reset.group_id)
 

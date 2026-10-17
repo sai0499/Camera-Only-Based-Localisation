@@ -169,8 +169,8 @@ def _edge_distance_transform(observation: Observation) -> np.ndarray | None:
 
 
 def _sample_distance(distance: np.ndarray, pixels: np.ndarray, *, valid_mask=None,
-                     orientation_bins=None, contour_ids=None) -> tuple[float, int, int]:
-    """Return (mean truncated residual, on-screen count, total) for projected pixels.
+                     orientation_bins=None, contour_ids=None):
+    """Return residual, retained/total counts, matched counts and the matched sample mask.
 
     Off-screen, behind-camera and masked samples receive the truncation penalty, preserving
     the frozen denominator. Contours are weighted equally when their identities are given.
@@ -185,7 +185,7 @@ def _sample_distance(distance: np.ndarray, pixels: np.ndarray, *, valid_mask=Non
         inside[indices] &= valid_mask[v[indices], u[indices]]
     total = int(len(pixels))
     if not inside.any():
-        return _DT_TRUNCATION_PX, 0, total
+        return _DT_TRUNCATION_PX, 0, total, 0, 0, np.zeros(total, bool)
     # Keep every frozen sample in the score: losing hard samples must never improve it.
     residuals = np.full(total, _DT_TRUNCATION_PX, dtype=np.float64)
     if distance.ndim == 3:
@@ -196,7 +196,14 @@ def _sample_distance(distance: np.ndarray, pixels: np.ndarray, *, valid_mask=Non
         residuals[inside] = distance[v[inside], u[inside]]
     score = (residuals.mean() if contour_ids is None else
              np.mean([residuals[contour_ids == label].mean() for label in np.unique(contour_ids)]))
-    return float(score), int(inside.sum()), total
+    matched = inside & (residuals < _DT_TRUNCATION_PX)
+    support_samples = int(matched.sum())
+    support_contours = (len(np.unique(contour_ids[matched])) if contour_ids is not None
+                        else int(support_samples > 0))
+    if contour_ids is not None and (support_samples < MIN_SUPPORT_SAMPLES
+                                   or support_contours < MIN_SUPPORT_CONTOURS):
+        score = _DT_TRUNCATION_PX
+    return float(score), int(inside.sum()), total, support_samples, support_contours, matched
 
 
 def _project_samples(
@@ -231,7 +238,7 @@ def _bounded_search(
     x0, y0 = float(T_WB[0, 3]), float(T_WB[1, 3])
     yaw0 = float(np.arctan2(T_WB[1, 0], T_WB[0, 0]))
 
-    def score(lateral: float, yaw_offset: float) -> tuple[float, int, int]:
+    def score(lateral: float, yaw_offset: float):
         x = x0 + lateral * normal_xy[0]
         y = y0 + lateral * normal_xy[1]
         pose = _shift_pose(T_WB, x, y, yaw0 + yaw_offset)
@@ -250,18 +257,18 @@ def _bounded_search(
                                 orientation_bins=bins, contour_ids=contour_ids)
 
     evaluations = 0
-    base_residual, base_inside, total = score(0.0, 0.0)
+    base_residual, base_inside, total, supported, contours, matched = score(0.0, 0.0)
     evaluations += 1
-    best = (base_residual, 0.0, 0.0, base_inside)
+    best = (base_residual, 0.0, 0.0, base_inside, supported, contours, matched)
 
     for lateral in _COARSE_LATERAL_M:
         for yaw_offset in _COARSE_YAW_RAD:
             if evaluations >= _MAX_CANDIDATE_EVALUATIONS - 3:
                 break
-            residual, inside, _total = score(float(lateral), float(yaw_offset))
+            residual, inside, _, supported, contours, matched = score(float(lateral), float(yaw_offset))
             evaluations += 1
             if inside >= _MIN_RETAINED_SUPPORT * total and residual < best[0]:
-                best = (residual, float(lateral), float(yaw_offset), inside)
+                best = (residual, float(lateral), float(yaw_offset), inside, supported, contours, matched)
 
     # Local 4 x 4 refinement about the best coarse cell.
     lateral_step = (_COARSE_LATERAL_M[1] - _COARSE_LATERAL_M[0]) / _LOCAL_GRID
@@ -273,10 +280,10 @@ def _bounded_search(
                 break
             lateral = center_lateral + (i - _LOCAL_GRID / 2 + 0.5) * lateral_step
             yaw_offset = center_yaw + (j - _LOCAL_GRID / 2 + 0.5) * yaw_step
-            residual, inside, _total = score(float(lateral), float(yaw_offset))
+            residual, inside, _, supported, contours, matched = score(float(lateral), float(yaw_offset))
             evaluations += 1
             if inside >= _MIN_RETAINED_SUPPORT * total and residual < best[0]:
-                best = (residual, float(lateral), float(yaw_offset), inside)
+                best = (residual, float(lateral), float(yaw_offset), inside, supported, contours, matched)
 
     improvement = 0.0 if base_residual <= 0 else (base_residual - best[0]) / base_residual
     retained = 0.0 if total == 0 else best[3] / total
@@ -287,7 +294,8 @@ def _bounded_search(
         "yaw_rad": best[2],
         "improvement": improvement,
         "retained_support": retained,
-        "evaluations": evaluations + 3,  # reserve the prior finite-difference conditioning checks
+        "evaluations": evaluations + 3,  # reserve final supported-sample conditioning checks
+        "support_samples": best[4], "support_contours": best[5], "matched_mask": best[6],
     }
 
 class _BorderEvidenceSource:
@@ -399,7 +407,7 @@ class _BorderEvidenceSource:
 
         support_samples = int(len(visible_W))
         support_contours = len(np.unique(contour_ids))
-        conditioning = _jacobian_conditioning(visible_W, T_WB, observation.T_BC, K, normal_xy)
+        conditioning = 0.0
 
         if support_samples < MIN_SUPPORT_SAMPLES:
             return self._reject(
@@ -413,14 +421,7 @@ class _BorderEvidenceSource:
                 support_samples=support_samples, support_contours=support_contours,
                 conditioning=conditioning,
             )
-        if conditioning < MIN_CONDITIONING:
-            return self._reject(
-                observation, branch, normal_xy, "poorly_conditioned",
-                support_samples=support_samples, support_contours=support_contours,
-                conditioning=conditioning,
-            )
-
-        # Observability is proven; run the capped lateral/yaw search against image edges.
+        # Search image-supported candidates, then check their actual matched geometry.
         distance = _edge_distance_transform(observation)
         if distance is None:
             return self._reject(
@@ -431,6 +432,18 @@ class _BorderEvidenceSource:
         search = _bounded_search(visible_W, distance, T_WB, observation.T_BC, K, normal_xy,
                                  valid_mask=observation.valid_mask, tangents_W=tangents_W,
                                  contour_ids=contour_ids)
+        support_samples, support_contours = search["support_samples"], search["support_contours"]
+        if support_samples < MIN_SUPPORT_SAMPLES or support_contours < MIN_SUPPORT_CONTOURS:
+            return self._reject(observation, branch, normal_xy, "insufficient_matched_support",
+                                support_samples=support_samples, support_contours=support_contours)
+        best_pose = _shift_pose(T_WB, x + search["lateral_m"] * normal_xy[0],
+                                y + search["lateral_m"] * normal_xy[1], yaw + search["yaw_rad"])
+        conditioning = _jacobian_conditioning(visible_W[search["matched_mask"]], best_pose,
+                                               observation.T_BC, K, normal_xy)
+        if conditioning < MIN_CONDITIONING:
+            return self._reject(observation, branch, normal_xy, "poorly_conditioned",
+                                support_samples=support_samples, support_contours=support_contours,
+                                conditioning=conditioning)
 
         # Gate the search result: require the residual improvement and retained-support
         # thresholds. A search that fails either is a diagnostic, not a correction.

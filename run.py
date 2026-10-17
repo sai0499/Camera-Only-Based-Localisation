@@ -7,8 +7,10 @@ FrameSet. When an ``AnchorScheduler`` is supplied it is called as
 live only under tests; this module supplies no invented visual poses.
 """
 
+import dataclasses
 import json
 from collections.abc import Callable, Iterable
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +32,22 @@ SCHEDULER_SUMMARY_KEYS = (
     "anchor_faulted",
 )
 RECOVERY_SUMMARY_KEYS = ("candidate_confirmations", "candidate_discards")
+
+
+def _cleanup_run(record, estimator, scheduler, recovery):
+    def cleanup(exc_type, exc, traceback):
+        if scheduler is not None:
+            scheduler.close()
+            for event in scheduler.drain_diagnostics():
+                record(event)
+        if recovery is not None:
+            for event in recovery.drain_diagnostics():
+                record(event)
+        if exc is not None:
+            record({"record": "RunAborted", "last_committed_group_id": estimator.estimate.group_id,
+                    "exception": exc_type.__name__, "detail": str(exc)})
+        return False
+    return cleanup
 
 
 def run_stream(
@@ -92,10 +110,13 @@ def _run_basic(
     counts = {"groups": 0, "frontend_errors": 0, "prediction_only": 0}
     calibration: dict[str, str] = {}
     selected = None
-    with SubmissionWriter(output) as writer, open(diagnostics, "x", encoding="utf-8", newline="") as log:
+    with (SubmissionWriter(output) as writer,
+          open(diagnostics, "x", encoding="utf-8", newline="") as log,
+          ExitStack() as lifecycle):
         def record(value):
             log.write(json.dumps(value, allow_nan=False) + "\n")
 
+        lifecycle.push(_cleanup_run(record, estimator, None, None))
         record(estimator.estimate.summary())
         for frame_set in source:
             if not isinstance(frame_set, c.FrameSet):
@@ -208,6 +229,8 @@ def _run_stage4(
             raise c.ContractError("run_stream requires a freshly initialized CameraFilter")
         if episode is not None:
             episode.check_initial_pose(estimator.initial_pose)
+        if tracker is not None and not callable(getattr(tracker, "drop_candidate", None)):
+            raise c.ContractError("tracker must implement drop_candidate(reason) for recovery cleanup")
         output, diagnostics = Path(output), Path(diagnostics)
         if output.resolve() == diagnostics.resolve():
             raise c.ContractError("submission and diagnostics paths must differ")
@@ -220,10 +243,12 @@ def _run_stage4(
         selected = None
         initial_ns = estimator.initial_pose.timestamp_ns
         with (SubmissionWriter(output) as writer,
-              open(diagnostics, "x", encoding="utf-8", newline="") as log):
+              open(diagnostics, "x", encoding="utf-8", newline="") as log,
+              ExitStack() as lifecycle):
             def record(value):
                 log.write(json.dumps(value, allow_nan=False) + "\n")
 
+            lifecycle.push(_cleanup_run(record, estimator, scheduler, recovery))
             record(estimator.estimate.summary())
             if scheduler is not None:
                 scheduler.start(estimator.initial_pose)
@@ -256,6 +281,13 @@ def _run_stage4(
                 stepped = evidence
                 if recovery is not None:
                     try:
+                        if evidence.pose is not None:
+                            pose = (evidence.pose.pose if isinstance(evidence.pose, c.HandoffEvidence)
+                                    else evidence.pose)
+                            if not estimator.pose_in_gate(pose):
+                                evidence = dataclasses.replace(evidence, pose=None, unused=(
+                                    c.UnusedEvidence(reason="innovation_gate", evidence=evidence.pose),
+                                    *evidence.unused))
                         stepped, outcome = recovery.process(evidence, estimator)
                     except Exception as exc:
                         record({"record": "RecoveryError", "group_id": group_id,
@@ -282,13 +314,24 @@ def _run_stage4(
                 counts["groups"] += 1
                 counts["prediction_only"] += (
                     estimate.evidence_kinds == (c.EvidenceKind.PREDICTION_ONLY,))
+                recovery_events = [] if recovery is None else recovery.drain_diagnostics()
+                for event in recovery_events:
+                    record(event)
                 # 9. Settle every handoff of the frontend's evidence, in slot order.
                 if tracker is not None:
+                    discarded = next((event for event in recovery_events
+                                      if event["kind"] in ("candidate_discarded", "candidate_replaced")), None)
+                    if discarded is not None:
+                        tracker.drop_candidate(discarded["reason"])
                     for handoff in _handoffs(evidence):
                         if (stepped.pose is handoff
                                 and estimate.evidence_kinds == (c.EvidenceKind.HANDOFF_PNP,)):
                             disposition = c.HandoffDisposition.ADOPT
                         elif outcome is not None and outcome.candidate_handoff is handoff:
+                            disposition = c.HandoffDisposition.CANDIDATE
+                        elif (stepped.reset is not None and handoff.pose is stepped.reset.confirmation
+                              and estimate.evidence_kinds == (c.EvidenceKind.RECOVERY_RESET,)):
+                            # reset() promotes this current set, never the older candidate's set.
                             disposition = c.HandoffDisposition.CANDIDATE
                         else:
                             disposition = c.HandoffDisposition.DISCARD
@@ -316,9 +359,6 @@ def _run_stage4(
                 if scheduler is not None:
                     scheduler.end_group(estimate, frontend_failed=frontend_failed)
                     for event in scheduler.drain_diagnostics():
-                        record(event)
-                if recovery is not None:
-                    for event in recovery.drain_diagnostics():
                         record(event)
                 if scheduler is not None and scheduler.faulted:
                     record(_disabled_event(group_id))

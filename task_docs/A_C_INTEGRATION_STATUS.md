@@ -1,5 +1,8 @@
 # A + C integration, 18 October 2026
 
+This records merge `a4b485b`. Subsequent lifecycle/protocol decisions and the latest test
+gate are recorded in [STAGE4_STATUS.md](STAGE4_STATUS.md).
+
 A's `origin/darshana` at `7fe7de0` is merged into the owner's `dev/implementation`
 on top of C's `fc0d512`. The merge preserves both histories and C's newer contracts.
 No shared records, public protocol signatures, dependency pins, evaluation sources,
@@ -71,8 +74,8 @@ and half-pixel K. Body-to-road height remains a frozen fitting artifact, with no
 default or hidden GT startup.
 
 B's actual tracker/worker/retrieval/ground-motion modules, the production evidence-building
-frontend and raw-MCAP CLI are still pending. No fabricated provider was added. The existing
-candidate-drop protocol proposal and confirming-handoff/reset coordination in
-`STAGE4_STATUS.md` still need review against B's implementation; public protocols were not
-silently changed here. Map fitting, the manual border-association gate, end-to-end accuracy,
+frontend and raw-MCAP CLI are still pending. No fabricated provider was added. The later
+Stage 4 recheck resolved candidate cleanup and confirming-handoff promotion: B must implement
+the current `drop_candidate(reason)` and `reset(reset)` requirements in
+`STAGE4_STATUS.md`. Map fitting, the manual border-association gate, end-to-end accuracy,
 runtime and native high-rate qualification remain unverified.
