@@ -2298,6 +2298,11 @@ class GroupEvidence(_Record):
     A consumed pose or reset confirmation must match its image's calibration; incompatible
     evidence can still be logged in ``rejected`` or ``unused``. A reset's group id/time must
     match this group. ``consumed_kinds()`` names the consumed hierarchy level.
+
+    ``auxiliary=None`` preserves the filter's existing geometry. C may supply A's checked
+    road geometry here, or an invalid ``none`` record to disable it. Its source time is
+    <= t_ns and its patch must match consumed motion. PnP geometry enters only through a
+    consumed pose, whose full geometry takes precedence over this road context.
     """
 
     frame_set: FrameSet
@@ -2307,6 +2312,7 @@ class GroupEvidence(_Record):
     reset: RecoveryReset | None
     rejected: tuple[EvidenceRecord, ...]
     unused: tuple[UnusedEvidence, ...]
+    auxiliary: AuxiliaryGeometry | None = None
 
     def __post_init__(self) -> None:
         _normalize(self, "frame_set", _check_record, FrameSet)
@@ -2316,6 +2322,14 @@ class GroupEvidence(_Record):
         _normalize(self, "reset", _check_record, RecoveryReset, optional=True)
         _normalize(self, "rejected", _check_record_tuple, EvidenceRecord)
         _normalize(self, "unused", _check_record_tuple, UnusedEvidence)
+        auxiliary = _normalize(self, "auxiliary", _check_auxiliary, t_ns=self.t_ns, optional=True)
+        if auxiliary is not None:
+            if auxiliary.source is AuxSource.PNP:
+                raise ContractError("GroupEvidence.auxiliary: PnP geometry enters with a consumed pose")
+            if not auxiliary.valid and (self.motion is not None or self.border is not None):
+                raise ContractError("GroupEvidence.auxiliary: invalid geometry disables motion/borders")
+            if self.motion is not None and auxiliary.road_patch_id != self.motion.road_patch_id:
+                raise ContractError("GroupEvidence.auxiliary: road patch differs from motion's patch")
         _validate_group(self)
 
     @property

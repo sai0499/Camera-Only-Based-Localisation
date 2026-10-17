@@ -1,6 +1,6 @@
 # Start here: TrackCode Apex
 
-This is the shared development workspace for the three-person camera-localization team. The localizer is not implemented yet. The evaluation adapter and native-coordinate reconciliation already work.
+This is the shared development workspace for the three-person camera-localization team. Shared contracts and Team C's filter/streaming core are implemented; [Stage 2 status](task_docs/STAGE2_STATUS.md) records the tested API and pending A/B integration. The evaluation adapter and native-coordinate reconciliation already work. Raw-camera localization accuracy and runtime remain unestablished.
 
 ## Set up your machine
 
