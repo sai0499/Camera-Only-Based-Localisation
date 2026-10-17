@@ -273,6 +273,21 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245428496
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251079537
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251114308
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251437370
       }
     ],
     "5.3 Write property test for anchor request timing and consistency": [
@@ -336,6 +351,21 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245428813
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251079616
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251115869
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251435128
       }
     ],
     "7.2 Write example tests in `tests/test_initial_pose.py`": [
@@ -343,6 +373,16 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245428849
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251079665
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251438569
       }
     ],
     "7.3 Write property test for the initial-pose JSON round trip": [
@@ -371,6 +411,21 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245428983
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251079716
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251445989
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251831374
       }
     ],
     "8.2 Write `tests/test_contract_examples.py` with copyable usage examples": [
@@ -378,6 +433,16 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245429017
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251079765
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251834928
       }
     ],
     "9.1 Create `camloc/submission.py`": [
@@ -385,6 +450,21 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245429047
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251079817
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251116612
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251435779
       }
     ],
     "9.2 Write example tests in `tests/test_submission.py`": [
@@ -392,6 +472,16 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245429079
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251079871
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251439812
       }
     ],
     "9.3 Write property test for the submission CSV round trip": [
@@ -413,6 +503,21 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245429199
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251079952
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251447183
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251831734
       }
     ],
     "10.2 Write example tests in `tests/test_initial_pose_export.py`": [
@@ -420,6 +525,16 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245429235
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251080009
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251836138
       }
     ],
     "10.3 Write property test for exporter selection": [
@@ -434,6 +549,21 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245429303
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251080065
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251448162
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251833374
       }
     ],
     "12. Final checkpoint - Ensure all tests pass": [
@@ -441,6 +571,16 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245429337
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251080118
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251888253
       }
     ],
     "13.1 Commit on `dev/implementation` and push to `origin/dev/implementation`": [
@@ -448,6 +588,16 @@
         "executionId": "13bf55de-db09-4bbf-b790-c4060db4d476",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792245429382
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251080170
+      },
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251889280
       }
     ],
     "2. Input records": [
@@ -455,6 +605,48 @@
         "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
         "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
         "timestamp": 1792250835419
+      }
+    ],
+    "5. Anchor, recovery and group records": [
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251437427
+      }
+    ],
+    "7. Initial pose and episodes": [
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251438632
+      }
+    ],
+    "9. Single submission writer": [
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251439884
+      }
+    ],
+    "11. Inference isolation": [
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251833455
+      }
+    ],
+    "8. Protocol call boundaries and usage notes": [
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251834990
+      }
+    ],
+    "10. Offline initial-pose exporter": [
+      {
+        "executionId": "7482a6e3-514a-4fd5-809d-9b961c843042",
+        "chatSessionId": "sess_555eba93-68ea-4548-8982-24badecdb603",
+        "timestamp": 1792251836186
       }
     ]
   }

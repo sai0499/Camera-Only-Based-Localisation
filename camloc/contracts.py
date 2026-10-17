@@ -69,15 +69,78 @@ stay in the owners' modules.
 
 Inference isolation: this module imports only the standard library and numpy. Inference
 never decodes dynamic /tf, the live state topic or evaluation GT files.
+
+Call order and flows between owners
+===================================
+
+The Protocols at the end of this module are the call boundaries (proposals for A/B
+agreement); owners implement them in their own modules. They define interfaces only and
+never return a plausible pose on their own. Per FrameSet k, C's runner calls, in order:
+``Estimator.snapshot(k.t_ns)``; ``Canonicalizer.canonicalize`` for each camera in the
+decode set; ``MappedTracker.observe`` exactly once per decoded Observation; ``track``;
+``handoff`` for anchor deliveries due at k; ``verify_candidate`` while a recovery
+candidate is held; road patch, ground motion and borders only when no selected in-gate
+full pose exists; ``Estimator.step(GroupEvidence)``; ``MappedTracker.settle`` per
+HandoffEvidence; then the CSV row and the diagnostics.
+
+Decode set       C decides, A executes. ``fr`` every group. ``r`` while a rear anchor job
+                 is in flight (from its source group through delivery or rejection), when
+                 ``fr`` is missing, or when ``fr`` tracking evidence is rejected in that
+                 group (decided after processing ``fr``). A's grouping never decodes;
+                 header pairing of ``r`` keeps output timestamps identical across
+                 frontend modes.
+Road patches     C calls ``road_patch(x, y, yaw, branch)`` with the snapshot pose at most
+                 once per group when plane-dependent evidence is needed and passes that
+                 same RoadPatch to B's ground motion and to C's auxiliary geometry. An
+                 invalid patch disables ground motion and border updates for that group.
+Auxiliary        z/roll/pitch. Source ``pnp``: from the latest accepted current-image PnP
+geometry         T_WB (``source_ns`` = its measurement exposure). Source ``road_patch``:
+                 plane height plus a fitting-only body-to-road height offset (frozen
+                 artifact, A/C) and the plane roll/pitch. Otherwise ``none``. C carries it
+                 in SearchSnapshot/Estimate; A/B use it to compose T_WB. Never from GT.
+Anchor delivery  C's scheduler freezes the source Observation and SearchSnapshot in an
+                 AnchorRequest; the AnchorResult holds source-image correspondences only,
+                 never a pose. At the first group with t_ns >= delivery_not_before_ns
+                 (>= source exposure + DELIVERY_MIN_DELAY_NS = 90 ms), C calls
+                 ``handoff(result, same-camera observation of that group)``: B re-solves
+                 PnP on the current image, so the measurement is the current image.
+Recovery reset   C holds one candidate. Confirmation needs an accepted pose at least
+                 RECOVERY_CONFIRM_MIN_NS later; C then sends a RecoveryReset through
+                 ``GroupEvidence.reset`` and, after ``step()``, calls
+                 ``MappedTracker.reset`` and ``TrackProjector.reset``.
+Input events     A attaches anomalies to the next FrameSet (or ``trailing_events()``); C
+                 creates ``decode_failure`` events when ``canonicalize`` raises
+                 InputError.
+Diagnostics      C writes ``record.summary()`` for every FrameSet, evidence record,
+                 GroupEvidence, Estimate and anchor record to JSONL, never to the CSV.
+
+Proposed owner entry points (finalized at integration; not implemented here):
+
+A  ``camloc.io.open_frame_sets(bag, *, initial_pose, episode, cameras=(PRIMARY_CAMERA,
+   SECONDARY_CAMERA)) -> FrameSetSource``; ``camloc.geometry.make_canonicalizer(
+   calibrations) -> Canonicalizer``; ``camloc.geometry.load_road_geometry(map_mcap) ->
+   RoadGeometry``; ``camloc.borders.make_border_source(road) -> BorderEvidenceSource``;
+   ``camloc.track_coords.load_track_projector(map_mcap) -> TrackProjector``.
+B  ``camloc.vision.load_tracker(artifacts, calibrations) -> MappedTracker``;
+   ``load_anchor_worker(artifacts) -> AnchorWorker``; ``make_ground_motion() ->
+   GroundMotionEstimator``.
+C  ``camloc.filter`` estimator constructed from exactly one InitialPose;
+   ``camloc.submission.SubmissionWriter``.
+
+Copyable usage examples for A, B and C: ``tests/test_contract_examples.py``.
 """
 
 import dataclasses
 import enum
+import hashlib
+import json
 import math
+import os
 import re
-from collections.abc import Callable
+import types
+from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
-from typing import Any, ClassVar, Self
+from typing import Any, ClassVar, Protocol, Self, runtime_checkable
 
 import numpy as np
 
@@ -2334,3 +2397,385 @@ def _validate_group(group: GroupEvidence) -> None:
                 f"GroupEvidence.{place}: this {type(record).__name__} object already appears "
                 f"as {earlier}; no evidence record may appear twice"
             )
+
+
+# ---------------------------------------------------------------------------------------
+# Initial pose and episodes (C's runner; the offline exporter writes the pose file)
+# ---------------------------------------------------------------------------------------
+
+_INITIAL_POSE_KEYS = frozenset({"timestamp_ns", "x", "y", "yaw"})
+
+
+@dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
+class InitialPose(_Record):
+    """The one initial planar pose an inference run receives; yaw is stored wrapped."""
+
+    timestamp_ns: int
+    x: float
+    y: float
+    yaw: float
+
+    def __post_init__(self) -> None:
+        _normalize(self, "timestamp_ns", as_ns)
+        _normalize(self, "x", _check_float)
+        _normalize(self, "y", _check_float)
+        _normalize(self, "yaw", wrap_angle)
+
+
+@dataclasses.dataclass(frozen=True, slots=True, kw_only=True)
+class EpisodeBounds(_Record):
+    """Episode interval [start_ns, end_ns); ``end_ns=None`` means until the end of input."""
+
+    name: str
+    start_ns: int
+    end_ns: int | None
+
+    def __post_init__(self) -> None:
+        _normalize(self, "name", _check_identity)
+        start_ns = _normalize(self, "start_ns", as_ns)
+        end_ns = _normalize(self, "end_ns", as_ns, optional=True)
+        if end_ns is not None and end_ns <= start_ns:
+            raise ContractError(
+                f"EpisodeBounds({self.name}): end_ns {end_ns} must be greater than "
+                f"start_ns {start_ns}"
+            )
+
+    def contains(self, t_ns: object) -> bool:
+        """Return ``start_ns <= t_ns`` and (``end_ns`` is None or ``t_ns < end_ns``)."""
+        t_ns = as_ns(t_ns, f"EpisodeBounds({self.name}).contains")
+        return self.start_ns <= t_ns and (self.end_ns is None or t_ns < self.end_ns)
+
+    def check_initial_pose(self, pose: InitialPose) -> None:
+        """Raise ``ContractError`` unless the pose's stamp lies in [start_ns, end_ns)."""
+        if not isinstance(pose, InitialPose):
+            raise ContractError(f"EpisodeBounds({self.name}): expected an InitialPose")
+        if not self.contains(pose.timestamp_ns):
+            raise ContractError(
+                f"EpisodeBounds({self.name}): initial pose stamp {pose.timestamp_ns} is outside "
+                f"[{self.start_ns}, {self.end_ns if self.end_ns is not None else 'end of input'})"
+            )
+
+
+def _reject_json_constant(token: str) -> None:
+    raise ContractError(f"initial pose: non-finite JSON constant {token}")
+
+
+def _unique_json_object(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    keys = [key for key, _ in pairs]
+    if len(keys) != len(set(keys)):
+        raise ContractError("initial pose: duplicate JSON key")
+    return dict(pairs)
+
+
+def parse_initial_pose(text: str) -> InitialPose:
+    """Parse the initial-pose JSON object: exactly ``timestamp_ns``, ``x``, ``y``, ``yaw``.
+
+    ``timestamp_ns`` is a JSON integer or an unsigned decimal string; floats, bools and signed
+    or padded strings are rejected. x/y/yaw must be JSON numbers (not bool) and finite after
+    parsing (``1e400`` overflows to inf). NaN/Infinity constants, duplicate keys and a
+    non-object top level are rejected. Every violation raises ``ContractError``.
+    """
+    if not isinstance(text, str):
+        raise ContractError(f"initial pose: expected JSON text, got {type(text).__name__}")
+    try:
+        doc = json.loads(
+            text, parse_constant=_reject_json_constant, object_pairs_hook=_unique_json_object
+        )
+    except ContractError:
+        raise
+    except ValueError as exc:  # JSONDecodeError, or an integer beyond the digit limit
+        raise ContractError(f"initial pose: invalid JSON: {exc}") from None
+    if type(doc) is not dict or set(doc) != _INITIAL_POSE_KEYS:
+        raise ContractError("initial pose: exactly timestamp_ns, x, y, yaw are required")
+    stamp = doc["timestamp_ns"]
+    if type(stamp) is str:
+        t_ns = parse_decimal_ns(stamp, "initial pose timestamp_ns")
+    elif type(stamp) is int:
+        t_ns = as_ns(stamp, "initial pose timestamp_ns")
+    else:
+        raise ContractError(
+            "initial pose: timestamp_ns must be a JSON integer or decimal string, "
+            f"got {type(stamp).__name__}"
+        )
+    for key in ("x", "y", "yaw"):
+        if type(doc[key]) not in (int, float):
+            raise ContractError(
+                f"initial pose: {key} must be a JSON number, got {type(doc[key]).__name__}"
+            )
+    return InitialPose(timestamp_ns=t_ns, x=doc["x"], y=doc["y"], yaw=doc["yaw"])
+
+
+def format_initial_pose(pose: InitialPose) -> str:
+    """Canonical JSON line: decimal-string stamp, repr-precision floats, trailing newline."""
+    if not isinstance(pose, InitialPose):
+        raise ContractError(f"initial pose: expected an InitialPose, got {type(pose).__name__}")
+    doc = {"timestamp_ns": str(pose.timestamp_ns), "x": pose.x, "y": pose.y, "yaw": pose.yaw}
+    return json.dumps(doc, allow_nan=False) + "\n"
+
+
+def read_initial_pose(path: str | os.PathLike[str]) -> InitialPose:
+    """Read and parse a UTF-8 initial-pose file (a BOM is rejected as invalid JSON)."""
+    raw = Path(path).read_bytes()
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ContractError(f"initial pose {os.fspath(path)}: not UTF-8: {exc}") from None
+    return parse_initial_pose(text)
+
+
+def write_initial_pose(path: str | os.PathLike[str], pose: InitialPose) -> None:
+    """Write the canonical JSON by exclusive create; an existing path raises FileExistsError."""
+    text = format_initial_pose(pose)
+    with open(path, "x", encoding="utf-8", newline="") as handle:
+        handle.write(text)
+
+
+def _split_item(doc: object, key: str, where: str) -> object:
+    if not isinstance(doc, Mapping):
+        raise ContractError(f"{where}: expected a JSON object, got {type(doc).__name__}")
+    if key not in doc:
+        raise ContractError(f"{where}: missing {key!r}")
+    return doc[key]
+
+
+def _split_ns(doc: object, key: str, where: str) -> int:
+    return parse_decimal_ns(_split_item(doc, key, where), f"{where}.{key}")
+
+
+def _split_interval(doc: object, key: str) -> tuple[int, int]:
+    episode = _split_item(doc, key, "build split")
+    where = f"build split.{key}"
+    return _split_ns(episode, "start_ns", where), _split_ns(episode, "end_ns", where)
+
+
+def episodes_from_split(doc: Mapping[str, object]) -> Mapping[str, EpisodeBounds]:
+    """Return read-only fit/tune/holdout/full bounds from a parsed build-split document.
+
+    Checks the time encoding and interval convention strings, parses every stamp with
+    ``parse_decimal_ns``, requires exact 2 s guards and
+    ``first == fit.start < fit.end < tune.start < tune.end < holdout.start < holdout.end
+    == last + 1``. ``full`` is [first, last + 1). Bad structure raises ``ContractError``.
+    """
+    for key, expected in (
+        ("time_encoding", SPLIT_TIME_ENCODING),
+        ("interval_convention", SPLIT_INTERVAL_CONVENTION),
+    ):
+        value = _split_item(doc, key, "build split")
+        if type(value) is not str or value != expected:
+            raise ContractError(f"build split.{key}: expected {expected!r}, got {_describe(value)}")
+    first = _split_ns(doc, "first_gt_timestamp_ns", "build split")
+    last = _split_ns(doc, "last_gt_timestamp_ns", "build split")
+    guard = _split_ns(doc, "guard_duration_ns", "build split")
+    fit, tune, holdout = (_split_interval(doc, key) for key in ("fit", "tune", "holdout"))
+    if guard != SPLIT_GUARD_NS or tune[0] - fit[1] != guard or holdout[0] - tune[1] != guard:
+        raise ContractError(f"build split: guards must be exactly {SPLIT_GUARD_NS} ns")
+    if not first == fit[0] < fit[1] < tune[0] < tune[1] < holdout[0] < holdout[1] == last + 1:
+        raise ContractError(
+            "build split: episodes must be ordered, disjoint and cover first .. last + 1"
+        )
+    intervals = {"fit": fit, "tune": tune, "holdout": holdout, "full": (first, last + 1)}
+    return types.MappingProxyType(
+        {
+            name: EpisodeBounds(name=name, start_ns=start, end_ns=end)
+            for name, (start, end) in intervals.items()
+        }
+    )
+
+
+def load_split(path: str | os.PathLike[str] = DEFAULT_SPLIT_PATH) -> Mapping[str, EpisodeBounds]:
+    """Read the hash-bound build split (bytes only, never rewritten) and return its episodes."""
+    raw = Path(path).read_bytes()
+    digest = hashlib.sha256(raw).hexdigest()
+    if digest != BUILD_SPLIT_SHA256:
+        raise ContractError(
+            f"build split {os.fspath(path)}: SHA-256 {digest} != {BUILD_SPLIT_SHA256}; the file "
+            "is hash-bound and must stay byte-for-byte unchanged"
+        )
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except ValueError as exc:
+        raise ContractError(f"build split: invalid JSON: {exc}") from None
+    return episodes_from_split(doc)
+
+
+# ---------------------------------------------------------------------------------------
+# Protocols: call boundaries between owners (proposals for A/B agreement). They define
+# interfaces only; owners implement them in their own modules. See "Call order and flows
+# between owners" in the module docstring.
+# ---------------------------------------------------------------------------------------
+
+
+@runtime_checkable
+class FrameSetSource(Protocol):
+    """Owner A (``camloc/io.py``): header-only FrameSets from the driving recording."""
+
+    def calibrations(self) -> Mapping[str, CameraCalibration]:
+        """Frozen first-available calibration of all seven cameras, available before iteration."""
+        ...
+
+    def __iter__(self) -> Iterator[FrameSet]:
+        """Header-only grouping in recorded arrival order; group_id 0, 1, 2, ...; strictly
+        increasing t_ns. Groups only images with initial_pose.timestamp_ns <= exposure_ns <
+        episode end; others become InputEvents. Never decodes JPEG, dynamic /tf or the live
+        state topic."""
+        ...
+
+    def trailing_events(self) -> tuple[InputEvent, ...]:
+        """Events after the last FrameSet (always ends with end_of_input); valid after
+        exhaustion."""
+        ...
+
+
+@runtime_checkable
+class Canonicalizer(Protocol):
+    """Owner A (``camloc/geometry.py``): raw image to canonical Observation.
+
+    C calls it for each camera in the group's decode set; a raised InputError becomes C's
+    ``decode_failure`` InputEvent.
+    """
+
+    def canonicalize(self, image: ImageMessage) -> Observation:
+        """One JPEG decode plus one cached raw-to-canonical remap. Raises InputError on
+        failure."""
+        ...
+
+
+@runtime_checkable
+class RoadGeometry(Protocol):
+    """Owner A (``camloc/geometry.py``): local road plane from the surveyed borders.
+
+    C calls it with the snapshot pose at most once per group when plane-dependent evidence
+    is needed and passes the same RoadPatch to ground motion and auxiliary geometry.
+    """
+
+    def road_patch(self, x: float, y: float, yaw: float, branch: Branch) -> RoadPatch:
+        """Deterministic local plane from paired surveyed borders; invalid patches carry a
+        reason."""
+        ...
+
+
+@runtime_checkable
+class BorderEvidenceSource(Protocol):
+    """Owner A (``camloc/borders.py``): lateral/yaw border evidence.
+
+    C calls it only when no selected in-gate full pose exists, at most BORDER_MAX_RATE_HZ
+    in source time; an invalid road patch disables it for that group.
+    """
+
+    def border_evidence(
+        self, observation: Observation, snapshot: SearchSnapshot, aux: AuxiliaryGeometry
+    ) -> BorderEvidence:
+        """Lateral/yaw-only evidence on this image; at most 200 samples and 85 candidate
+        evaluations."""
+        ...
+
+
+@runtime_checkable
+class TrackProjector(Protocol):
+    """Owner A (``camloc/track_coords.py``): route coordinates of C's estimates."""
+
+    def project(self, estimate: Estimate) -> tuple[TrackProjection, TrackProjection]:
+        """(track, pit) projections of the estimate's own x/y/yaw; never GT or native state
+        fields."""
+        ...
+
+    def reset(self, reset: RecoveryReset) -> None:
+        """Clear sequence-projection history so the next projection searches globally."""
+        ...
+
+
+@runtime_checkable
+class MappedTracker(Protocol):
+    """Owner B (``camloc/vision.py``): camera-rate mapped tracking, handoff and recovery.
+
+    Per group C calls ``observe`` first, then ``track``, ``handoff`` for due deliveries and
+    ``verify_candidate`` while a candidate is held; after ``Estimator.step`` it calls
+    ``settle`` once per HandoffEvidence and, after a confirmed recovery, ``reset``. Weak
+    outcomes are returned as rejected evidence with a reason, never as an accepted pose.
+    """
+
+    def observe(self, observation: Observation) -> None:
+        """Called exactly once per decoded Observation, in group order, before any other use
+        of it. B keeps gray history of <= HISTORY_MAX_AGE_NS and <= HISTORY_MAX_FRAMES per
+        camera."""
+        ...
+
+    def track(
+        self, observation: Observation, snapshot: SearchSnapshot, aux: AuxiliaryGeometry
+    ) -> PoseEvidence:
+        """Bounded LK on <= MAX_ACTIVE_TRACKS mapped tracks and RANSAC PnP on this image
+        (source=tracking)."""
+        ...
+
+    def handoff(self, result: AnchorResult, current: Observation) -> HandoffEvidence:
+        """Carry result's source pixels to `current` (same camera) through <= 4 chronological
+        LK transitions over history, <= 256 points, and solve fresh PnP at
+        current.exposure_ns. Does not modify track sets; rejected outcomes carry a reason."""
+        ...
+
+    def settle(self, handoff: HandoffEvidence, disposition: HandoffDisposition) -> None:
+        """C's decision, exactly once per HandoffEvidence, after step() of that group: adopt
+        into the active set, hold as the single recovery candidate (replacing any earlier
+        one) or discard."""
+        ...
+
+    def verify_candidate(self, observation: Observation) -> PoseEvidence | None:
+        """PnP on the held candidate track set (source=candidate); None when no candidate is
+        held."""
+        ...
+
+    def reset(self, reset: RecoveryReset) -> None:
+        """After confirmed recovery: promote the candidate set and drop tracks of the old
+        hypothesis."""
+        ...
+
+
+@runtime_checkable
+class AnchorWorker(Protocol):
+    """Owner B (``camloc/vision.py`` / ``camloc/retrieval.py``): one bounded anchor job.
+
+    C's scheduler keeps one job in flight and one latest pending, and delivers the result
+    at the first group with t_ns >= ``delivery_not_before_ns`` through
+    ``MappedTracker.handoff``. The result carries no pose.
+    """
+
+    def run(self, request: AnchorRequest) -> AnchorResult:
+        """Extraction, optional retrieval and <= 2 reference matches on request.observation
+        only. Deterministic in (request, frozen assets); never reads estimator state, wall
+        clock, other images or pending requests. Expected failures return status failed; C
+        maps exceptions and watchdog expiry to backend_fault. C's scheduler alone dispatches
+        and delivers."""
+        ...
+
+
+@runtime_checkable
+class GroundMotionEstimator(Protocol):
+    """Owner B (``camloc/vision.py``): planar ground motion between two same-camera images.
+
+    C calls it only when no selected in-gate full pose exists, with the group's RoadPatch.
+    """
+
+    def estimate(
+        self, previous: Observation, current: Observation, patch: RoadPatch
+    ) -> MotionEvidence:
+        """Same camera, previous.exposure_ns < current.exposure_ns; invalid patch -> rejected
+        evidence."""
+        ...
+
+
+@runtime_checkable
+class Estimator(Protocol):
+    """Owner C (``camloc/filter.py``, step 2): the single estimator and update path.
+
+    Constructed once from exactly one InitialPose. Stale worker poses never reach it:
+    anchors enter only as current-image HandoffEvidence inside GroupEvidence.
+    """
+
+    def snapshot(self, t_ns: int) -> SearchSnapshot:
+        """CV-predicted prior at t_ns >= last committed time; no state change."""
+        ...
+
+    def step(self, evidence: GroupEvidence) -> Estimate:
+        """The single update path: predict to evidence.t_ns, apply consumed slots once, return
+        Estimate."""
+        ...

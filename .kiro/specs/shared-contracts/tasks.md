@@ -83,12 +83,12 @@ Implement the design in Python 3.12 with stdlib and numpy only. `camloc/contract
     - **Property 12: Motion and border geometry**
     - **Validates: Requirements 10.1, 10.3**
 
-- [ ] 5. Anchor, recovery and group records
+- [x] 5. Anchor, recovery and group records
   - [x] 5.1 Add `AnchorRequest`, `AnchorResult` (with `check_against`), `RecoveryReset`, `UnusedEvidence` and `GroupEvidence` (with `t_ns`, `group_id`, `consumed_kinds()`) to `camloc/contracts.py`
     - AnchorResult has no pose, transform, position or yaw field
     - GroupEvidence follows the design's validation algorithm: accepted consumed slots, PnP-first hierarchy, reset exclusivity, current-image rule for every record, rejected/unused partition, no duplicate record objects
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6, 8.7, 11.1, 11.2, 11.3, 11.4, 11.5, 11.6, 11.7, 11.8, 12.7_
-  - [ ] 5.2 Write example tests in `tests/test_group_evidence.py`
+  - [x] 5.2 Write example tests in `tests/test_group_evidence.py`
     - Add anchor/group builders to `tests/contract_factories.py`
     - AnchorResult field names contain no pose-like names; `ok` needs reason `ok` and correspondences; three or duplicate reference ids rejected; `front_anchor` on `r` rejected; candidate or handoff-source `PoseEvidence` in the pose slot rejected; reset with a pose rejected
     - _Requirements: 8.3, 8.4, 8.5, 11.7_
@@ -117,12 +117,12 @@ Implement the design in Python 3.12 with stdlib and numpy only. `camloc/contract
 - [ ]* 6. Checkpoint - Ensure all tests pass
   - Run `.venv/Scripts/python.exe -B -m pytest` and `.venv/Scripts/ruff.exe check camloc scripts tests`; ensure all tests pass, ask the user if questions arise.
 
-- [ ] 7. Initial pose and episodes
-  - [ ] 7.1 Add `InitialPose`, `EpisodeBounds` (`contains`, `check_initial_pose`), `parse_initial_pose`, `format_initial_pose`, `read_initial_pose`, `write_initial_pose`, `episodes_from_split` and `load_split` to `camloc/contracts.py`
+- [x] 7. Initial pose and episodes
+  - [x] 7.1 Add `InitialPose`, `EpisodeBounds` (`contains`, `check_initial_pose`), `parse_initial_pose`, `format_initial_pose`, `read_initial_pose`, `write_initial_pose`, `episodes_from_split` and `load_split` to `camloc/contracts.py`
     - JSON hardening: `parse_constant`, duplicate-key `object_pairs_hook`, exact key set, type checks, finiteness after parsing; exclusive-create UTF-8 writer with a decimal-string timestamp
     - `load_split` reads bytes read-only, verifies `BUILD_SPLIT_SHA256`, then `episodes_from_split` checks encoding strings, exact integers, 2 s guards, ordering, first/last GT bounds and returns a `MappingProxyType` of `fit`, `tune`, `holdout`, `full`
     - _Requirements: 15.1, 15.2, 15.3, 15.4, 15.5, 15.6, 16.1, 16.2, 16.3, 16.4, 16.5, 16.6, 16.7_
-  - [ ] 7.2 Write example tests in `tests/test_initial_pose.py`
+  - [x] 7.2 Write example tests in `tests/test_initial_pose.py`
     - Real `load_split()` returns the design's four bounds; the file hash is unchanged after loading; a modified copy in `tmp_path` fails the hash; synthetic documents passed to `episodes_from_split` fail on wrong guard, order, encoding and end bound; the mapping is read-only; `write_initial_pose` refuses an existing path in `tmp_path`
     - _Requirements: 15.6, 16.4, 16.5, 16.6, 16.7_
   - [ ]* 7.3 Write property test for the initial-pose JSON round trip
@@ -135,21 +135,21 @@ Implement the design in Python 3.12 with stdlib and numpy only. `camloc/contract
     - **Property 21: Episode bounds semantics**
     - **Validates: Requirements 16.1, 16.2, 16.3**
 
-- [ ] 8. Protocol call boundaries and usage notes
-  - [ ] 8.1 Add the nine `@runtime_checkable` Protocols to `camloc/contracts.py` and complete the module docstring
+- [x] 8. Protocol call boundaries and usage notes
+  - [x] 8.1 Add the nine `@runtime_checkable` Protocols to `camloc/contracts.py` and complete the module docstring
     - `FrameSetSource`, `Canonicalizer`, `RoadGeometry`, `BorderEvidenceSource`, `TrackProjector`, `MappedTracker` (`observe`, `track`, `handoff`, `settle`, `verify_candidate`, `reset`), `AnchorWorker`, `GroundMotionEstimator`, `Estimator` (`snapshot(t_ns)`, `step`) with `...` bodies and owner/call-order/timing/rejection docstrings
     - Docstring: decode-set, road-patch, auxiliary-geometry, anchor-delivery, recovery-reset, input-event and diagnostics flows, proposed entry points, pointer to `tests/test_contract_examples.py`
     - _Requirements: 11.1, 14.1, 14.2, 14.3, 14.4_
-  - [ ] 8.2 Write `tests/test_contract_examples.py` with copyable usage examples
+  - [x] 8.2 Write `tests/test_contract_examples.py` with copyable usage examples
     - A: `ImageMessage`, `FrameSet`, `Observation`, `RoadPatch`, `BorderEvidence`, `TrackProjection`; B: rejected and accepted `PoseEvidence`, `AnchorResult`, `HandoffEvidence`, `MotionEvidence`; C: `AnchorRequest`, `GroupEvidence`, `Estimate`, `require_accepted`, summaries to JSON
     - `inspect.signature` checks of every Protocol method; an AST check that Protocol bodies hold only a docstring or `...`; `isinstance` conformance of test-only fakes that return rejected evidence; docstring mentions each flow
     - _Requirements: 3.6, 6.1, 11.1, 13.1, 13.6, 14.1, 14.2, 14.3, 14.4, 14.6_
 
-- [ ] 9. Single submission writer
-  - [ ] 9.1 Create `camloc/submission.py`
+- [x] 9. Single submission writer
+  - [x] 9.1 Create `camloc/submission.py`
     - `HEADER`, pure `format_row`, `SubmissionWriter` (exclusive create with `newline=""`, header on open, strictly increasing `t_ns`, rejects initialization estimates, `rows`, `last_t_ns`, `flush`, `close`, context manager); imports only stdlib, numpy and `camloc.contracts`
     - _Requirements: 17.1, 17.2, 17.3, 17.4, 17.5, 17.7_
-  - [ ] 9.2 Write example tests in `tests/test_submission.py`
+  - [x] 9.2 Write example tests in `tests/test_submission.py`
     - Raw bytes start with `timestamp_ns,x,y,yaw\n`, contain no `\r` and no BOM; an existing path raises `FileExistsError` and keeps its content; load `reference_eval` through a helper that inserts `evaluation/` into `sys.path` inside the test; do not modify `tests/contract_factories.py`
     - _Requirements: 17.1, 17.2, 20.3_
   - [ ]* 9.3 Write property test for the submission CSV round trip
@@ -159,12 +159,12 @@ Implement the design in Python 3.12 with stdlib and numpy only. `camloc/contract
     - **Property 23: Submission ordering and rejection**
     - **Validates: Requirements 17.4, 17.5**
 
-- [ ] 10. Offline initial-pose exporter
-  - [ ] 10.1 Create `scripts/export_initial_pose.py`
+- [x] 10. Offline initial-pose exporter
+  - [x] 10.1 Create `scripts/export_initial_pose.py`
     - `main(argv) -> int`, `resolve_bounds`, `verify_manifest` (sibling `manifest.json` `files[<name>]` SHA-256), `select_initial_pose`; mutually exclusive `--split`/`--start-ns`, optional `--end-ns`, default `--gt`, required `--out`
     - Import `camloc.contracts` through `importlib` after inserting the project root into `sys.path` (ruff E402 clean); exact integer stamps, strictly increasing rows, extra columns ignored, exclusive write, exit 1 without writing on any data/integrity error
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.5, 18.6, 18.7_
-  - [ ] 10.2 Write example tests in `tests/test_initial_pose_export.py`
+  - [x] 10.2 Write example tests in `tests/test_initial_pose_export.py`
     - Load the script with `importlib.util.spec_from_file_location`; synthetic GT and manifest files in `tmp_path`: extra `z` column omitted, duplicate/decreasing/float stamps rejected, manifest mismatch and missing entry rejected, no in-bounds row, existing `--out`, malformed `--start-ns 1e9`; `--split tune` with synthetic GT stamps inside the real tune bounds
     - Real bundle under `unittest.skipUnless((ROOT / "evaluation/reference_reconciled/manifest.json").exists(), ...)`: expected pose computed from the CSV, manifest check passes, output only in `tmp_path`
     - _Requirements: 18.1, 18.2, 18.3, 18.4, 18.6, 18.7, 20.3_
@@ -172,19 +172,19 @@ Implement the design in Python 3.12 with stdlib and numpy only. `camloc/contract
     - **Property 24: Exporter selects the first in-bounds GT row**
     - **Validates: Requirements 18.4, 18.5, 18.7**
 
-- [ ] 11. Inference isolation
-  - [ ] 11.1 Write `tests/test_inference_isolation.py`
+- [x] 11. Inference isolation
+  - [x] 11.1 Write `tests/test_inference_isolation.py`
     - AST-scan every `camloc/**/*.py`: no `Import`/`ImportFrom` of `evaluation`, `reference_eval`, `native_bridge`, `evaluate`, `extract_gt`, `convert`, `scripts`, `tools` or `export_initial_pose`; no literal `importlib.import_module`, `__import__`, `spec_from_file_location` or `runpy` call naming them; no non-docstring string constant naming them as a module or path; organizer `track_frame` stays allowed
     - `camloc/contracts.py` and `camloc/submission.py`: imports limited to `sys.stdlib_module_names`, `numpy` and `camloc`; case-insensitive raw-text scan for `reference_reconciled`, `gt_tf`, `state_estimation`
     - Scanner self-test on synthetic sources in `tmp_path` (forbidden forms flagged, `track_frame` loading allowed); subprocess import of both modules compared with a bare-interpreter `sys.modules` baseline
     - _Requirements: 19.1, 19.2, 19.3, 19.4, 19.5, 20.3_
 
-- [ ] 12. Final checkpoint - Ensure all tests pass
+- [x] 12. Final checkpoint - Ensure all tests pass
   - Run `.venv/Scripts/python.exe -B -m pytest` (22 existing plus new tests) and `.venv/Scripts/ruff.exe check camloc scripts tests`; confirm `git status --short` lists only the new step-1 files and `.kiro/`, `git diff --stat` is empty for protected paths and dependency files, and `build_split.json` still hashes to `BUILD_SPLIT_SHA256`; record skipped real-data tests as skipped. Ensure all tests pass, ask the user if questions arise.
   - _Requirements: 20.1, 20.2, 20.3, 20.4_
 
 - [ ] 13. Commit and push the step-1 files
-  - [ ] 13.1 Commit on `dev/implementation` and push to `origin/dev/implementation`
+  - [-] 13.1 Commit on `dev/implementation` and push to `origin/dev/implementation`
     - Stage by name only: `camloc/contracts.py`, `camloc/submission.py`, `scripts/export_initial_pose.py`, `tests/contract_factories.py` and the new `tests/test_*.py` files; never stage `.kiro/`, `private_guides/`, `results/`, `artifacts/`, `tmp/` or data
     - Check `git diff --cached --name-only`, commit with a concise message (for example `feat(contracts): shared records, CSV writer and initial-pose harness`), run `git push origin dev/implementation`; do not touch `main`, force-push or skip hooks
     - _Requirements: 20.5_
@@ -205,15 +205,12 @@ Implement the design in Python 3.12 with stdlib and numpy only. `camloc/contract
     { "id": 1, "tasks": ["1.2", "2.1"] },
     { "id": 2, "tasks": ["1.3", "2.2", "3.1"] },
     { "id": 3, "tasks": ["1.4", "2.3", "4.1"] },
-    { "id": 4, "tasks": ["1.5", "3.2", "5.1"] },
-    { "id": 5, "tasks": ["1.6", "3.3", "4.2", "7.1", "9.1"] },
-    { "id": 6, "tasks": ["1.7", "4.3", "5.2", "8.1", "9.2", "10.1"] },
-    { "id": 7, "tasks": ["4.4", "5.3", "5.8", "7.2", "9.3", "10.2"] },
-    { "id": 8, "tasks": ["4.5", "5.4", "5.9", "7.3", "8.2", "9.4", "10.3"] },
-    { "id": 9, "tasks": ["4.6", "5.5", "7.4", "11.1"] },
-    { "id": 10, "tasks": ["5.6", "7.5"] },
-    { "id": 11, "tasks": ["5.7"] },
-    { "id": 12, "tasks": ["13.1"] }
+    { "id": 4, "tasks": ["1.5", "5.1"] },
+    { "id": 5, "tasks": ["5.2", "7.1", "9.1"] },
+    { "id": 6, "tasks": ["7.2", "8.1", "9.2", "10.1", "11.1"] },
+    { "id": 7, "tasks": ["8.2", "10.2"] },
+    { "id": 8, "tasks": ["12"] },
+    { "id": 9, "tasks": ["13.1"] }
   ]
 }
 ```
