@@ -278,7 +278,372 @@ def test_earlier_border_branch_is_present_in_its_own_exposure_cache():
     assert estimator.exposure_snapshot("fr", T).branch is c.Branch.TRACK
 
 
-def test_stage_four_reset_is_explicitly_unsupported():
+# ---------------------------------------------------------------------------------------
+# Stage 4: status machine, recovery_search_active flag and the reset path.
+# ---------------------------------------------------------------------------------------
+
+MS = 1_000_000
+FULL_KINDS = {c.EvidenceKind.PNP, c.EvidenceKind.HANDOFF_PNP, c.EvidenceKind.RECOVERY_RESET}
+
+
+def initial_at(stamp, yaw=0.0):
+    return c.InitialPose(timestamp_ns=stamp, x=0.0, y=0.0, yaw=yaw)
+
+
+def planar(x, y, yaw):
+    R = np.array([[math.cos(yaw), -math.sin(yaw), 0],
+                  [math.sin(yaw), math.cos(yaw), 0], [0, 0, 1]])
+    return f.rigid(R, [x, y, 0.3])
+
+
+def fr_frame(index, stamp):
+    return f.make_frame_set(group_id=index, selected_camera_ids=("fr",),
+                            images=(f.make_image_message(exposure_ns=stamp),))
+
+
+def two_camera_frame(index, front_ns, rear_ns):
+    return f.make_frame_set(group_id=index, images=(
+        f.make_image_message(exposure_ns=front_ns),
+        f.make_image_message(camera_id="r", exposure_ns=rear_ns)))
+
+
+def gated_pose(estimator, stamp, camera="fr", offset_m=0.0):
+    """A tracking pose at the prior's own x/y/yaw (plus ``offset_m``), so the gate decides."""
+    prior = estimator.snapshot(stamp).state
+    return f.make_pose_evidence(camera_id=camera, exposure_ns=stamp,
+                                T_WB=planar(prior[0] + offset_m, prior[1], prior[2]))
+
+
+def reset_evidence(frame, camera="fr", T_WB=None):
+    m = next(image.exposure_ns for image in frame.images if image.camera_id == camera)
+    T_WB = np.eye(4) if T_WB is None else T_WB
+    confirmation = f.make_pose_evidence(camera_id=camera, exposure_ns=m,
+                                        source=c.PoseSource.CANDIDATE, T_WB=T_WB)
+    candidate = f.make_pose_evidence(camera_id=camera, exposure_ns=m - c.RECOVERY_CONFIRM_MIN_NS,
+                                     source=c.PoseSource.CANDIDATE, T_WB=T_WB)
+    reset = f.make_recovery_reset(group_id=frame.group_id, t_ns=frame.t_ns,
+                                  confirmation=confirmation, candidate=candidate)
+    return f.make_group_evidence(frame_set=frame, reset=reset)
+
+
+def fingerprint(estimator):
+    """Byte-level view of everything a rejected step must leave untouched."""
+    e = estimator.estimate
+    history = {camera: [(k, id(s), s.state.tobytes(), s.P.tobytes()) for k, s in h.items()]
+               for camera, h in estimator._history.items()}
+    return (id(e), e.t_ns, e.status, e.state.tobytes(), e.P.tobytes(), history,
+            dict(estimator._last_exposure),
+            (estimator._last_pnp_ns, estimator._last_visual_ns, estimator._last_border_ns,
+             estimator._last_fused_ns, estimator._reset_ns))
+
+
+def reference_status(aux_valid, now, last_visual, last_full, initial_ns, full_consumed, flag):
+    """Independent restatement of the design's status precedence (integer ns ages)."""
+    visual_age = now - (initial_ns if last_visual is None else last_visual)
+    full_age = now - (initial_ns if last_full is None else last_full)
+    if not aux_valid or visual_age > 1_000_000_000 or full_age > 3_000_000_000:
+        return c.Status.LOST
+    if full_consumed or (last_full is not None and full_age <= 500_000_000):
+        return c.Status.TRACKING
+    return c.Status.RECOVERING if flag else c.Status.DEGRADED
+
+
+def run_blackout(last_dark_ms, flag):
+    """10 Hz fr stream: PnP at T, prediction only through ``last_dark_ms``, then PnP."""
     estimator = CameraFilter(initial())
-    with pytest.raises(c.ContractError, match="Stage 4"):
+    statuses = {0: estimator.step(group(0, pose=pose()), recovery_search_active=flag).status}
+    for i in range(1, last_dark_ms // 100 + 1):
+        statuses[i * 100] = estimator.step(group(i, i * 100 * MS),
+                                           recovery_search_active=flag).status
+    i = last_dark_ms // 100 + 1
+    statuses[i * 100] = estimator.step(group(i, i * 100 * MS, pose=pose(T + i * 100 * MS)),
+                                       recovery_search_active=flag).status
+    return statuses
+
+
+@pytest.mark.parametrize("flag", [False, True])
+def test_short_blackout_stays_tracking(flag):
+    statuses = run_blackout(500, flag)
+    assert set(statuses) == {0, 100, 200, 300, 400, 500, 600}
+    assert all(status is c.Status.TRACKING for status in statuses.values())
+
+
+@pytest.mark.parametrize("flag", [False, True])
+def test_one_second_blackout_degrades_or_recovers_but_is_not_lost(flag):
+    statuses = run_blackout(1000, flag)
+    fallback = c.Status.RECOVERING if flag else c.Status.DEGRADED
+    assert all(statuses[ms] is c.Status.TRACKING for ms in range(0, 600, 100))
+    assert all(statuses[ms] is fallback for ms in range(600, 1100, 100))
+    assert statuses[1000] is not c.Status.LOST
+    assert statuses[1100] is c.Status.TRACKING
+
+
+@pytest.mark.parametrize("flag", [False, True])
+def test_blackout_beyond_one_second_is_lost_for_either_flag(flag):
+    statuses = run_blackout(1100, flag)
+    assert statuses[1100] is c.Status.LOST
+    assert statuses[1200] is c.Status.TRACKING
+
+
+@pytest.mark.parametrize("bad", [1, 0, np.True_, np.False_, None])
+def test_non_bool_search_flag_is_rejected_without_mutation(bad):
+    estimator = CameraFilter(initial())
+    estimator.step(group(0, pose=pose()))
+    before = fingerprint(estimator)
+    with pytest.raises(c.ContractError, match="recovery_search_active"):
+        estimator.step(group(1, 100 * MS), recovery_search_active=bad)
+    assert fingerprint(estimator) == before
+    assert estimator.step(group(1, 100 * MS)).group_id == 1
+
+
+# Feature: stage4-scheduler, Property 12: Status precedence and process noise
+def test_property_status_precedence_and_process_noise(monkeypatch):
+    """**Validates: Requirements 8.1, 8.2, 8.3, 8.4, 8.5, 8.8**"""
+    scales = []
+
+    def record(dt_ns, noise_scale=1.0):
+        scales.append(noise_scale)
+        return transition(dt_ns, noise_scale)
+
+    monkeypatch.setattr(module, "transition", record)
+    kinds = ("pnp", "handoff", "reset", "motion", "border", "gated", "nothing")
+    gaps_ms = (20, 50, 100, 150, 300, 600, 1050, 1600)
+    seen = set()
+    for iteration in range(120):
+        rng = f.seeded_rng(12, iteration)
+        initial_ns = T - int(rng.integers(0, 2_000)) * MS
+        estimator = CameraFilter(initial_at(initial_ns))
+        last_visual = last_full = None
+        aux_valid, t, previous_t = False, T, None
+        for index in range(int(rng.integers(8, 20))):
+            if index:
+                previous_t, t = t, t + int(rng.choice(gaps_ms)) * MS
+            kind = str(rng.choice(kinds))
+            flag = bool(rng.integers(2))
+            frame = fr_frame(index, t)
+            aux_choice = int(rng.integers(3))
+            fresh = (None, road_aux(t), c.AuxiliaryGeometry.unavailable("off_road"))[aux_choice]
+            slots = {}
+            if kind == "pnp":
+                slots["pose"] = gated_pose(estimator, t)
+            elif kind == "gated":
+                slots["pose"] = gated_pose(estimator, t, offset_m=1e7)
+            elif kind == "handoff":
+                tracking = gated_pose(estimator, t)
+                slots["pose"] = f.make_handoff_evidence(
+                    measurement_ns=t, pose=f.make_pose_evidence(
+                        exposure_ns=t, source=c.PoseSource.HANDOFF, T_WB=tracking.T_WB))
+            elif kind == "motion" and previous_t is not None:
+                slots["motion"] = f.make_motion_evidence(
+                    previous_ns=previous_t, current_ns=t,
+                    T_Bprev_Bcurr=f.rigid(np.eye(3), [0.2, 0, 0]))
+                fresh = None if aux_choice == 2 else fresh
+            elif kind == "border":
+                slots["border"] = f.make_border_evidence(exposure_ns=t)
+                fresh = road_aux(t)
+            if kind == "reset":
+                evidence = reset_evidence(frame, T_WB=planar(*rng.uniform(-20, 20, 2),
+                                                             rng.uniform(-math.pi, math.pi)))
+                fresh = None
+            else:
+                evidence = f.make_group_evidence(frame_set=frame, auxiliary=fresh, **slots)
+            old = estimator.estimate
+            allowed = {module._NOISE_SCALE[old.status]}
+            if "motion" in slots:
+                snap = estimator._history.get("fr", {}).get(previous_t)
+                if snap is not None:
+                    allowed.add(max(allowed | {module._NOISE_SCALE[snap.status]}))
+            scales.clear()
+            result = estimator.step(evidence, recovery_search_active=flag)
+            assert scales and set(scales) <= allowed
+            applied = set(result.evidence_kinds)
+            expected_applied = {"pnp": {c.EvidenceKind.PNP},
+                                "handoff": {c.EvidenceKind.HANDOFF_PNP},
+                                "reset": {c.EvidenceKind.RECOVERY_RESET},
+                                "gated": {c.EvidenceKind.PREDICTION_ONLY}}.get(kind)
+            if expected_applied is not None:
+                assert applied == expected_applied
+            full_consumed = bool(applied & FULL_KINDS)
+            if full_consumed:
+                last_full = last_visual = t
+                aux_valid = True
+            else:
+                if applied & {c.EvidenceKind.GROUND_MOTION, c.EvidenceKind.BORDER}:
+                    last_visual = t
+                if fresh is not None:
+                    aux_valid = fresh.valid
+                elif c.EvidenceKind.GROUND_MOTION in applied:
+                    aux_valid = True
+            assert result.auxiliary.valid is aux_valid
+            expected = reference_status(aux_valid, t, last_visual, last_full, initial_ns,
+                                        full_consumed, flag)
+            assert result.status is expected, (iteration, index, kind)
+            assert isinstance(estimator._last_fused_ns, int)
+            seen.add(expected)
+    assert seen == set(c.Status)
+
+
+def test_reset_initializes_state_covariance_kinds_status_and_ages():
+    estimator = CameraFilter(initial_at(T - 200 * MS))
+    evidence = f.make_group_evidence(reset=f.make_recovery_reset(
+        confirmation=f.make_pose_evidence(source=c.PoseSource.CANDIDATE,
+                                          T_WB=planar(3.0, -2.0, 0.4))))
+    m, now = T, evidence.t_ns
+    result = estimator.step(evidence)
+    F, Q = transition(now - m, module._NOISE_SCALE[c.Status.LOST])
+    P0 = np.diag([0.5**2, 0.5**2, math.radians(1)**2, 30**2, 30**2, math.radians(30)**2])
+    np.testing.assert_allclose(result.state, F @ [3.0, -2.0, 0.4, 0, 0, 0], atol=1e-12)
+    np.testing.assert_allclose(result.P, F @ P0 @ F.T + Q, rtol=1e-12, atol=1e-15)
+    assert result.evidence_kinds == (c.EvidenceKind.RECOVERY_RESET,)
+    assert result.status is c.Status.TRACKING and result.branch is c.Branch.UNKNOWN
+    assert result.reason == "confirmed_recovery" and result.max_support_exposure_ns == m
+    assert result.auxiliary.source is c.AuxSource.PNP and result.auxiliary.source_ns == m
+    assert estimator._last_pnp_ns == estimator._last_visual_ns == estimator._last_fused_ns == m
+    assert estimator._reset_ns == m and now - estimator._last_pnp_ns == now - m
+    np.testing.assert_allclose(estimator.exposure_snapshot("fr", m).state, [3.0, -2.0, 0.4, 0, 0, 0])
+    assert set(estimator._history["r"]) == {now}
+
+
+def test_reset_outside_the_exposure_window_raises_without_mutation():
+    # The default fixture confirms at T, the default InitialPose time: not after last fused.
+    estimator = CameraFilter(initial())
+    before = fingerprint(estimator)
+    with pytest.raises(c.ContractError, match="last fused"):
         estimator.step(f.make_group_evidence(reset=f.make_recovery_reset()))
+    assert fingerprint(estimator) == before
+
+    estimator = CameraFilter(initial_at(T - 200 * MS))
+    estimator.step(group(0, -100 * MS, auxiliary=road_aux(T - 100 * MS)))
+    evidence = reset_evidence(two_camera_frame(1, T, T + MS))
+    confirmation = evidence.reset.confirmation
+    before = fingerprint(estimator)
+    object.__setattr__(confirmation, "exposure_ns", evidence.t_ns + 1)  # bypass record checks
+    with pytest.raises(c.ContractError, match="after the group time"):
+        estimator.step(evidence)
+    assert fingerprint(estimator) == before
+    object.__setattr__(confirmation, "exposure_ns", T)
+    assert estimator.step(evidence).evidence_kinds == (c.EvidenceKind.RECOVERY_RESET,)
+
+
+def test_motion_delta_spanning_a_reset_is_declined_as_intervening_update():
+    estimator = CameraFilter(initial_at(T - 200 * MS))
+    estimator.step(group(0, -100 * MS, auxiliary=road_aux(T - 100 * MS)))
+    estimator.step(reset_evidence(fr_frame(1, T)))
+    assert min(estimator._history["fr"]) == T
+    expected = estimator.snapshot(T + 50 * MS)
+    result = estimator.step(group(2, 50 * MS, motion=f.make_motion_evidence(
+        previous_ns=T - 100 * MS, current_ns=T + 50 * MS)))
+    assert result.reason == "intervening_update"
+    assert result.evidence_kinds == (c.EvidenceKind.PREDICTION_ONLY,)
+    np.testing.assert_array_equal(result.state[:3], expected.state[:3])
+
+
+def test_next_pnp_information_interval_starts_at_the_reset_exposure(monkeypatch):
+    noises = []
+    update = module._update
+
+    def record(state, covariance, value, H, R):
+        noises.append(R.copy())
+        return update(state, covariance, value, H, R)
+
+    monkeypatch.setattr(module, "_update", record)
+    estimator = CameraFilter(initial_at(T - 200 * MS))
+    estimator.step(reset_evidence(fr_frame(0, T)))
+    estimator.step(group(1, 10 * MS, pose=pose(T + 10 * MS)))
+    np.testing.assert_allclose(noises[-1], np.diag(module.POSE_STD**2) * 10)
+
+
+def random_prior_history(estimator, rng, start_ns, groups):
+    """Commit ``groups`` random two-camera groups; return the last committed fr exposure."""
+    t, previous = start_ns, None
+    for index in range(groups):
+        frame = two_camera_frame(index, t, t + MS // 2)
+        kind = int(rng.integers(4))
+        slots = {"auxiliary": road_aux(t)}
+        if kind == 1:
+            slots["pose"] = gated_pose(estimator, t)
+        elif kind == 2:
+            slots["border"] = f.make_border_evidence(exposure_ns=t)
+        elif kind == 3 and previous is not None:
+            slots["motion"] = f.make_motion_evidence(
+                previous_ns=previous, current_ns=t, T_Bprev_Bcurr=f.rigid(np.eye(3), [0.3, 0, 0]))
+        estimator.step(f.make_group_evidence(frame_set=frame, **slots),
+                       recovery_search_active=bool(rng.integers(2)))
+        previous, t = t, t + int(rng.integers(30, 200)) * MS
+    return previous
+
+
+# Feature: stage4-scheduler, Property 15: Reset state, covariance and history invalidation
+def test_property_reset_state_covariance_and_history_invalidation():
+    """**Validates: Requirements 10.1, 10.2, 10.3, 10.4, 10.5**"""
+    P0 = np.diag([0.5**2, 0.5**2, math.radians(1)**2, 30**2, 30**2, math.radians(30)**2])
+    for iteration in range(120):
+        rng = f.seeded_rng(15, iteration)
+        estimator = CameraFilter(initial_at(T - 2 * c.NS_PER_S))
+        groups = int(rng.integers(1, 7))
+        last_front = random_prior_history(estimator, rng, T - c.NS_PER_S, groups)
+        old = estimator.estimate
+        front_ns = old.t_ns + int(rng.integers(20, 150)) * MS
+        rear_ns = front_ns + int(rng.integers(0, 5 * MS))
+        camera = str(rng.choice(["fr", "r"]))
+        x, y, yaw = *rng.uniform(-50, 50, 2), rng.uniform(-math.pi, math.pi)
+        evidence = reset_evidence(two_camera_frame(groups, front_ns, rear_ns), camera,
+                                  planar(x, y, yaw))
+        m, now = (front_ns if camera == "fr" else rear_ns), evidence.t_ns
+        result = estimator.step(evidence, recovery_search_active=bool(rng.integers(2)))
+        F, Q = transition(now - m, module._NOISE_SCALE[old.status])
+        expected = F @ [x, y, yaw, 0, 0, 0]
+        expected[2] = c.wrap_angle(expected[2])
+        np.testing.assert_allclose(result.state, expected, atol=1e-9)
+        np.testing.assert_allclose(result.P, F @ P0 @ F.T + Q, rtol=1e-12, atol=1e-15)
+        assert result.branch is c.Branch.UNKNOWN and result.status is c.Status.TRACKING
+        assert result.evidence_kinds == (c.EvidenceKind.RECOVERY_RESET,)
+        assert result.max_support_exposure_ns == m
+        assert result.auxiliary.source is c.AuxSource.PNP and result.auxiliary.source_ns == m
+        assert now - estimator._last_pnp_ns == now - estimator._last_visual_ns == now - m
+        assert all(stamp >= m for h in estimator._history.values() for stamp in h)
+        assert (front_ns in estimator._history.get("fr", {})) is (front_ns >= m)
+        assert rear_ns in estimator._history["r"]
+        next_ns = rear_ns + int(rng.integers(10, 100)) * MS
+        prior = estimator.snapshot(next_ns)
+        after = estimator.step(f.make_group_evidence(
+            frame_set=fr_frame(groups + 1, next_ns),
+            motion=f.make_motion_evidence(previous_ns=last_front, current_ns=next_ns)))
+        assert after.reason == "intervening_update"
+        np.testing.assert_array_equal(after.state[:3], prior.state[:3])
+
+
+# Feature: stage4-scheduler, Property 7: Invalid inputs are rejected atomically
+def test_property_invalid_flag_or_reset_exposure_is_rejected_atomically():
+    """**Validates: Requirements 8.9, 10.6** (filter part)"""
+    bad_flags = (1, 0, np.True_, np.False_, None, 1.0, "true")
+    for iteration in range(120):
+        rng = f.seeded_rng(7, iteration)
+        estimator = CameraFilter(initial_at(T - c.NS_PER_S))
+        groups = int(rng.integers(0, 5))
+        if groups:
+            random_prior_history(estimator, rng, T - 900 * MS, groups)
+        now = estimator.estimate.t_ns + int(rng.integers(10, 200)) * MS
+        case = int(rng.integers(3))
+        before = fingerprint(estimator)
+        if case == 0:
+            evidence = f.make_group_evidence(frame_set=fr_frame(groups, now), auxiliary=road_aux(now))
+            with pytest.raises(c.ContractError):
+                estimator.step(evidence, recovery_search_active=bad_flags[iteration % len(bad_flags)])
+            assert fingerprint(estimator) == before
+            restore = None
+        else:
+            evidence = reset_evidence(fr_frame(groups, now))
+            confirmation = evidence.reset.confirmation
+            if case == 1:
+                bad = now + int(rng.integers(1, c.NS_PER_S))
+            else:
+                bad = estimator._last_fused_ns - int(rng.integers(0, 100 * MS))
+            object.__setattr__(confirmation, "exposure_ns", bad)  # bypass record checks
+            with pytest.raises(c.ContractError):
+                estimator.step(evidence, recovery_search_active=bool(rng.integers(2)))
+            assert fingerprint(estimator) == before
+            restore = (confirmation, now)
+        if restore is not None:
+            object.__setattr__(restore[0], "exposure_ns", restore[1])
+        assert estimator.step(evidence).group_id == groups

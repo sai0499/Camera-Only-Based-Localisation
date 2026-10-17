@@ -2,8 +2,10 @@
 
 Noise densities and measurement floors are build-plan defaults, not calibrated uncertainty.
 Ground motion uses a bounded exposure-state cache. A delta crossing an intervening fused
-update is declined rather than replacing that newer information with an older state.
-Recovery resets/search are Stage 4 and are explicitly unsupported here.
+update (or a recovery reset) is declined rather than replacing that newer information with
+an older state. A confirmed RecoveryReset re-initializes the state at its confirmation
+exposure; the recovery search itself lives outside the filter and only reaches it as the
+``recovery_search_active`` status flag.
 """
 
 import math
@@ -58,6 +60,21 @@ def _pose_values(transform):
                      math.atan2(transform[1, 0], transform[0, 0])])
 
 
+def _status(aux_valid, visual_age_ns, full_age_ns, full_consumed, has_full_pose, search_active):
+    """Status precedence: Lost, then Tracking, then Recovering, then Degraded (integer ns ages).
+
+    Ages fall back to the InitialPose time, but the InitialPose is not a Full_Pose: Tracking
+    by age needs an applied PnP, handoff PnP or reset (``has_full_pose``).
+    """
+    if not aux_valid or visual_age_ns > c.NS_PER_S or full_age_ns > 3 * c.NS_PER_S:
+        return c.Status.LOST
+    if full_consumed or (has_full_pose and full_age_ns <= c.NS_PER_S // 2):
+        return c.Status.TRACKING
+    if search_active:
+        return c.Status.RECOVERING
+    return c.Status.DEGRADED
+
+
 def _auxiliary(transform, stamp, source, patch_id=None):
     R = transform[:3, :3]
     return c.AuxiliaryGeometry(
@@ -94,6 +111,7 @@ class CameraFilter:
         self._last_visual_ns: int | None = None
         self._last_border_ns: int | None = None
         self._last_fused_ns = initial_pose.timestamp_ns
+        self._reset_ns: int | None = None
 
     def snapshot(self, t_ns: int) -> c.SearchSnapshot:
         stamp = c.as_ns(t_ns, "snapshot t_ns")
@@ -126,6 +144,8 @@ class CameraFilter:
                 and abs(c.wrap_angle(value[2] - prior.state[2])) <= yaw_limit)
 
     def _motion_state(self, motion: c.MotionEvidence):
+        if self._reset_ns is not None and motion.previous_ns < self._reset_ns:
+            return None, "intervening_update"
         history = self._history.get(motion.camera_id, {})
         previous = history.get(motion.previous_ns)
         if previous is None:
@@ -167,7 +187,10 @@ class CameraFilter:
                               motion.road_patch_id)
         return (state, P, geometry), "accepted"
 
-    def step(self, evidence: c.GroupEvidence) -> c.Estimate:
+    def step(self, evidence: c.GroupEvidence, *, recovery_search_active: bool = False) -> c.Estimate:
+        """Commit one group. ``recovery_search_active`` only selects Recovering over Degraded."""
+        if not isinstance(recovery_search_active, bool):
+            raise c.ContractError("recovery_search_active must be a bool")
         if not isinstance(evidence, c.GroupEvidence):
             raise c.ContractError("step requires GroupEvidence")
         old = self.estimate
@@ -182,7 +205,7 @@ class CameraFilter:
             if image.exposure_ns <= self._last_exposure.get(image.camera_id, -1):
                 raise c.ContractError("duplicate or decreasing camera exposure")
         if evidence.reset is not None:
-            raise c.ContractError("recovery resets require the Stage 4 confirmation path")
+            return self._reset_step(evidence, old)
 
         scale = _NOISE_SCALE[old.status]
         state, P, stamp, aux = old.state.copy(), old.P.copy(), old.t_ns, old.auxiliary
@@ -266,12 +289,9 @@ class CameraFilter:
         now = evidence.t_ns
         visual_age = now - (last_visual if last_visual is not None else self.initial_pose.timestamp_ns)
         full_age = now - (last_pnp if last_pnp is not None else self.initial_pose.timestamp_ns)
-        if not aux.valid or visual_age > c.NS_PER_S or full_age > 3 * c.NS_PER_S:
-            status = c.Status.LOST
-        elif any(k in kinds for k in (c.EvidenceKind.PNP, c.EvidenceKind.HANDOFF_PNP)):
-            status = c.Status.TRACKING
-        else:
-            status = c.Status.DEGRADED
+        full_consumed = any(k in kinds for k in (c.EvidenceKind.PNP, c.EvidenceKind.HANDOFF_PNP))
+        status = _status(aux.valid, visual_age, full_age, full_consumed, last_pnp is not None,
+                         recovery_search_active)
         result = c.Estimate(
             t_ns=now, group_id=evidence.group_id, state=state, P=(P + P.T) * 0.5,
             status=status, branch=branch, evidence_kinds=tuple(kinds) or (c.EvidenceKind.PREDICTION_ONLY,),
@@ -297,12 +317,58 @@ class CameraFilter:
         self.estimate = result
         self._last_pnp_ns, self._last_visual_ns, self._last_border_ns = last_pnp, last_visual, last_border
         self._last_fused_ns = fused_ns
-        for image, snapshot in cached:
+        self._store_snapshots(evidence, cached, now)
+        return result
+
+    def _reset_step(self, evidence: c.GroupEvidence, old: c.Estimate) -> c.Estimate:
+        """Re-initialize at the confirmation exposure ``m``; computes locals, commits at the end."""
+        reset = evidence.reset
+        confirmation = reset.confirmation
+        m, now = confirmation.exposure_ns, evidence.t_ns
+        if m > now:
+            raise c.ContractError("reset confirmation exposure is after the group time")
+        if m <= self._last_fused_ns:
+            raise c.ContractError("reset confirmation exposure must follow the last fused update")
+        scale = _NOISE_SCALE[old.status]
+        state0 = np.r_[_pose_values(confirmation.T_WB), 0.0, 0.0, 0.0]
+        P0 = np.diag(np.r_[POSE_STD, INITIAL_STD[3:]] ** 2)
+        aux = _auxiliary(confirmation.T_WB, m, c.AuxSource.PNP)
+        state, P = _predict(state0, P0, now - m, scale)
+        status = _status(aux.valid, now - m, now - m, True, True, False)
+        result = c.Estimate(
+            t_ns=now, group_id=evidence.group_id, state=state, P=(P + P.T) * 0.5,
+            status=status, branch=c.Branch.UNKNOWN,
+            evidence_kinds=(c.EvidenceKind.RECOVERY_RESET,), reason=reset.reason,
+            auxiliary=aux, max_support_exposure_ns=m,
+        )
+        histories = {camera: OrderedDict((stamp, snap) for stamp, snap in history.items()
+                                         if stamp >= m)
+                     for camera, history in self._history.items()}
+        cached = []
+        for image in evidence.frame_set.images:
+            if image.exposure_ns < m:
+                continue
+            cached_state, cached_P = _predict(state0, P0, image.exposure_ns - m, scale)
+            cached.append((image, c.SearchSnapshot(
+                t_ns=image.exposure_ns, state=cached_state, P=cached_P, status=c.Status.TRACKING,
+                branch=c.Branch.UNKNOWN, auxiliary=aux,
+            )))
+        # Commit only after every output/cache record validates.
+        self.estimate = result
+        self._last_pnp_ns = self._last_visual_ns = self._last_fused_ns = m
+        self._reset_ns = m
+        self._history = histories
+        self._store_snapshots(evidence, cached, now)
+        return result
+
+    def _store_snapshots(self, evidence, cached, now):
+        """Record every image exposure, cache the given snapshots and prune the history."""
+        for image in evidence.frame_set.images:
             self._last_exposure[image.camera_id] = image.exposure_ns
+        for image, snapshot in cached:
             history = self._history.setdefault(image.camera_id, OrderedDict())
             history[image.exposure_ns] = snapshot
         for history in self._history.values():
             while history and (len(history) > c.HISTORY_MAX_FRAMES
                                or next(iter(history)) < now - c.HISTORY_MAX_AGE_NS):
                 history.popitem(last=False)
-        return result
