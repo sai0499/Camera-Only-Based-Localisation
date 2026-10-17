@@ -85,7 +85,7 @@ def select_initial_pose(gt_path: Path, bounds: Any) -> Any:
     """Return the ``InitialPose`` of the first GT row with ``bounds.contains(t)``.
 
     Every stamp is parsed exactly and the whole file must be strictly increasing.
-    Extra columns (e.g. organizer ``z``) are ignored.
+    Column names must be unique; extra columns (e.g. organizer ``z``) are ignored.
     """
     contracts = _contracts()
     try:
@@ -99,7 +99,10 @@ def _select(contracts: ModuleType, gt_path: Path, bounds: Any) -> Any:
     previous: int | None = None
     with open(gt_path, encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle)
-        missing = [c for c in REQUIRED_COLUMNS if c not in (reader.fieldnames or ())]
+        columns = reader.fieldnames or ()
+        if len(columns) != len(set(columns)):
+            raise contracts.ContractError(f"{gt_path}: duplicate CSV column names")
+        missing = [c for c in REQUIRED_COLUMNS if c not in columns]
         if missing:
             raise contracts.ContractError(f"{gt_path}: missing columns {missing}")
         for row in reader:

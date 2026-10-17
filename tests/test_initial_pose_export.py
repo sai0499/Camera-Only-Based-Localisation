@@ -82,6 +82,25 @@ def test_open_end_runs_to_end_of_file(tmp_path):
 
 
 @pytest.mark.parametrize(
+    ("header", "row"),
+    [
+        (("timestamp_ns", "x", "x", "y", "yaw"), (100, 1.0, 999.0, 2.0, 0.1)),
+        (("timestamp_ns", "timestamp_ns", "x", "y", "yaw"), (100, 200, 1.0, 2.0, 0.1)),
+        (("timestamp_ns", "x", "y", "yaw", "z", "z"), (100, 1.0, 2.0, 0.1, 3.0, 4.0)),
+    ],
+    ids=["duplicate_x", "duplicate_timestamp", "duplicate_extra_column"],
+)
+def test_duplicate_headers_exit_1_without_writing(tmp_path, capsys, header, row):
+    gt = _write_gt(tmp_path / "gt.csv", [row], header=header)
+    out = tmp_path / "pose.json"
+    with pytest.raises(contracts.ContractError, match="duplicate CSV column"):
+        exporter.select_initial_pose(gt, exporter.resolve_bounds(None, "0", None))
+    assert _run(gt, out, "--start-ns", "0") == 1
+    assert not out.exists()
+    assert "duplicate CSV column" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize(
     "stamps",
     [(100, 100, 300), (100, 300, 200), (100, "1.5e18", 300)],
     ids=["duplicate", "decreasing", "float"],

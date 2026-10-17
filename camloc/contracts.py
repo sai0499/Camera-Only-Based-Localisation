@@ -2171,7 +2171,9 @@ class AnchorResult(_Record):
         """Raise ``ContractError`` unless this result answers ``request``.
 
         The job id, purpose, camera, source group, source exposure, map id and preprocessing
-        id must equal the request's. C calls this before handing the result off.
+        id must equal the request's. A nonempty request.reference_ids also bounds the
+        matched references; an empty tuple permits retrieval inside the job. C calls this
+        before handing the result off.
         """
         if not isinstance(request, AnchorRequest):
             raise ContractError(
@@ -2189,6 +2191,13 @@ class AnchorResult(_Record):
                 f"AnchorResult (job {self.job_id}) does not answer the AnchorRequest (job "
                 f"{request.job_id}): " + "; ".join(differences)
             )
+        if request.reference_ids:
+            unexpected = sorted(set(self.matched_reference_ids).difference(request.reference_ids))
+            if unexpected:
+                raise ContractError(
+                    f"AnchorResult.matched_reference_ids: {unexpected} are outside the "
+                    f"request's reference_ids {request.reference_ids}"
+                )
 
 
 @dataclasses.dataclass(frozen=True, slots=True, kw_only=True, eq=False)
@@ -2202,6 +2211,8 @@ class RecoveryReset(_Record):
     such as "confirmed_recovery". C emits the record only after confirmation, as
     ``GroupEvidence.reset``, and after that step passes it to ``MappedTracker.reset`` and
     ``TrackProjector.reset``. ``reset_id`` (>= 0) identifies the reset within a run.
+    Both poses must use the same map. Same-camera poses must also share calibration and
+    preprocessing identities; different cameras may have camera-specific geometry IDs.
     """
 
     reset_id: int
@@ -2220,6 +2231,17 @@ class RecoveryReset(_Record):
         confirmation = _normalize(self, "confirmation", _check_accepted_pose)
         _normalize(self, "jump_m", _check_float, lo=0.0)
         _normalize(self, "reason", check_reason)
+
+        identities = ("map_id",)
+        if candidate.camera_id == confirmation.camera_id:
+            identities += ("calibration_id", "preprocessing_id")
+        for field_name in identities:
+            first, later = getattr(candidate, field_name), getattr(confirmation, field_name)
+            if first != later:
+                raise ContractError(
+                    f"RecoveryReset.confirmation.{field_name}: {later!r} differs from the "
+                    f"candidate's {first!r}"
+                )
 
         gap = confirmation.exposure_ns - candidate.exposure_ns
         if gap < RECOVERY_CONFIRM_MIN_NS:
@@ -2272,10 +2294,10 @@ class GroupEvidence(_Record):
     records and ``unused`` accepted records that C did not consume, each with C's reason.
     Every record, and a reset's confirmation, must be measured on this group's own image of
     its camera, so neither stale nor future evidence enters the group, and no record object
-    may appear twice, including a consumed reset confirmation. A consumed pose or reset
-    confirmation must match its image's calibration; incompatible evidence can still be
-    logged in ``rejected`` or ``unused``. A reset's group id/time must match this group.
-    ``consumed_kinds()`` names the consumed hierarchy level.
+    may appear twice, including nested handoff poses and a consumed reset confirmation.
+    A consumed pose or reset confirmation must match its image's calibration; incompatible
+    evidence can still be logged in ``rejected`` or ``unused``. A reset's group id/time must
+    match this group. ``consumed_kinds()`` names the consumed hierarchy level.
     """
 
     frame_set: FrameSet
@@ -2424,6 +2446,11 @@ def _validate_group(group: GroupEvidence) -> None:
     placed += [(f"rejected[{index}]", record) for index, record in enumerate(group.rejected)]
     placed += [
         (f"unused[{index}].evidence", item.evidence) for index, item in enumerate(group.unused)
+    ]
+    placed += [
+        (f"{place}.pose", record.pose)
+        for place, record in placed
+        if isinstance(record, HandoffEvidence) and record.pose is not None
     ]
     first_place: dict[int, str] = {}
     for place, record in placed:

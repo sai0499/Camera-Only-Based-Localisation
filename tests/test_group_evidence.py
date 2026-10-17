@@ -118,6 +118,26 @@ def test_anchor_result_check_against_matching_and_other_job():
         factories.make_anchor_result(job_id=8).check_against(request)
 
 
+@pytest.mark.parametrize("matched", [(999,), (3, 999)])
+def test_anchor_result_rejects_matches_outside_fixed_request(matched):
+    request = factories.make_anchor_request(reference_ids=(3, 8))
+    result = factories.make_anchor_result(matched_reference_ids=matched, remaining_candidate_ids=())
+    with pytest.raises(c.ContractError, match=r"matched_reference_ids: .*reference_ids"):
+        result.check_against(request)
+
+
+@pytest.mark.parametrize(
+    ("requested", "matched"), [((), (999,)), ((3, 8), (8,)), ((3, 8), (8, 3)), ((3, 8), ())]
+)
+def test_anchor_result_allows_retrieval_subsets_and_failed_jobs(requested, matched):
+    request = factories.make_anchor_request(reference_ids=requested)
+    result = factories.make_anchor_result(
+        matched_reference_ids=matched, remaining_candidate_ids=(),
+        status=c.AnchorStatus.OK if matched else c.AnchorStatus.FAILED,
+    )
+    result.check_against(request)
+
+
 # ---------------------------------------------------------------------------------------
 # RecoveryReset and UnusedEvidence
 # ---------------------------------------------------------------------------------------
@@ -138,6 +158,38 @@ def test_recovery_reset_confirmation_boundary_is_50_ms():
 def test_recovery_reset_rejected_candidate_raises_rejected_evidence():
     with pytest.raises(c.RejectedEvidenceError, match=r"^RecoveryReset\.candidate: "):
         factories.make_recovery_reset(candidate=_rejected_pose(exposure_ns=EXPOSURE_NS - 10**8))
+
+
+@pytest.mark.parametrize("field", ["map_id", "preprocessing_id", "calibration_id"])
+def test_recovery_reset_rejects_incompatible_same_camera_assets(field):
+    candidate = factories.make_pose_evidence(
+        source=c.PoseSource.CANDIDATE,
+        exposure_ns=EXPOSURE_NS - c.RECOVERY_CONFIRM_MIN_NS,
+        **{field: "different_asset"},
+    )
+    with pytest.raises(c.ContractError, match=rf"^RecoveryReset\.confirmation\.{field}:"):
+        factories.make_recovery_reset(candidate=candidate)
+
+
+def test_recovery_reset_allows_camera_specific_calibration_and_preprocessing():
+    candidate = factories.make_pose_evidence(
+        source=c.PoseSource.CANDIDATE,
+        exposure_ns=EXPOSURE_NS - c.RECOVERY_CONFIRM_MIN_NS,
+        preprocessing_id="front_pixels",
+    )
+    confirmation = factories.make_pose_evidence(
+        camera_id=c.SECONDARY_CAMERA, source=c.PoseSource.CANDIDATE,
+        exposure_ns=EXPOSURE_NS + STEP_NS, preprocessing_id="rear_pixels",
+    )
+    reset = factories.make_recovery_reset(
+        candidate=candidate, confirmation=confirmation, t_ns=EXPOSURE_NS + STEP_NS
+    )
+    assert factories.make_group_evidence(reset=reset).reset is reset
+    with pytest.raises(c.ContractError, match=r"^RecoveryReset\.confirmation\.map_id:"):
+        factories.make_recovery_reset(
+            candidate=dataclasses.replace(candidate, map_id="different_map"),
+            confirmation=confirmation,
+        )
 
 
 def test_unused_evidence_rejects_producer_rejected_record():
@@ -243,7 +295,12 @@ def test_group_rejects_reset_confirmation_with_another_calibration():
     confirmation = factories.make_pose_evidence(
         source=c.PoseSource.CANDIDATE, calibration_id="other_calibration"
     )
-    reset = factories.make_recovery_reset(confirmation=confirmation)
+    reset = factories.make_recovery_reset(
+        candidate=dataclasses.replace(
+            confirmation, exposure_ns=EXPOSURE_NS - c.RECOVERY_CONFIRM_MIN_NS
+        ),
+        confirmation=confirmation,
+    )
     with pytest.raises(c.ContractError, match=r"^GroupEvidence\.reset\.confirmation\.calibration_id:"):
         factories.make_group_evidence(reset=reset)
 
@@ -275,6 +332,23 @@ def test_group_rejects_reset_confirmation_also_listed_as_unused():
     unused = factories.make_unused_evidence(evidence=reset.confirmation)
     with pytest.raises(c.ContractError, match=r"already appears as reset\.confirmation"):
         factories.make_group_evidence(reset=reset, unused=(unused,))
+
+
+@pytest.mark.parametrize("place", ["pose", "unused", "rejected"])
+def test_group_rejects_handoff_nested_pose_also_listed_as_unused(place):
+    handoff = factories.make_handoff_evidence(
+        accepted=place != "rejected", reason="failed_handoff" if place == "rejected" else "accepted"
+    )
+    duplicate = factories.make_unused_evidence(evidence=handoff.pose)
+    slots = {"unused": (duplicate,)}
+    if place == "unused":
+        slots["unused"] = (factories.make_unused_evidence(evidence=handoff), duplicate)
+    elif place == "rejected":
+        slots["rejected"] = (handoff,)
+    else:
+        slots["pose"] = handoff
+    with pytest.raises(c.ContractError, match=r"already appears"):
+        factories.make_group_evidence(**slots)
 
 
 def test_group_rejects_accepted_record_in_rejected():
