@@ -1,0 +1,53 @@
+{
+  "review_date": "2026-10-17",
+  "scope": "Final research document consistency and existing artifact integrity; no camera-localizer implementation or performance test.",
+  "known_condition_rows_with_owner_action_gate": 26,
+  "document_consistency_assertions_passed": true,
+  "json_evidence_parse_passed": true,
+  "original_bag_hash_verified": true,
+  "active_manifest_inputs_artifacts_and_code_verified": true,
+  "organizer_update_files_match_prior_audit": true,
+  "verified_sha256": {
+    "23-00-38_cut_120m_update/map.mcap": "648e8cf954d8cd39823ca31c0b62d89c8fd76b170df999ac2e3d4327439972ef",
+    "tools/evaluate.py": "3a14b712f21304040d52fccd0b6624970c7aec9b9b521c0e2c33c6b6cfcd3f8e",
+    "tools/extract_gt.py": "eba5903bc574b2a265c671e1221993d61d0885210c4a8b2f07f6929ebd388e8e",
+    "23-00-38_cut_120m_update/tools/track_frame.py": "13f2d55d90a82a4932d82e952e0455a7f89da76ae9910bf044de0c1090620961",
+    "23-00-38_cut_120m_update/tools/evaluate.py": "ec8a7f5b644bf1f6fd4a8679c9e9fe3fe64b9bf668489eb5d5d584f7f859b421",
+    "23-00-38_cut_120m_update/tools/convert.py": "8fc4f6951fa3f9d4caf523b64194746d5ea4c223127ec7812f6d6e62a4b5d580",
+    "23-00-38_cut_120m_update/tools/extract_gt.py": "583b3875d7f8f1bbb11c482b84a996659aea320bc1c3ae4b06a94b38a86f5979",
+    "task_docs/build_split.json": "894b41790af50e2f555a34001ef00821164ebc4f2f2589eb2e24280088c09222",
+    "evaluation/reference_eval.py": "3a3ec7c342b3b7178352fd2139abb0e86e4f2e8b84e7c52878d5eea83c25c5b9",
+    "evaluation/native_bridge.py": "cfb1ba85d27716cc695e13fa83325a48792fd9d7d4d9d07f0af0f784f28bd46b",
+    "evaluation/reference_reconciled/camera_stamps.npz": "2eaa42c4754af0b64b2441dbe3dec469e6be524affabaa0e5d1d83530674a9fa",
+    "evaluation/reference_reconciled/gt_state_reconciled.csv": "7ee7239419b2cdef2c82758d26a2464ff020932d75a7056c4b56fec11fffbad0",
+    "evaluation/reference_reconciled/gt_tf.csv": "84398ecf1b655cf3d1131cb99d465f05861c2c1d3695d37727abf54fdbc31968",
+    "evaluation/reference_reconciled/native_reference_bridge.npz": "642228cb57afd2fda072c167b4d6c768f73729befaf42f8765b15f8639fca46e",
+    "evaluation/reference_reconciled/PLUMBING_ONLY.txt": "4cc7d9db3005c821b2a8c923ba664d9d4bc64cb0663d5c5df84233da9f7aab49",
+    "evaluation/reference_reconciled/reconciliation.json": "395a335edf9306253487ffd1ca7189a50e5e6a0fedfc63f59ae0741d82eb6ba7",
+    "evaluation/reference_reconciled/source_state_native.csv": "22d9131df5462afb648da9b07db1bc89ba646b4e405868e421513a9783eb8e32",
+    "c0_2026-10-13_22-53-42_camloc_0.mcap": "fe5a0b9565b1bc03dd1ad775645722645e135b2f19012cf7bc815a8bcb91d613",
+    "23-00-38_cut_120m_update/tools/README.md": "a7ce4b59a3c9acb8849438a6e2689a81f56c39249c29bd9b2ce2b7796af5e9db"
+  },
+  "read_only_protected_inventory": {
+    "README.md": {
+      "sha256": "8085d0cc12b1c02d9e80e308963e3f5dfa0aef324f19bb45afb8118f2ca95896",
+      "bytes": 5576,
+      "scope": "Read-only inventory; not a comparison against a historical hash."
+    },
+    "metadata.yaml": {
+      "sha256": "e8829d41396335883a121b7ea01c0f46221909fd5a62ffd284cbf9b73793b059",
+      "bytes": 14937,
+      "scope": "Read-only inventory; not a comparison against a historical hash."
+    },
+    "task_docs/Constructor Labs - Camera-based localization on a race track.pdf": {
+      "sha256": "97f249462617adc7de5f20ae73b0963a32a22de93f2b224d2df36c0b467b2e68",
+      "bytes": 81902,
+      "scope": "Read-only inventory; not a comparison against a historical hash."
+    }
+  },
+  "localizer_code_changed": false,
+  "evaluation_code_changed": false,
+  "split_file_changed": false,
+  "localizer_gpu_or_high_rate_benchmark_run": false,
+  "existing_tests_not_rerun": "Documentation-only revision; exact active adapter, bridge, reference artifacts and split hashes remain verified. Prior test results are not relabeled as new tests."
+}

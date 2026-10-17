@@ -1,0 +1,16 @@
+* text=auto eol=lf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+*.pdf binary
+*.png binary
+*.jpg binary
+*.mcap binary
+*.mp4 binary
+*.npz binary
+# Preserve byte identities used by the evaluation manifests.
+/README.md -text
+/metadata.yaml -text
+/tools/** -text
+/23-00-38_cut_120m_update/** -text
+/evaluation/** -text
+/task_docs/build_split.json -text

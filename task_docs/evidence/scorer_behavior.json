@@ -1,0 +1,34 @@
+{
+  "valid_10hz": {
+    "error": null,
+    "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000\nlongitudinal RMSE [m]  0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+  },
+  "one_row": {
+    "error": "IndexError: too many indices for array: array is 0-dimensional, but 1 were indexed",
+    "stdout": ""
+  },
+  "duplicate_rows": {
+    "error": null,
+    "stdout": "poses submitted        60   evaluated 60\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000\nlongitudinal RMSE [m]  0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+  },
+  "nonfinite_position": {
+    "error": null,
+    "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\nposition RMSE  [m]     nan   <- SCORE (lower is better)\nposition median/p95    nan / nan\nlateral RMSE   [m]     nan\nlongitudinal RMSE [m]  nan\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          0.0 %\nwithin 0.50 m          0.0 %\nwithin 1.00 m          0.0 %\n"
+  },
+  "translated_1m": {
+    "error": null,
+    "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\nposition RMSE  [m]     1.000   <- SCORE (lower is better)\nposition median/p95    1.000 / 1.000\nlateral RMSE   [m]     0.000\nlongitudinal RMSE [m]  1.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          0.0 %\nwithin 0.50 m          0.0 %\nwithin 1.00 m          0.0 %\n"
+  },
+  "one_hz_only": {
+    "error": null,
+    "stdout": "poses submitted        3   evaluated 3\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000\nlongitudinal RMSE [m]  0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+  },
+  "unordered": {
+    "error": null,
+    "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000\nlongitudinal RMSE [m]  0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+  },
+  "no_overlap": {
+    "error": "IndexError: index -1 is out of bounds for axis 0 with size 0",
+    "stdout": "poses submitted        2   evaluated 0\ncoverage (1 s bins)    0.0 %   (>= 90 % to be ranked)\nposition RMSE  [m]     nan   <- SCORE (lower is better)\n"
+  }
+}

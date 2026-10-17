@@ -1,0 +1,265 @@
+{
+  "scope": "Public source and package metadata only; this is not an installed runtime lock. No models or project data uploaded.",
+  "packages": {
+    "torch": {
+      "version": "2.7.1",
+      "metadata_url": "https://pypi.org/pypi/torch/2.7.1/json",
+      "requires_python": ">=3.9.0",
+      "requires_dist": [
+        "filelock",
+        "typing-extensions>=4.10.0",
+        "setuptools; python_version >= \"3.12\"",
+        "sympy>=1.13.3",
+        "networkx",
+        "jinja2",
+        "fsspec",
+        "nvidia-cuda-nvrtc-cu12==12.6.77; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cuda-runtime-cu12==12.6.77; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cuda-cupti-cu12==12.6.80; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cudnn-cu12==9.5.1.17; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cublas-cu12==12.6.4.1; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cufft-cu12==11.3.0.4; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-curand-cu12==10.3.7.77; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cusolver-cu12==11.7.1.2; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cusparse-cu12==12.5.4.2; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cusparselt-cu12==0.6.3; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-nccl-cu12==2.26.2; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-nvtx-cu12==12.6.77; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-nvjitlink-cu12==12.6.85; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "nvidia-cufile-cu12==1.11.1.6; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "triton==3.3.1; platform_system == \"Linux\" and platform_machine == \"x86_64\"",
+        "optree>=0.13.0; extra == \"optree\"",
+        "opt-einsum>=3.3; extra == \"opt-einsum\""
+      ],
+      "compatible_windows_wheels": [
+        "torch-2.7.1-cp312-cp312-win_amd64.whl"
+      ],
+      "universal_wheel": false,
+      "installed_or_smoke_tested": false
+    },
+    "torchvision": {
+      "version": "0.22.1",
+      "metadata_url": "https://pypi.org/pypi/torchvision/0.22.1/json",
+      "requires_python": ">=3.9",
+      "requires_dist": [
+        "numpy",
+        "torch==2.7.1",
+        "pillow!=8.3.*,>=5.3.0",
+        "gdown>=4.7.3; extra == \"gdown\"",
+        "scipy; extra == \"scipy\""
+      ],
+      "compatible_windows_wheels": [
+        "torchvision-0.22.1-cp312-cp312-win_amd64.whl"
+      ],
+      "universal_wheel": false,
+      "installed_or_smoke_tested": false
+    },
+    "numpy": {
+      "version": "2.3.5",
+      "metadata_url": "https://pypi.org/pypi/numpy/2.3.5/json",
+      "requires_python": ">=3.11",
+      "requires_dist": null,
+      "compatible_windows_wheels": [
+        "numpy-2.3.5-cp312-cp312-win_amd64.whl"
+      ],
+      "universal_wheel": false,
+      "installed_or_smoke_tested": false
+    },
+    "opencv-python": {
+      "version": "4.13.0.92",
+      "metadata_url": "https://pypi.org/pypi/opencv-python/4.13.0.92/json",
+      "requires_python": ">=3.6",
+      "requires_dist": [
+        "numpy<2.0; python_version < \"3.9\"",
+        "numpy>=2; python_version >= \"3.9\""
+      ],
+      "compatible_windows_wheels": [
+        "opencv_python-4.13.0.92-cp37-abi3-win_amd64.whl"
+      ],
+      "universal_wheel": false,
+      "installed_or_smoke_tested": false
+    },
+    "pycolmap": {
+      "version": "3.13.0",
+      "metadata_url": "https://pypi.org/pypi/pycolmap/3.13.0/json",
+      "requires_python": ">=3.9",
+      "requires_dist": [
+        "numpy"
+      ],
+      "compatible_windows_wheels": [
+        "pycolmap-3.13.0-cp312-cp312-win_amd64.whl"
+      ],
+      "universal_wheel": false,
+      "installed_or_smoke_tested": false
+    },
+    "kornia": {
+      "version": "0.8.2",
+      "metadata_url": "https://pypi.org/pypi/kornia/0.8.2/json",
+      "requires_python": ">=3.9",
+      "requires_dist": [
+        "kornia_rs>=0.1.9",
+        "packaging",
+        "torch>=2.0.0",
+        "accelerate; extra == \"dev\"",
+        "coverage; extra == \"dev\"",
+        "diffusers; extra == \"dev\"",
+        "ivy>=1.0.0.0; extra == \"dev\"",
+        "mypy; extra == \"dev\"",
+        "numpy<3; extra == \"dev\"",
+        "onnx; extra == \"dev\"",
+        "onnxruntime; extra == \"dev\"",
+        "pillow; extra == \"dev\"",
+        "pre-commit>=2; extra == \"dev\"",
+        "pytest==8.3.5; extra == \"dev\"",
+        "pytest-cov; extra == \"dev\"",
+        "pytest-timeout; extra == \"dev\"",
+        "requests; extra == \"dev\"",
+        "setuptools>=61.2; extra == \"dev\"",
+        "transformers<4.57; extra == \"dev\"",
+        "types-requests; extra == \"dev\"",
+        "accelerate; extra == \"x\"",
+        "onnxruntime-gpu>=1.16; sys_platform != \"darwin\" and extra == \"x\"",
+        "furo; extra == \"docs\"",
+        "ivy>=1.0.0.0; extra == \"docs\"",
+        "kornia_moons; extra == \"docs\"",
+        "matplotlib; extra == \"docs\"",
+        "onnx; extra == \"docs\"",
+        "onnxruntime; extra == \"docs\"",
+        "opencv-python; extra == \"docs\"",
+        "PyYAML>=5.1; extra == \"docs\"",
+        "sphinx; extra == \"docs\"",
+        "sphinx-autodoc-defaultargs; extra == \"docs\"",
+        "sphinx-autodoc-typehints; extra == \"docs\"",
+        "sphinx-copybutton>=0.3; extra == \"docs\"",
+        "sphinx-design; extra == \"docs\"",
+        "sphinx-notfound-page; extra == \"docs\"",
+        "sphinxcontrib-bibtex; extra == \"docs\"",
+        "sphinxcontrib-gtagjs; extra == \"docs\"",
+        "sphinxcontrib-youtube; extra == \"docs\""
+      ],
+      "compatible_windows_wheels": [],
+      "universal_wheel": true,
+      "installed_or_smoke_tested": false
+    },
+    "scipy": {
+      "version": "1.16.3",
+      "metadata_url": "https://pypi.org/pypi/scipy/1.16.3/json",
+      "requires_python": ">=3.11",
+      "requires_dist": [
+        "numpy<2.6,>=1.25.2",
+        "pytest>=8.0.0; extra == \"test\"",
+        "pytest-cov; extra == \"test\"",
+        "pytest-timeout; extra == \"test\"",
+        "pytest-xdist; extra == \"test\"",
+        "asv; extra == \"test\"",
+        "mpmath; extra == \"test\"",
+        "gmpy2; extra == \"test\"",
+        "threadpoolctl; extra == \"test\"",
+        "scikit-umfpack; extra == \"test\"",
+        "pooch; extra == \"test\"",
+        "hypothesis>=6.30; extra == \"test\"",
+        "array-api-strict>=2.3.1; extra == \"test\"",
+        "Cython; extra == \"test\"",
+        "meson; extra == \"test\"",
+        "ninja; sys_platform != \"emscripten\" and extra == \"test\"",
+        "sphinx<8.2.0,>=5.0.0; extra == \"doc\"",
+        "intersphinx_registry; extra == \"doc\"",
+        "pydata-sphinx-theme>=0.15.2; extra == \"doc\"",
+        "sphinx-copybutton; extra == \"doc\"",
+        "sphinx-design>=0.4.0; extra == \"doc\"",
+        "matplotlib>=3.5; extra == \"doc\"",
+        "numpydoc; extra == \"doc\"",
+        "jupytext; extra == \"doc\"",
+        "myst-nb>=1.2.0; extra == \"doc\"",
+        "pooch; extra == \"doc\"",
+        "jupyterlite-sphinx>=0.19.1; extra == \"doc\"",
+        "jupyterlite-pyodide-kernel; extra == \"doc\"",
+        "linkify-it-py; extra == \"doc\"",
+        "mypy==1.10.0; extra == \"dev\"",
+        "typing_extensions; extra == \"dev\"",
+        "types-psutil; extra == \"dev\"",
+        "pycodestyle; extra == \"dev\"",
+        "ruff>=0.0.292; extra == \"dev\"",
+        "cython-lint>=0.12.2; extra == \"dev\"",
+        "rich-click; extra == \"dev\"",
+        "doit>=0.36.0; extra == \"dev\"",
+        "pydevtool; extra == \"dev\""
+      ],
+      "compatible_windows_wheels": [
+        "scipy-1.16.3-cp312-cp312-win_amd64.whl"
+      ],
+      "universal_wheel": false,
+      "installed_or_smoke_tested": false
+    },
+    "h5py": {
+      "version": "3.15.1",
+      "metadata_url": "https://pypi.org/pypi/h5py/3.15.1/json",
+      "requires_python": ">=3.10",
+      "requires_dist": [
+        "numpy>=1.21.2"
+      ],
+      "compatible_windows_wheels": [
+        "h5py-3.15.1-cp312-cp312-win_amd64.whl"
+      ],
+      "universal_wheel": false,
+      "installed_or_smoke_tested": false
+    }
+  },
+  "repositories": {
+    "cvg/LightGlue": {
+      "branch": "main",
+      "commit": "eb42fee2d71449efb0aa5c10549752b5d75384d8",
+      "metadata_url": "https://api.github.com/repos/cvg/LightGlue/git/ref/heads/main"
+    },
+    "cvg/Hierarchical-Localization": {
+      "branch": "master",
+      "commit": "c13273bd0ecc2917a35910fd843712a1c6243193",
+      "metadata_url": "https://api.github.com/repos/cvg/Hierarchical-Localization/git/ref/heads/master"
+    },
+    "gmberton/EigenPlaces": {
+      "branch": "main",
+      "commit": "a2969f71d5ea31017443af490b15273ca4c50af1",
+      "metadata_url": "https://api.github.com/repos/gmberton/EigenPlaces/git/ref/heads/main"
+    }
+  },
+  "model_releases": {
+    "gmberton/EigenPlaces": {
+      "metadata_url": "https://api.github.com/repos/gmberton/EigenPlaces/releases/tags/v1.0",
+      "assets": [
+        {
+          "name": "ResNet18_512_eigenplaces.pth",
+          "bytes": 45836738,
+          "download_url": "https://github.com/gmberton/EigenPlaces/releases/download/v1.0/ResNet18_512_eigenplaces.pth",
+          "publisher_digest": null
+        }
+      ],
+      "weights_downloaded": false
+    },
+    "cvg/LightGlue": {
+      "metadata_url": "https://api.github.com/repos/cvg/LightGlue/releases/tags/v0.1_arxiv",
+      "assets": [
+        {
+          "name": "disk_lightglue.pth",
+          "bytes": 47631405,
+          "download_url": "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/disk_lightglue.pth",
+          "publisher_digest": null
+        }
+      ],
+      "weights_downloaded": false
+    }
+  },
+  "cuda_wheel_headers": {
+    "torch": {
+      "url": "https://download.pytorch.org/whl/cu128/torch-2.7.1%2Bcu128-cp312-cp312-win_amd64.whl",
+      "status": 200,
+      "content_length": "3273024349",
+      "downloaded": false
+    },
+    "torchvision": {
+      "url": "https://download.pytorch.org/whl/cu128/torchvision-0.22.1%2Bcu128-cp312-cp312-win_amd64.whl",
+      "status": 200,
+      "content_length": "7638377",
+      "downloaded": false
+    }
+  }
+}

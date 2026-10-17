@@ -1,0 +1,709 @@
+{
+  "review_date": "2026-10-17",
+  "organizer_announcement_supplied_by_user": "Additional data and materials, including the evaluation script for Option B, are available here",
+  "scope": "Option B evaluator/materials; complete option definition and referenced 35-second driving bag are not present in the local files.",
+  "map": {
+    "map_sha256": "648e8cf954d8cd39823ca31c0b62d89c8fd76b170df999ac2e3d4327439972ef",
+    "topics": {
+      "/constructor0/map_paths/rr/track_left": {
+        "schema": "nav_msgs/msg/Path",
+        "count": 1
+      },
+      "/constructor0/map_ar/pitlane_line": {
+        "schema": "nav_msgs/msg/Path",
+        "count": 1
+      },
+      "/constructor0/map_paths/rr/track_right": {
+        "schema": "nav_msgs/msg/Path",
+        "count": 1
+      },
+      "/constructor0/map_paths/rr/pitlane_left": {
+        "schema": "nav_msgs/msg/Path",
+        "count": 1
+      },
+      "/constructor0/map_paths/rr/pitlane_right": {
+        "schema": "nav_msgs/msg/Path",
+        "count": 1
+      },
+      "/constructor0/map_markers/rr": {
+        "schema": "visualization_msgs/msg/MarkerArray",
+        "count": 1
+      },
+      "/constructor0/map_markers/racing_line": {
+        "schema": "visualization_msgs/msg/MarkerArray",
+        "count": 1
+      },
+      "/constructor0/map_ar/racing_line": {
+        "schema": "nav_msgs/msg/Path",
+        "count": 1
+      },
+      "/constructor0/map_markers/pitlane_line": {
+        "schema": "visualization_msgs/msg/MarkerArray",
+        "count": 1
+      }
+    },
+    "messages": [
+      {
+        "topic": "/constructor0/map_paths/rr/track_left",
+        "schema": "nav_msgs/msg/Path",
+        "log_time_ns": "1791833156000000005",
+        "frame": "map",
+        "points": 5913,
+        "first_xyz": [
+          96.98821900933056,
+          343.04230168202383,
+          9.50418106908885
+        ],
+        "last_xyz": [
+          97.32972986990745,
+          342.7995689188694,
+          9.502729864582202
+        ],
+        "endpoint_gap_m": 0.4189880287013879,
+        "z_min_max": [
+          -0.4203262846496819,
+          10.119533420495248
+        ]
+      },
+      {
+        "topic": "/constructor0/map_paths/rr/track_right",
+        "schema": "nav_msgs/msg/Path",
+        "log_time_ns": "1791833156000000006",
+        "frame": "map",
+        "points": 6114,
+        "first_xyz": [
+          260.865445914359,
+          246.09856567311695,
+          2.9983825471652845
+        ],
+        "last_xyz": [
+          260.9314318963761,
+          245.84039867686857,
+          2.9887970754521733
+        ],
+        "endpoint_gap_m": 0.2666387613282035,
+        "z_min_max": [
+          -0.10293522708775257,
+          9.901701996640227
+        ]
+      },
+      {
+        "topic": "/constructor0/map_paths/rr/pitlane_left",
+        "schema": "nav_msgs/msg/Path",
+        "log_time_ns": "1791833156000000007",
+        "frame": "map",
+        "points": 2260,
+        "first_xyz": [
+          -293.16425495555393,
+          -106.26474621142314,
+          1.2793950020455451
+        ],
+        "last_xyz": [
+          45.52578292594555,
+          427.49985912822893,
+          10.019128944999373
+        ],
+        "endpoint_gap_m": 632.2119728563829,
+        "z_min_max": [
+          -5.375801793641934,
+          10.168350802740722
+        ]
+      },
+      {
+        "topic": "/constructor0/map_paths/rr/pitlane_right",
+        "schema": "nav_msgs/msg/Path",
+        "log_time_ns": "1791833156000000008",
+        "frame": "map",
+        "points": 2243,
+        "first_xyz": [
+          -280.9553866787756,
+          -106.2874217113984,
+          1.2021881671067216
+        ],
+        "last_xyz": [
+          59.119875113469746,
+          429.5501076390522,
+          9.829636912123094
+        ],
+        "endpoint_gap_m": 634.702666147943,
+        "z_min_max": [
+          -5.374480427709887,
+          9.951740909702114
+        ]
+      },
+      {
+        "topic": "/constructor0/map_markers/rr",
+        "schema": "visualization_msgs/msg/MarkerArray",
+        "log_time_ns": "1791833156000000009",
+        "markers": [
+          {
+            "ns": "track_left",
+            "id": 0,
+            "frame": "map",
+            "type": 4,
+            "pose": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "points": 5914,
+            "first_xyz": [
+              96.98821900933056,
+              343.04230168202383,
+              9.50418106908885
+            ],
+            "last_xyz": [
+              96.98821900933056,
+              343.04230168202383,
+              9.50418106908885
+            ],
+            "endpoint_gap_m": 0.0,
+            "z_min_max": [
+              -0.4203262846496819,
+              10.119533420495248
+            ]
+          },
+          {
+            "ns": "track_right",
+            "id": 1,
+            "frame": "map",
+            "type": 4,
+            "pose": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "points": 6115,
+            "first_xyz": [
+              260.865445914359,
+              246.09856567311695,
+              2.9983825471652845
+            ],
+            "last_xyz": [
+              260.865445914359,
+              246.09856567311695,
+              2.9983825471652845
+            ],
+            "endpoint_gap_m": 0.0,
+            "z_min_max": [
+              -0.10293522708775257,
+              9.901701996640227
+            ]
+          },
+          {
+            "ns": "pitlane_left",
+            "id": 2,
+            "frame": "map",
+            "type": 4,
+            "pose": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "points": 2260,
+            "first_xyz": [
+              -293.16425495555393,
+              -106.26474621142314,
+              1.2793950020455451
+            ],
+            "last_xyz": [
+              45.52578292594555,
+              427.49985912822893,
+              10.019128944999373
+            ],
+            "endpoint_gap_m": 632.2119728563829,
+            "z_min_max": [
+              -5.375801793641934,
+              10.168350802740722
+            ]
+          },
+          {
+            "ns": "pitlane_right",
+            "id": 3,
+            "frame": "map",
+            "type": 4,
+            "pose": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "points": 2243,
+            "first_xyz": [
+              -280.9553866787756,
+              -106.2874217113984,
+              1.2021881671067216
+            ],
+            "last_xyz": [
+              59.119875113469746,
+              429.5501076390522,
+              9.829636912123094
+            ],
+            "endpoint_gap_m": 634.702666147943,
+            "z_min_max": [
+              -5.374480427709887,
+              9.951740909702114
+            ]
+          }
+        ]
+      },
+      {
+        "topic": "/constructor0/map_markers/racing_line",
+        "schema": "visualization_msgs/msg/MarkerArray",
+        "log_time_ns": "1791833156000000050",
+        "markers": [
+          {
+            "ns": "racing_line",
+            "id": 0,
+            "frame": "map",
+            "type": 4,
+            "pose": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "points": 2961,
+            "first_xyz": [
+              -97.41911877634614,
+              697.2710568410023,
+              2.4378179085340914
+            ],
+            "last_xyz": [
+              -97.41911877634614,
+              697.2710568410023,
+              2.4378179085340914
+            ],
+            "endpoint_gap_m": 0.0,
+            "z_min_max": [
+              -0.3299078450407849,
+              9.901605792196415
+            ]
+          }
+        ]
+      },
+      {
+        "topic": "/constructor0/map_ar/pitlane_line",
+        "schema": "nav_msgs/msg/Path",
+        "log_time_ns": "1791833156000000060",
+        "frame": "map",
+        "points": 2960,
+        "first_xyz": [
+          -97.41951249154287,
+          697.2711849553866,
+          2.4378286528874953
+        ],
+        "last_xyz": [
+          -97.41951249154289,
+          697.2711849553866,
+          2.4378286528874957
+        ],
+        "endpoint_gap_m": 1.4217791915866692e-14,
+        "z_min_max": [
+          -5.360380159909341,
+          10.035628168432977
+        ]
+      },
+      {
+        "topic": "/constructor0/map_markers/pitlane_line",
+        "schema": "visualization_msgs/msg/MarkerArray",
+        "log_time_ns": "1791833156000000061",
+        "markers": [
+          {
+            "ns": "pitlane_line",
+            "id": 0,
+            "frame": "map",
+            "type": 4,
+            "pose": [
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              0.0,
+              1.0
+            ],
+            "points": 2961,
+            "first_xyz": [
+              -97.41951249154287,
+              697.2711849553866,
+              2.4378286528874953
+            ],
+            "last_xyz": [
+              -97.41951249154287,
+              697.2711849553866,
+              2.4378286528874953
+            ],
+            "endpoint_gap_m": 0.0,
+            "z_min_max": [
+              -5.360380159909341,
+              10.035628168432977
+            ]
+          }
+        ]
+      },
+      {
+        "topic": "/constructor0/map_ar/racing_line",
+        "schema": "nav_msgs/msg/Path",
+        "log_time_ns": "1791833156000000100",
+        "frame": "map",
+        "points": 2960,
+        "first_xyz": [
+          -97.41911877634614,
+          697.2710568410023,
+          2.4378179085340914
+        ],
+        "last_xyz": [
+          -97.41911913082133,
+          697.2710557514961,
+          2.437817910315935
+        ],
+        "endpoint_gap_m": 1.1457223155615367e-06,
+        "z_min_max": [
+          -0.3299078450407849,
+          9.901605792196415
+        ]
+      }
+    ],
+    "reference_lines": {
+      "pit": {
+        "lap_m": 2985.489335790161,
+        "points": 2960,
+        "valid_segments": 2959,
+        "zero_or_short_segments": 1
+      },
+      "track": {
+        "lap_m": 2976.875276595886,
+        "points": 2960,
+        "valid_segments": 2959,
+        "zero_or_short_segments": 1
+      }
+    }
+  },
+  "physical_border_compatibility": {
+    "track_left": {
+      "marker_points": 5914,
+      "path_points": 5913,
+      "original_marker_max_abs_coordinate_difference_m": 0.0,
+      "path_matches_original_after_explicit_main_loop_closure": true
+    },
+    "track_right": {
+      "marker_points": 6115,
+      "path_points": 6114,
+      "original_marker_max_abs_coordinate_difference_m": 0.0,
+      "path_matches_original_after_explicit_main_loop_closure": true
+    },
+    "pitlane_left": {
+      "marker_points": 2260,
+      "path_points": 2260,
+      "original_marker_max_abs_coordinate_difference_m": 0.0,
+      "path_matches_original_after_explicit_main_loop_closure": true
+    },
+    "pitlane_right": {
+      "marker_points": 2243,
+      "path_points": 2243,
+      "original_marker_max_abs_coordinate_difference_m": 0.0,
+      "path_matches_original_after_explicit_main_loop_closure": true
+    }
+  },
+  "native_state_coordinate_compatibility": {
+    "state_rows": 126574,
+    "first_timestamp_ns": "1791918157114146050",
+    "last_timestamp_ns": "1791919351506836679",
+    "lane_counts": {
+      "0": 13121,
+      "1": 113453
+    },
+    "nonfinite_counts": {
+      "x": 0,
+      "y": 0,
+      "yaw": 0,
+      "lane": 0,
+      "s": 0,
+      "n": 0,
+      "epsi": 0,
+      "s_pit": 0,
+      "n_pit": 0,
+      "epsi_pit": 0
+    },
+    "stored_sn_reconstruction": {
+      "track": {
+        "all_error_m_p0_p50_p95_max": [
+          0.7405243021805878,
+          14.616974380454192,
+          28.765060239379793,
+          37.40350050121046
+        ],
+        "active_lane_error_m_p50_p95_max": [
+          13.991007547216602,
+          28.92999400743606,
+          37.40350050121046
+        ],
+        "max_example": {
+          "timestamp_ns": "1791918667816386300",
+          "relative_s": 510.70224025,
+          "lane": 1,
+          "xy": [
+            13.5221,
+            975.1797
+          ],
+          "reconstructed_xy": [
+            48.247894535103455,
+            961.2821806656069
+          ]
+        }
+      },
+      "pit": {
+        "all_error_m_p0_p50_p95_max": [
+          0.7396166442145801,
+          14.410145697027746,
+          29.110689569223673,
+          58.36087284177665
+        ],
+        "active_lane_error_m_p50_p95_max": [
+          15.602539988757716,
+          25.098468753778267,
+          41.19206785907002
+        ],
+        "max_example": {
+          "timestamp_ns": "1791918626181435012",
+          "relative_s": 469.067288962,
+          "lane": 1,
+          "xy": [
+            296.324,
+            87.4403
+          ],
+          "reconstructed_xy": [
+            321.78338208646016,
+            34.92543217545287
+          ]
+        }
+      }
+    }
+  },
+  "xy_projection_diagnostic": {
+    "track": {
+      "reprojected_xy_roundtrip_m_p0_p50_p95_max": [
+        2.92703661765349e-09,
+        4.0087589471994906e-07,
+        6.079313554090583e-07,
+        0.4668579283476192
+      ],
+      "native_minus_projected_s_m_p0_p50_p95_max": [
+        -30.17322299999978,
+        -14.766908500000113,
+        -1.6360319500000402,
+        0.002698000000009415
+      ],
+      "native_minus_projected_n_m_p0_p50_p95_max": [
+        -1.071635,
+        -0.49740000000000006,
+        0.6609003499999992,
+        1.3673350000000002
+      ],
+      "nonfinite_projected_s_count": 0,
+      "nonfinite_projected_n_count": 0
+    },
+    "pit": {
+      "reprojected_xy_roundtrip_m_p0_p50_p95_max": [
+        1.4517125103581073e-09,
+        4.004214755488766e-07,
+        6.107756405425752e-07,
+        0.4299341048046719
+      ],
+      "native_minus_projected_s_m_p0_p50_p95_max": [
+        -64.80510400000003,
+        -14.495661499999983,
+        -1.636037599999986,
+        0.0027489999999943393
+      ],
+      "native_minus_projected_n_m_p0_p50_p95_max": [
+        -0.925123,
+        -0.261832,
+        0.49527134999999994,
+        0.8868510000000001
+      ],
+      "nonfinite_projected_s_count": 0,
+      "nonfinite_projected_n_count": 0
+    }
+  },
+  "tool_checks": {
+    "scorer_cases": {
+      "valid_combined_wrap_crossing": {
+        "error": null,
+        "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\n--- map x/y ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000   bias +0.000\nlongitudinal RMSE [m]  0.000   bias +0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n--- racing line s/n (all poses) ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nn (lateral) RMSE  [m]  0.000   bias +0.000\ns (along) RMSE    [m]  0.000   bias +0.000\nepsi RMSE     [deg]    0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n--- pit-lane line s/n (GT lane = pit) ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nn (lateral) RMSE  [m]  0.000   bias +0.000\ns (along) RMSE    [m]  0.000   bias +0.000\nepsi RMSE     [deg]    0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+      },
+      "xy_only": {
+        "error": null,
+        "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\n--- map x/y ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000   bias +0.000\nlongitudinal RMSE [m]  0.000   bias +0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+      },
+      "sn_only": {
+        "error": null,
+        "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\n--- racing line s/n (all poses) ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nn (lateral) RMSE  [m]  0.000   bias +0.000\ns (along) RMSE    [m]  0.000   bias +0.000\nepsi RMSE     [deg]    0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+      },
+      "one_row": {
+        "error": null,
+        "stdout": "poses submitted        1   evaluated 1\ncoverage (1 s bins)    33.3 %   (>= 90 % to be ranked)\n--- map x/y ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000   bias +0.000\nlongitudinal RMSE [m]  0.000   bias +0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\nNOT RANKED: coverage below threshold\n"
+      },
+      "duplicate_rows": {
+        "error": null,
+        "stdout": "poses submitted        60   evaluated 60\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\n--- map x/y ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000   bias +0.000\nlongitudinal RMSE [m]  0.000   bias +0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+      },
+      "nan_positions": {
+        "error": null,
+        "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\n--- map x/y ---\nposition RMSE  [m]     nan   <- SCORE (lower is better)\nposition median/p95    nan / nan\nlateral RMSE   [m]     nan   bias +nan\nlongitudinal RMSE [m]  nan   bias +nan\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          0.0 %\nwithin 0.50 m          0.0 %\nwithin 1.00 m          0.0 %\n"
+      },
+      "no_overlap": {
+        "error": null,
+        "stdout": "poses submitted        30   evaluated 0\ncoverage (1 s bins)    0.0 %   (>= 90 % to be ranked)\n"
+      },
+      "one_hz": {
+        "error": null,
+        "stdout": "poses submitted        3   evaluated 3\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\n--- map x/y ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000   bias +0.000\nlongitudinal RMSE [m]  0.000   bias +0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+      },
+      "timestamp_only": {
+        "error": null,
+        "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\n"
+      },
+      "pit_mask_excludes_mixed_and_track": {
+        "error": null,
+        "stdout": "poses submitted        30   evaluated 30\ncoverage (1 s bins)    100.0 %   (>= 90 % to be ranked)\n--- map x/y ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nlateral RMSE   [m]     0.000   bias +0.000\nlongitudinal RMSE [m]  0.000   bias +0.000\nyaw RMSE     [deg]     0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n--- racing line s/n (all poses) ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nn (lateral) RMSE  [m]  0.000   bias +0.000\ns (along) RMSE    [m]  0.000   bias +0.000\nepsi RMSE     [deg]    0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n--- pit-lane line s/n (GT lane = pit) ---\nposition RMSE  [m]     0.000   <- SCORE (lower is better)\nposition median/p95    0.000 / 0.000\nn (lateral) RMSE  [m]  0.000   bias +0.000\ns (along) RMSE    [m]  0.000   bias +0.000\nepsi RMSE     [deg]    0.000\nwithin 0.25 m          100.0 %\nwithin 0.50 m          100.0 %\nwithin 1.00 m          100.0 %\n"
+      }
+    },
+    "coordinate_self_checks": "passed: left-positive n, midsegment inverse, lap/yaw wrap, duplicated endpoint",
+    "projection_jump_test": {
+      "local_window_reconstruction_error_m": 174.5110976745056,
+      "global_reconstruction_error_m": 3.7644678828233557e-16,
+      "gap_over_one_second_restarts_globally": true
+    },
+    "scope": "synthetic scorer and coordinate checks, not localization results"
+  },
+  "algorithm_results": "None; this review checks data/tool compatibility and synthetic cases only.",
+  "organizer_files_preserved": {
+    "23-00-38_cut_120m_update/map.mcap": {
+      "bytes": 1158729,
+      "sha256": "648e8cf954d8cd39823ca31c0b62d89c8fd76b170df999ac2e3d4327439972ef"
+    },
+    "23-00-38_cut_120m_update/tools/convert.py": {
+      "bytes": 1860,
+      "sha256": "8fc4f6951fa3f9d4caf523b64194746d5ea4c223127ec7812f6d6e62a4b5d580"
+    },
+    "23-00-38_cut_120m_update/tools/evaluate.py": {
+      "bytes": 5060,
+      "sha256": "ec8a7f5b644bf1f6fd4a8679c9e9fe3fe64b9bf668489eb5d5d584f7f859b421"
+    },
+    "23-00-38_cut_120m_update/tools/extract_gt.py": {
+      "bytes": 2884,
+      "sha256": "583b3875d7f8f1bbb11c482b84a996659aea320bc1c3ae4b06a94b38a86f5979"
+    },
+    "23-00-38_cut_120m_update/tools/README.md": {
+      "bytes": 2717,
+      "sha256": "a7ce4b59a3c9acb8849438a6e2689a81f56c39249c29bd9b2ce2b7796af5e9db"
+    },
+    "23-00-38_cut_120m_update/tools/track_frame.py": {
+      "bytes": 5315,
+      "sha256": "13f2d55d90a82a4932d82e952e0455a7f89da76ae9910bf044de0c1090620961"
+    }
+  },
+  "final_checks": {
+    "original_split_boundaries_preserved": true,
+    "all_six_organizer_files_hash_verified_unchanged": true,
+    "document_reference_checks_passed": true,
+    "option_b_definition": "unknown_to_user_and_absent_from_local_brief_and_update_readme"
+  },
+  "second_readthrough": {
+    "purpose": "Ego means the observing vehicle; the supplied programs are GT/conversion/evaluation utilities for the same pose-estimation problem. No code reads camera images or estimates pose from images.",
+    "option_b_interpretation": "Full label remains undefined, but current x/y/yaw output is explicitly accepted. Do not infer that Option B is an s/n-only task or necessarily a separate localization problem.",
+    "source_files_hash_verified": 6,
+    "map_decoding": "All nine previously decoded static messages remain current; actual map hash matches the retained audit.",
+    "xy_scorer_parity": [
+      {
+        "case": "valid_nonzero_errors_yaw_wrap",
+        "same_reported_xy_yaw_metrics": true,
+        "metrics": {
+          "coverage (1 s bins)": [
+            "100.0"
+          ],
+          "position RMSE  [m]": [
+            "0.224"
+          ],
+          "position median/p95": [
+            "0.224",
+            "0.224"
+          ],
+          "lateral RMSE   [m]": [
+            "0.122"
+          ],
+          "longitudinal RMSE [m]": [
+            "0.188"
+          ],
+          "yaw RMSE     [deg]": [
+            "0.573"
+          ],
+          "within 0.25 m": [
+            "100.0"
+          ],
+          "within 0.50 m": [
+            "100.0"
+          ],
+          "within 1.00 m": [
+            "100.0"
+          ]
+        }
+      },
+      {
+        "case": "partial_coverage",
+        "same_reported_xy_yaw_metrics": true,
+        "metrics": {
+          "coverage (1 s bins)": [
+            "33.3"
+          ],
+          "position RMSE  [m]": [
+            "0.224"
+          ],
+          "position median/p95": [
+            "0.224",
+            "0.224"
+          ],
+          "lateral RMSE   [m]": [
+            "0.102"
+          ],
+          "longitudinal RMSE [m]": [
+            "0.199"
+          ],
+          "yaw RMSE     [deg]": [
+            "0.573"
+          ],
+          "within 0.25 m": [
+            "100.0"
+          ],
+          "within 0.50 m": [
+            "100.0"
+          ],
+          "within 1.00 m": [
+            "100.0"
+          ]
+        }
+      }
+    ],
+    "scope": "Synthetic evaluator compatibility checks only, not localization results."
+  }
+}

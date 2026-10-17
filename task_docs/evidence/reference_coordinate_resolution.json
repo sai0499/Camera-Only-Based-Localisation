@@ -1,0 +1,301 @@
+{
+  "purpose": "Coordinate compatibility and evaluation plumbing only; no localization model",
+  "reference_manifest_sha256": "1717d7b71505179bfd69fb951cf9a6aac41e162838697b413288a031490e3d5a",
+  "native_gate": {
+    "limit_m": 0.001,
+    "enabled": false,
+    "routes": {
+      "track": {
+        "all_rows_m": {
+          "min": 0.7405998224489623,
+          "median": 14.616974935641,
+          "p95": 28.7650959585766,
+          "max": 37.40353809955157
+        },
+        "active_lane_m": {
+          "min": 0.7405998224489623,
+          "median": 13.990975628834901,
+          "p95": 28.930039257150106,
+          "max": 37.40353809955157
+        },
+        "compatible": false
+      },
+      "pit": {
+        "all_rows_m": {
+          "min": 0.7396294296223177,
+          "median": 14.410143503429861,
+          "p95": 29.11067742684929,
+          "max": 58.36081184615489
+        },
+        "active_lane_m": {
+          "min": 9.019379327628613,
+          "median": 15.60253058130248,
+          "p95": 25.098369688019226,
+          "max": 41.19206028409657
+        },
+        "compatible": false
+      }
+    }
+  },
+  "projection_roundtrip_m": {
+    "track": {
+      "min": 0.0,
+      "median": 5.684341886080802e-14,
+      "p95": 2.278173318171838e-13,
+      "max": 0.46762438138438905
+    },
+    "pit": {
+      "min": 0.0,
+      "median": 5.684341886080802e-14,
+      "p95": 2.278173318171838e-13,
+      "max": 0.4274768976629433
+    }
+  },
+  "tf_state_shared_rows": 126568,
+  "tf_state_shared_max_xy_m": 0.0,
+  "tf_state_shared_max_yaw_rad": 8.881784197001252e-16,
+  "route_diagnostics": {
+    "track": {
+      "native_minus_projected_s_m": {
+        "min": -30.173172610786878,
+        "median": -14.766928668527953,
+        "p95": -1.6360078587488374,
+        "max": 0.0026082182839672896
+      },
+      "native_minus_projected_n_m": {
+        "min": -1.0715591921862626,
+        "median": -0.4974079761868424,
+        "p95": 0.6608927877650689,
+        "max": 1.3672941544438282
+      },
+      "median_s_offset_applied_m": -14.766928668527953,
+      "residual_after_median_s_shift_m": {
+        "min": 0.8380173788937407,
+        "median": 7.226949357178251,
+        "p95": 14.365045556018762,
+        "max": 17.800666405169355
+      },
+      "native_index_range": [
+        0,
+        2928
+      ],
+      "native_ds_m": {
+        "min": -0.4973239489808865,
+        "median": 0.5085527476873516,
+        "p95": 0.966280581626838,
+        "max": 1.0171427899951537
+      }
+    },
+    "pit": {
+      "native_minus_projected_s_m": {
+        "min": -64.80510471681941,
+        "median": -14.495630199000516,
+        "p95": -1.635994423211298,
+        "max": 0.0026882235629273055
+      },
+      "native_minus_projected_n_m": {
+        "min": -0.9250315573682699,
+        "median": -0.2618152995130266,
+        "p95": 0.4952741746639735,
+        "max": 0.8868329798515893
+      },
+      "median_s_offset_applied_m": -14.495630199000516,
+      "residual_after_median_s_shift_m": {
+        "min": 0.08553964204672021,
+        "median": 7.737441941892881,
+        "p95": 14.660862375517336,
+        "max": 32.00239164717518
+      },
+      "native_index_range": [
+        0,
+        2928
+      ],
+      "native_ds_m": {
+        "min": -0.4591685260303721,
+        "median": 0.5084422792548076,
+        "p95": 0.9828290121580877,
+        "max": 3.4340467557868504
+      }
+    }
+  },
+  "organizer_update_hashes_unchanged": {
+    "23-00-38_cut_120m_update/map.mcap": true,
+    "23-00-38_cut_120m_update/tools/convert.py": true,
+    "23-00-38_cut_120m_update/tools/evaluate.py": true,
+    "23-00-38_cut_120m_update/tools/extract_gt.py": true,
+    "23-00-38_cut_120m_update/tools/README.md": true,
+    "23-00-38_cut_120m_update/tools/track_frame.py": true
+  },
+  "fitting_only_native_frame_diagnostic": {
+    "track": {
+      "observed_unique_native_indices": 2929,
+      "fit_inferred_segment_frames": 2929,
+      "fit_rows_per_segment_min": 13,
+      "covered_fraction_of_all_state_rows": 1.0,
+      "reconstruction_all_m": {
+        "min": 2.620352136458703e-13,
+        "median": 1.8736387658579324e-08,
+        "p95": 1.8409119404260406e-07,
+        "max": 6.211251059126465e-07
+      },
+      "reconstruction_fit_m": {
+        "min": 4.0718500661951123e-13,
+        "median": 1.8788667171897164e-08,
+        "p95": 1.8086767988837882e-07,
+        "max": 6.211251059126465e-07
+      },
+      "reconstruction_nonfit_m": {
+        "min": 2.620352136458703e-13,
+        "median": 1.8654638765987407e-08,
+        "p95": 1.929943162607476e-07,
+        "max": 5.04798237012498e-07
+      },
+      "next_origin_perpendicular_residual_m": {
+        "min": 2.75495459778341e-11,
+        "median": 4.811436776774869e-08,
+        "p95": 2.276725753758146e-07,
+        "max": 6.71177633582154e-07
+      },
+      "method": "Infer unit rotation and segment origin independently from fitting-only (ds,n)->(x,y) pairs; evaluate other rows without refitting. Diagnostic only, not an inference map or approved scoring reference."
+    },
+    "pit": {
+      "observed_unique_native_indices": 2929,
+      "fit_inferred_segment_frames": 2929,
+      "fit_rows_per_segment_min": 13,
+      "covered_fraction_of_all_state_rows": 1.0,
+      "reconstruction_all_m": {
+        "min": 3.43714720612747e-13,
+        "median": 1.8655108057494246e-08,
+        "p95": 1.748826655274469e-07,
+        "max": 6.475658258536906e-07
+      },
+      "reconstruction_fit_m": {
+        "min": 3.43714720612747e-13,
+        "median": 1.8316688723481827e-08,
+        "p95": 1.7117124314852521e-07,
+        "max": 6.475658258536906e-07
+      },
+      "reconstruction_nonfit_m": {
+        "min": 3.0306459385040925e-12,
+        "median": 1.9086089356021224e-08,
+        "p95": 1.752972726595754e-07,
+        "max": 4.838014485413212e-07
+      },
+      "next_origin_perpendicular_residual_m": {
+        "min": 1.1340839378704004e-10,
+        "median": 5.648826190141065e-08,
+        "p95": 4.0930860873977786e-07,
+        "max": 1.1048168406246894e-06
+      },
+      "method": "Infer unit rotation and segment origin independently from fitting-only (ds,n)->(x,y) pairs; evaluate other rows without refitting. Diagnostic only, not an inference map or approved scoring reference."
+    }
+  },
+  "verification": {
+    "tests_passed": 10,
+    "command": ".venv-eval/Scripts/python.exe -B -m unittest discover -s evaluation -p test_*.py -v",
+    "last_suite_seconds": 36.131,
+    "full_recording_wrapper_fixture": "GT interpolated at actual front-right camera exposures. Full, fit, tune and holdout plumbing checks passed with 100% coverage; both primary XY scorers report 0.000 m. No camera-localization model involved.",
+    "final_reference_hash_checks_passed": true,
+    "original_split_file_unchanged": true,
+    "native_sn_excluded_from_scoring": true,
+    "organizer_messages_sent": false,
+    "remaining_risk": "Official acceptance of regenerated s/n and full Option B definition unconfirmed; estimator accuracy, causal inputs and runtime are untested.",
+    "episode_profiles_checked": [
+      "full",
+      "fit",
+      "tune",
+      "holdout"
+    ],
+    "test_script_sha256": "b901855f08a5345c238fb849b6ca87fb8a64fd2d10d6365f7b53f7d76168d6c4"
+  },
+  "current_status": "Native fields actively reconciled into the unchanged supplied map. Initial exclusion/global-projection containment is superseded.",
+  "active_native_reconciliation": {
+    "reference": "evaluation/reference_reconciled",
+    "manifest_sha256": "06fb9914cda5da82ce3c893ac7c1be62a5e88242d9edd1c8f525f7b0b0a004cc",
+    "bridge_artifact_sha256": "642228cb57afd2fda072c167b4d6c768f73729befaf42f8765b15f8639fca46e",
+    "calibration": "predetermined fitting interval only; frozen before evaluating other rows",
+    "source_fields_used": [
+      "track_idx",
+      "track_ds",
+      "n",
+      "pit_idx",
+      "pit_ds",
+      "n_pit"
+    ],
+    "source_xy_used_during_frozen_reconstruction": false,
+    "supplied_map_unchanged": true,
+    "projection_convention": "unchanged organizer sequence helper; restart globally after >100 m recovery jumps or native >1 s gaps",
+    "metrics": {
+      "all_rows_xy_m": {
+        "min": 0.0,
+        "median": 2.842170943040401e-14,
+        "p95": 1.1457157353758233e-13,
+        "max": 3.411345200037716e-13
+      },
+      "track_pit_agreement_m": {
+        "min": 0.0,
+        "median": 4.0194366942304644e-14,
+        "p95": 2.2737367544323206e-13,
+        "max": 6.821580327600138e-13
+      },
+      "direct_supplied_map_projection_agreement": {
+        "track": {
+          "max_s_m": 4.547473508864641e-13,
+          "max_n_m": 3.410605131648481e-13,
+          "max_epsi_rad": 0.0
+        },
+        "pit": {
+          "max_s_m": 4.547473508864641e-13,
+          "max_n_m": 3.410605131648481e-13,
+          "max_epsi_rad": 0.0
+        }
+      },
+      "episodes": {
+        "fit": {
+          "rows": 74290,
+          "xy_m": {
+            "min": 0.0,
+            "median": 2.842170943040401e-14,
+            "p95": 1.1457157353758233e-13,
+            "max": 3.411345200037716e-13
+          }
+        },
+        "tune": {
+          "rows": 28606,
+          "xy_m": {
+            "min": 0.0,
+            "median": 1.464821375527116e-14,
+            "p95": 1.1457157353758233e-13,
+            "max": 3.411345200037716e-13
+          }
+        },
+        "holdout": {
+          "rows": 23254,
+          "xy_m": {
+            "min": 0.0,
+            "median": 1.4210854715202004e-14,
+            "p95": 1.1457157353758233e-13,
+            "max": 3.411345200037716e-13
+          }
+        }
+      },
+      "native_frames": {
+        "track": {
+          "count": 2929,
+          "min_fitting_observations": 13,
+          "scale_min": 0.9999999592758477,
+          "scale_max": 1.0000000405454879
+        },
+        "pit": {
+          "count": 2929,
+          "min_fitting_observations": 13,
+          "scale_min": 0.999999959932153,
+          "scale_max": 1.0000000399469924
+        }
+      }
+    },
+    "tests": "16 passed, no skips; synthetic bridge boundaries, fitting independence, reconstruction without source x/y, unchanged organizer converter agreement, and full/fit/tune/holdout scoring plumbing",
+    "checks": "Adapter, bridge, all generated artifacts, split, supplied map and organizer-file hashes verified.",
+    "remaining_limit": "Coordinate compatibility established. Camera-localizer accuracy/runtime untested; ranked Option B reference/version is an organizer decision."
+  }
+}

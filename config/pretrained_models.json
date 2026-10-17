@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "torch_home": "artifacts/weights",
+  "scope": "Public pretrained weights only; checksums frozen from official upstream downloads during environment preparation. No project data uploaded.",
+  "models": [
+    {
+      "id": "disk-depth",
+      "url": "https://raw.githubusercontent.com/cvlab-epfl/disk/master/depth-save.pth",
+      "source": "https://github.com/cvlab-epfl/disk",
+      "notice": "DISK pretrained depth weights; retain upstream notices.",
+      "path": "artifacts/weights/hub/checkpoints/depth-save.pth",
+      "sha256": "9c2ee4ded238892dfa51569941372601e35e4a74aa6f84ea80053d2ab1c07abe",
+      "bytes": 4375832
+    },
+    {
+      "id": "disk-lightglue",
+      "url": "https://github.com/cvg/LightGlue/releases/download/v0.1_arxiv/disk_lightglue.pth",
+      "source": "https://github.com/cvg/LightGlue",
+      "notice": "LightGlue, Apache-2.0; retain upstream notices.",
+      "path": "artifacts/weights/hub/checkpoints/disk_lightglue_v0-1_arxiv.pth",
+      "sha256": "b5b21d47ea24f2c5e501aec9c91b9716e4c8c3429a4dc1e615c133c4c9378335",
+      "bytes": 47631405
+    },
+    {
+      "id": "eigenplaces-r18-512",
+      "url": "https://github.com/gmberton/EigenPlaces/releases/download/v1.0/ResNet18_512_eigenplaces.pth",
+      "source": "https://github.com/gmberton/EigenPlaces",
+      "notice": "EigenPlaces author checkpoint; MIT source license and upstream dataset/model notices apply.",
+      "path": "artifacts/weights/hub/checkpoints/ResNet18_512_eigenplaces.pth",
+      "sha256": "b47ea1efb51041604e9c135508764175bbaa98dece47b47da664517317d0aff3",
+      "bytes": 45836738
+    }
+  ]
+}

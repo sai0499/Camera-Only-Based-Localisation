@@ -1,0 +1,45 @@
+{
+  "schema_version": 2,
+  "status": "fixed_for_initial_build_before_model_fitting",
+  "source_bag": "c0_2026-10-13_22-53-42_camloc_0.mcap",
+  "time_encoding": "decimal_string_nanoseconds_convert_to_integer",
+  "interval_convention": "start_inclusive_end_exclusive",
+  "first_gt_timestamp_ns": "1791918157114146050",
+  "last_gt_timestamp_ns": "1791919351506836679",
+  "fit": {
+    "start_ns": "1791918157114146050",
+    "end_ns": "1791918857504944006"
+  },
+  "tune": {
+    "start_ns": "1791918859504944006",
+    "end_ns": "1791919130302537034"
+  },
+  "holdout": {
+    "start_ns": "1791919132302537034",
+    "end_ns": "1791919351506836680"
+  },
+  "guard_duration_ns": "2000000000",
+  "initialization": "First GT sample within each episode; expose only timestamp_ns,x,y,yaw once; consume images at or after that timestamp.",
+  "evaluation": "Use the predetermined whole episode GT interval; do not trim to successful output or reset at internal lap boundaries.",
+  "provenance": "Directed gate crossings in task_docs/evidence/lap_gate.json; data inventory covered the full run before this split; no model fitting or localization scores used to select these bounds.",
+  "reference_map_inference_permission": "unconfirmed_request_organizer_clarification",
+  "static_map": {
+    "path": "23-00-38_cut_120m_update/map.mcap",
+    "sha256": "648e8cf954d8cd39823ca31c0b62d89c8fd76b170df999ac2e3d4327439972ef",
+    "frame": "map",
+    "reference_paths_use": "Option B coordinate analysis and visualization; not assumed newly permitted inference priors for the original task.",
+    "border_topic": "/constructor0/map_markers/rr",
+    "reference_path_topics": {
+      "track": "/constructor0/map_ar/racing_line",
+      "pit": "/constructor0/map_ar/pitlane_line"
+    }
+  },
+  "evaluation_profiles": {
+    "organizer_announcement": "Updated evaluation script is for Option B; full Option B task definition is not included in the local brief or update README. Original task remains the selected build path.",
+    "primary": "Use the same TF-derived x/y/yaw GT and four-column submission with both original and updated x/y evaluators. Preserve separate reports; the legacy profile is the continuity reference until ranking requirements are confirmed.",
+    "ego_toolkit_interpretation": "Own-vehicle pose evaluation/conversion for the same localization problem; the unknown Option B label does not imply an s/n-only or necessarily different task.",
+    "additional_local": "Project state-based GT x/y/yaw and predicted poses onto the same supplied Paths; replace incompatible native s/n, retain lane only for evaluation, and label projection-derived local s/n results.",
+    "native_sn_compatibility": "failed_for_existing_october_13_recording_do_not_score_against_recorded_indices_with_this_map",
+    "update_driving_bag": "October 12 35-second bag referenced by updated README is not present."
+  }
+}

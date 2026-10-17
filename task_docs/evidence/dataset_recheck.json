@@ -1,0 +1,401 @@
+{
+  "elapsed_seconds": 296.11469000000216,
+  "message_counts": {
+    "/tf_static": 120,
+    "/constructor0/track_bounds": 120,
+    "/constructor0/sensor/camera_fl/camera_info": 1195,
+    "/constructor0/sensor/camera_fr/camera_info": 1195,
+    "/constructor0/sensor/camera_cl/camera_info": 1195,
+    "/constructor0/sensor/camera_cr/camera_info": 1195,
+    "/constructor0/sensor/camera_r/camera_info": 1195,
+    "/constructor0/sensor/camera_rl/camera_info": 1195,
+    "/constructor0/sensor/camera_rr/camera_info": 1195,
+    "/constructor0/sensor/camera_r/compressed_image": 11939,
+    "/constructor0/state_estimation": 126574,
+    "/tf": 126680,
+    "/constructor0/sensor/camera_cl/compressed_image": 11944,
+    "/constructor0/sensor/camera_fl/compressed_image": 11944,
+    "/constructor0/sensor/camera_fr/compressed_image": 11944,
+    "/constructor0/sensor/camera_rr/compressed_image": 11944,
+    "/constructor0/sensor/camera_cr/compressed_image": 11944,
+    "/constructor0/sensor/camera_rl/compressed_image": 11944
+  },
+  "chunk_compression_counts": {
+    "zstd": 905
+  },
+  "stored_crc_checks": {
+    "chunk_present": 905,
+    "data_section_crc_value": 0,
+    "summary_crc_expected": 2234336267,
+    "summary_crc_calculated": 2234336267,
+    "summary_crc_verified": true
+  },
+  "static_variants": {
+    "/tf_static": {
+      "messages": 120,
+      "unique_content_versions": 1,
+      "hashes": {
+        "b49b7e6af23e3dc38e61414751147d0dd6d2230cc0bbd5b8804bfd43dd0316da": 120
+      }
+    },
+    "/constructor0/track_bounds": {
+      "messages": 120,
+      "unique_content_versions": 1,
+      "hashes": {
+        "67baec8d6e03b1f312389f18afa8bb2439c3f4c358d265e8174aa0c4232265af": 120
+      }
+    },
+    "/constructor0/sensor/camera_fl/camera_info": {
+      "messages": 1195,
+      "unique_content_versions": 1,
+      "hashes": {
+        "b957be7eb79baa8b997c59dc5c31a1fb6445ab1660b70d4eb2cc5b7919bbd3b4": 1195
+      }
+    },
+    "/constructor0/sensor/camera_fr/camera_info": {
+      "messages": 1195,
+      "unique_content_versions": 1,
+      "hashes": {
+        "77d40170a7eb077be27d8ac7935cd982fabab0694739f21dfc39c92488b090de": 1195
+      }
+    },
+    "/constructor0/sensor/camera_cl/camera_info": {
+      "messages": 1195,
+      "unique_content_versions": 1,
+      "hashes": {
+        "d9619ec6db1db702d110391508e8d3a8d665f9d1ef9d6b3b9dd81991aa795a20": 1195
+      }
+    },
+    "/constructor0/sensor/camera_cr/camera_info": {
+      "messages": 1195,
+      "unique_content_versions": 1,
+      "hashes": {
+        "4c13123b2157fdac42007427eec90c3533e742c8018596d98c75abddc5d1d609": 1195
+      }
+    },
+    "/constructor0/sensor/camera_r/camera_info": {
+      "messages": 1195,
+      "unique_content_versions": 1,
+      "hashes": {
+        "95d4d553096fb574da038eccfe4788c6b0aca2db85372d5fcc73a09406988106": 1195
+      }
+    },
+    "/constructor0/sensor/camera_rl/camera_info": {
+      "messages": 1195,
+      "unique_content_versions": 1,
+      "hashes": {
+        "42a404767ac9471e6b89911c5978fcd9724058b1364bd93d5c6cf0f91f43223b": 1195
+      }
+    },
+    "/constructor0/sensor/camera_rr/camera_info": {
+      "messages": 1195,
+      "unique_content_versions": 1,
+      "hashes": {
+        "28802070534554825011d3fb9a3a3657c1becb44488f5733f26d59edccf22d8f": 1195
+      }
+    }
+  },
+  "static_first_arrivals": {
+    "/tf_static": {
+      "header_stamps_ns": [
+        1791918157109816576
+      ],
+      "log_time_ns": 1791918157109816576
+    },
+    "/constructor0/track_bounds": {
+      "header_stamps_ns": [
+        1791918157109816576
+      ],
+      "log_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_fl/camera_info": {
+      "header_stamp_ns": 1791918157109816576,
+      "log_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_fr/camera_info": {
+      "header_stamp_ns": 1791918157109816576,
+      "log_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_cl/camera_info": {
+      "header_stamp_ns": 1791918157109816576,
+      "log_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_cr/camera_info": {
+      "header_stamp_ns": 1791918157109816576,
+      "log_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_r/camera_info": {
+      "header_stamp_ns": 1791918157109816576,
+      "log_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_rl/camera_info": {
+      "header_stamp_ns": 1791918157109816576,
+      "log_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_rr/camera_info": {
+      "header_stamp_ns": 1791918157109816576,
+      "log_time_ns": 1791918157109816576
+    }
+  },
+  "first_messages": {
+    "/tf_static": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/track_bounds": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_fl/camera_info": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_fr/camera_info": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_cl/camera_info": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_cr/camera_info": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_r/camera_info": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_rl/camera_info": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_rr/camera_info": {
+      "log_time_ns": 1791918157109816576,
+      "publish_time_ns": 1791918157109816576
+    },
+    "/constructor0/sensor/camera_r/compressed_image": {
+      "log_time_ns": 1791918157114367050,
+      "publish_time_ns": 1791918157114211795
+    },
+    "/constructor0/state_estimation": {
+      "log_time_ns": 1791918157114878032,
+      "publish_time_ns": 1791918157114733167
+    },
+    "/tf": {
+      "log_time_ns": 1791918157115227397,
+      "publish_time_ns": 1791918157114981259
+    },
+    "/constructor0/sensor/camera_cl/compressed_image": {
+      "log_time_ns": 1791918157115729202,
+      "publish_time_ns": 1791918157115623080
+    },
+    "/constructor0/sensor/camera_fl/compressed_image": {
+      "log_time_ns": 1791918157118333616,
+      "publish_time_ns": 1791918157118082008
+    },
+    "/constructor0/sensor/camera_fr/compressed_image": {
+      "log_time_ns": 1791918157119583835,
+      "publish_time_ns": 1791918157119275047
+    },
+    "/constructor0/sensor/camera_rr/compressed_image": {
+      "log_time_ns": 1791918157120061353,
+      "publish_time_ns": 1791918157119778244
+    },
+    "/constructor0/sensor/camera_cr/compressed_image": {
+      "log_time_ns": 1791918157120124283,
+      "publish_time_ns": 1791918157119987372
+    },
+    "/constructor0/sensor/camera_rl/compressed_image": {
+      "log_time_ns": 1791918157123160839,
+      "publish_time_ns": 1791918157123048606
+    }
+  },
+  "images": {
+    "/constructor0/sensor/camera_r/compressed_image": {
+      "sizes": {
+        "(1506, 728)": 11939
+      },
+      "modes": {
+        "RGB": 11939
+      },
+      "formats": {
+        "jpeg": 11939
+      },
+      "frame_ids": {
+        "constructor0/camera_r": 11939
+      },
+      "errors": [],
+      "count": 11939
+    },
+    "/constructor0/sensor/camera_cl/compressed_image": {
+      "sizes": {
+        "(1506, 728)": 11944
+      },
+      "modes": {
+        "RGB": 11944
+      },
+      "formats": {
+        "jpeg": 11944
+      },
+      "frame_ids": {
+        "constructor0/camera_cl": 11944
+      },
+      "errors": [],
+      "count": 11944
+    },
+    "/constructor0/sensor/camera_fl/compressed_image": {
+      "sizes": {
+        "(1506, 728)": 11944
+      },
+      "modes": {
+        "RGB": 11944
+      },
+      "formats": {
+        "jpeg": 11944
+      },
+      "frame_ids": {
+        "constructor0/camera_fl": 11944
+      },
+      "errors": [],
+      "count": 11944
+    },
+    "/constructor0/sensor/camera_fr/compressed_image": {
+      "sizes": {
+        "(1506, 728)": 11944
+      },
+      "modes": {
+        "RGB": 11944
+      },
+      "formats": {
+        "jpeg": 11944
+      },
+      "frame_ids": {
+        "constructor0/camera_fr": 11944
+      },
+      "errors": [],
+      "count": 11944
+    },
+    "/constructor0/sensor/camera_rr/compressed_image": {
+      "sizes": {
+        "(1506, 728)": 11944
+      },
+      "modes": {
+        "RGB": 11944
+      },
+      "formats": {
+        "jpeg": 11944
+      },
+      "frame_ids": {
+        "constructor0/camera_rr": 11944
+      },
+      "errors": [],
+      "count": 11944
+    },
+    "/constructor0/sensor/camera_cr/compressed_image": {
+      "sizes": {
+        "(1506, 728)": 11944
+      },
+      "modes": {
+        "RGB": 11944
+      },
+      "formats": {
+        "jpeg": 11944
+      },
+      "frame_ids": {
+        "constructor0/camera_cr": 11944
+      },
+      "errors": [],
+      "count": 11944
+    },
+    "/constructor0/sensor/camera_rl/compressed_image": {
+      "sizes": {
+        "(1506, 728)": 11944
+      },
+      "modes": {
+        "RGB": 11944
+      },
+      "formats": {
+        "jpeg": 11944
+      },
+      "frame_ids": {
+        "constructor0/camera_rl": 11944
+      },
+      "errors": [],
+      "count": 11944
+    }
+  },
+  "state_tf_comparison": {
+    "state_messages": 126574,
+    "exact_stamp_matches": 126568,
+    "max_xyz_difference_m": 0.0,
+    "max_yaw_difference_rad": 8.881784197001252e-16
+  },
+  "state_status_values": {
+    "se_status": {
+      "1": 454,
+      "2": 126120
+    },
+    "se_state": {
+      "1": 126574
+    },
+    "current_lane": {
+      "0": 13121,
+      "1": 113453
+    }
+  },
+  "state_pos_accuracy_reported_field_only": [
+    [
+      0.19385655596852303,
+      0.1887979991734028,
+      0.23213157802820206
+    ],
+    [
+      0.21354973129928112,
+      0.2073746407404542,
+      0.27228740975260735
+    ],
+    [
+      0.31181246414780617,
+      0.28205597028136253,
+      0.44280317053198814
+    ],
+    [
+      148.24949341267347,
+      323.7976959273219,
+      444.33955078572035
+    ]
+  ],
+  "channel_topics": {
+    "1": "/constructor0/sensor/camera_cl/compressed_image",
+    "2": "/constructor0/sensor/camera_cr/camera_info",
+    "3": "/constructor0/sensor/camera_rl/camera_info",
+    "4": "/constructor0/sensor/camera_cr/compressed_image",
+    "5": "/constructor0/sensor/camera_fr/compressed_image",
+    "6": "/constructor0/sensor/camera_fl/camera_info",
+    "7": "/constructor0/sensor/camera_fl/compressed_image",
+    "8": "/constructor0/sensor/camera_r/compressed_image",
+    "9": "/constructor0/sensor/camera_fr/camera_info",
+    "10": "/constructor0/sensor/camera_cl/camera_info",
+    "11": "/constructor0/sensor/camera_rl/compressed_image",
+    "12": "/constructor0/sensor/camera_rr/camera_info",
+    "13": "/constructor0/sensor/camera_rr/compressed_image",
+    "14": "/constructor0/sensor/camera_r/camera_info",
+    "15": "/constructor0/state_estimation",
+    "16": "/tf_static",
+    "17": "/tf",
+    "18": "/constructor0/track_bounds"
+  },
+  "image_publish_minus_header_ms_p0_p50_p95_max": [
+    26.476154,
+    41.895449,
+    48.39235589999999,
+    98.833503
+  ],
+  "image_log_minus_publish_ms_p0_p50_p95_max": [
+    0.040197,
+    0.119938,
+    0.3050479999999999,
+    3.614856
+  ]
+}

@@ -1,0 +1,54 @@
+[project]
+name = "trackcode-apex"
+version = "0.1.0"
+description = "Camera-only race-track localization hackathon workspace"
+requires-python = "==3.12.13"
+dependencies = [
+    "torch==2.7.1+cu128",
+    "torchvision==0.22.1+cu128",
+    "numpy==2.3.5",
+    "opencv-python==4.13.0.92",
+    "pycolmap==3.13.0",
+    "kornia==0.8.2",
+    "scipy==1.16.3",
+    "h5py==3.15.1",
+    "mcap==1.5.0",
+    "mcap-ros2-support==0.5.7",
+    "lz4==4.4.5",
+    "zstandard==0.25.0",
+    "PyYAML==6.0.3",
+    "hloc",
+    "lightglue",
+]
+
+[dependency-groups]
+dev = ["pytest==8.4.2", "ruff==0.14.0"]
+
+[tool.uv]
+package = false
+required-version = "==0.11.6"
+environments = ["sys_platform == 'win32' and platform_machine == 'AMD64'"]
+override-dependencies = [
+    "lightglue @ https://github.com/cvg/LightGlue/archive/eb42fee2d71449efb0aa5c10549752b5d75384d8.zip",
+]
+build-constraint-dependencies = ["setuptools==80.9.0", "wheel==0.45.1"]
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu128" }
+torchvision = { index = "pytorch-cu128" }
+hloc = { url = "https://github.com/cvg/Hierarchical-Localization/archive/c13273bd0ecc2917a35910fd843712a1c6243193.zip" }
+lightglue = { url = "https://github.com/cvg/LightGlue/archive/eb42fee2d71449efb0aa5c10549752b5d75384d8.zip" }
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "evaluation"]
+addopts = "-ra -p no:cacheprovider"
+
+[tool.ruff]
+target-version = "py312"
+cache-dir = ".setup/ruff-cache"
+extend-exclude = ["tools", "23-00-38_cut_120m_update", "evaluation", ".setup"]

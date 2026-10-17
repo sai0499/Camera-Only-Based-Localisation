@@ -1,0 +1,227 @@
+{
+  "scope": "Research/design preflight only. No localization model or GPU inference benchmark.",
+  "gpu": {
+    "name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "memory_mib": 8188,
+    "driver": "617.42"
+  },
+  "cpu_logical_count": 16,
+  "noise_consistency": {
+    "10": {
+      "old_velocity_variance_after_1s": 3.6000000000000014,
+      "continuous_velocity_variance_after_1s": 3.5999999999999996,
+      "continuous_covariance_max_difference_from_10hz": 0.0
+    },
+    "20": {
+      "old_velocity_variance_after_1s": 1.8000000000000012,
+      "continuous_velocity_variance_after_1s": 3.600000000000001,
+      "continuous_covariance_max_difference_from_10hz": 1.3322676295501878e-15
+    },
+    "30": {
+      "old_velocity_variance_after_1s": 1.2000000000000004,
+      "continuous_velocity_variance_after_1s": 3.6000000000000023,
+      "continuous_covariance_max_difference_from_10hz": 2.6645352591003757e-15
+    },
+    "60": {
+      "old_velocity_variance_after_1s": 0.6000000000000003,
+      "continuous_velocity_variance_after_1s": 3.6000000000000028,
+      "continuous_covariance_max_difference_from_10hz": 3.1086244689504383e-15
+    },
+    "120": {
+      "old_velocity_variance_after_1s": 0.3000000000000002,
+      "continuous_velocity_variance_after_1s": 3.599999999999991,
+      "continuous_covariance_max_difference_from_10hz": 8.43769498715119e-15
+    }
+  },
+  "smoothing_consistency": {
+    "10": 0.9932620530009145,
+    "20": 0.9932620530009145,
+    "30": 0.9932620530009145,
+    "60": 0.9932620530009145,
+    "120": 0.9932620530009145
+  },
+  "grouping_contract": {
+    "10": {
+      "period_ms": 100.0,
+      "exposure_window_ms": 5,
+      "arrival_deadline_ms": 40,
+      "regular_cadence_pending_upper_bound_with_boundary_event": 2
+    },
+    "20": {
+      "period_ms": 50.0,
+      "exposure_window_ms": 5,
+      "arrival_deadline_ms": 40,
+      "regular_cadence_pending_upper_bound_with_boundary_event": 2
+    },
+    "30": {
+      "period_ms": 33.333333333333336,
+      "exposure_window_ms": 5,
+      "arrival_deadline_ms": 40,
+      "regular_cadence_pending_upper_bound_with_boundary_event": 3
+    },
+    "60": {
+      "period_ms": 16.666666666666668,
+      "exposure_window_ms": 3.333333333333334,
+      "arrival_deadline_ms": 20.0,
+      "regular_cadence_pending_upper_bound_with_boundary_event": 3
+    },
+    "120": {
+      "period_ms": 8.333333333333334,
+      "exposure_window_ms": 1.666666666666667,
+      "arrival_deadline_ms": 10.0,
+      "regular_cadence_pending_upper_bound_with_boundary_event": 3
+    }
+  },
+  "one_pass_pixel_geometry_max_ray_difference": 0.0,
+  "recording_pair_timing": {
+    "fr_rows": 11944,
+    "r_rows": 11939,
+    "paired_within_5ms": 11939,
+    "unpaired_fr_rows": 5,
+    "log_arrival_spread_ms": {
+      "min": 0.008807,
+      "median": 4.140224,
+      "p95": 11.6991457,
+      "max": 36.113212
+    },
+    "p99_arrival_spread_ms": 15.298759360000012,
+    "fraction_arrival_spread_over_8_333ms": 0.1768154786833068
+  },
+  "review_date": "2026-10-17",
+  "rejected_grouping_candidate": {
+    "rule": "arrival deadline min(40 ms, 0.5*T)",
+    "reason": "At 60 Hz its 8.333 ms deadline is below the measured p99 and rejects 17.6815 percent of recorded arrival pairs.",
+    "rates": {
+      "10": {
+        "period_ms": 100.0,
+        "exposure_window_ms": 5.0,
+        "arrival_deadline_ms": 40.0
+      },
+      "20": {
+        "period_ms": 50.0,
+        "exposure_window_ms": 5.0,
+        "arrival_deadline_ms": 25.0
+      },
+      "30": {
+        "period_ms": 33.33333333333333,
+        "exposure_window_ms": 5.0,
+        "arrival_deadline_ms": 16.666666666666664
+      },
+      "60": {
+        "period_ms": 16.666666666666664,
+        "exposure_window_ms": 3.3333333333333335,
+        "arrival_deadline_ms": 8.333333333333332
+      },
+      "120": {
+        "period_ms": 8.333333333333332,
+        "exposure_window_ms": 1.6666666666666667,
+        "arrival_deadline_ms": 4.166666666666666
+      }
+    }
+  },
+  "grouping_rules": {
+    "cadence_snapshot": "Median last 16 available valid primary exposure intervals at opening; initial 100 ms.",
+    "deadline": "min(40 ms, 1.2*T) after first selected arrival",
+    "maximum_pending_groups": 4,
+    "startup_or_rate_change_overflow": "Close/emit oldest with available views before opening a fifth; log capacity closure; never delete a group."
+  },
+  "repeated_map_information_cap": {
+    "scope": "Equal base R, steady equally spaced observations; first update has a separate 0.1 s initialization. This is not covariance calibration.",
+    "rates": {
+      "10": {
+        "steady_state_R_multiplier": 1.0,
+        "normalized_information_per_second": 10.0
+      },
+      "20": {
+        "steady_state_R_multiplier": 2.0,
+        "normalized_information_per_second": 10.0
+      },
+      "30": {
+        "steady_state_R_multiplier": 3.0,
+        "normalized_information_per_second": 10.0
+      },
+      "60": {
+        "steady_state_R_multiplier": 6.0,
+        "normalized_information_per_second": 10.0
+      },
+      "120": {
+        "steady_state_R_multiplier": 12.0,
+        "normalized_information_per_second": 10.0
+      }
+    }
+  },
+  "native_primary_handoff_threshold_comparison": {
+    "scope": "Timestamp-only preflight; no LK, image decoding, worker or pose inference.",
+    "selected_threshold_ns": 90000000,
+    "comparison": {
+      "90000000": {
+        "eligible_sources": 11943,
+        "delivery_group_offset_counts": {
+          "1": 11943
+        },
+        "delivery_age_ms": {
+          "min": 99.972456,
+          "median": 100.000656,
+          "p95": 100.001394,
+          "max": 100.050181
+        }
+      },
+      "100000000": {
+        "eligible_sources": 11943,
+        "delivery_group_offset_counts": {
+          "1": 11599,
+          "2": 344
+        },
+        "delivery_age_ms": {
+          "min": 100.0,
+          "median": 100.000665,
+          "p95": 100.0280753,
+          "max": 200.029077
+        }
+      }
+    }
+  },
+  "bounded_workload_contract": {
+    "active_points_per_camera": 512,
+    "handoff_points": 256,
+    "maximum_handoff_transitions": 4,
+    "maximum_gray_frames_per_camera": 32,
+    "maximum_gray_age_s": 0.25,
+    "two_camera_gray_byte_cap": 28508160,
+    "normal_anchor_jobs_per_source_second": 3,
+    "recovery_anchor_jobs_per_source_second": 4,
+    "maximum_pairs_per_job": 2,
+    "retrieval": "Inside an eligible anchor job; included in worker timing, not a separate uncounted job.",
+    "dispatch": "Main scheduler only at logical groups; in-flight remains occupied until designated delivery; no automatic worker dequeue."
+  },
+  "computational_profile_gates": {
+    "10": {
+      "total_steady_seconds_per_output_max": 0.1,
+      "fast_path_p95_seconds_max": 0.08,
+      "group_residence_p95_seconds_max": 0.2,
+      "paced_duration_seconds": 300,
+      "measured": false
+    },
+    "20": {
+      "total_steady_seconds_per_output_max": 0.05,
+      "fast_path_p95_seconds_max": 0.04,
+      "group_residence_p95_seconds_max": 0.1,
+      "paced_duration_seconds": 300,
+      "measured": false
+    },
+    "30": {
+      "total_steady_seconds_per_output_max": 0.03333333333333333,
+      "fast_path_p95_seconds_max": 0.02666666666666667,
+      "group_residence_p95_seconds_max": 0.06666666666666667,
+      "paced_duration_seconds": 300,
+      "measured": false
+    },
+    "60": {
+      "total_steady_seconds_per_output_max": 0.016666666666666666,
+      "fast_path_p95_seconds_max": 0.013333333333333334,
+      "group_residence_p95_seconds_max": 0.03333333333333333,
+      "paced_duration_seconds": 300,
+      "measured": false
+    }
+  }
+}

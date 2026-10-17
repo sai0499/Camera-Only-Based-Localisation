@@ -1,0 +1,33 @@
+# Recreated by setup.cmd on each machine.
+/.venv*/
+/.setup/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Personal implementation guides, shared manually rather than through Git.
+/private_guides/
+
+# Transfer the recording and videos privately; do not put them in Git.
+/*.mcap
+/videos/
+/evaluation/reference/
+/evaluation/reference_reconciled/
+/artifacts/*
+!/artifacts/.gitkeep
+/results/*
+!/results/.gitkeep
+/tmp/
+*.log
+*.zip
+
+# Local credentials and editor/session state.
+.env
+.env.*
+!.env.example
+.idea/
+.DS_Store
+Thumbs.db
