@@ -30,6 +30,8 @@ From a terminal, use `setup.cmd --no-pause` or `powershell -NoProfile -Execution
 
 Each teammate starts a separate branch and gives their agent the corresponding handoff in section 11 of the build plan. C establishes the records first; A/B use those interfaces rather than creating competing runners or estimators. Agree changes to shared records before merging. Do not independently upgrade packages. Get a continuous scored baseline before optional improvements.
 
+The repository owner's work stays on **`dev/implementation`**, with upstream **`origin/dev/implementation`**. Check the active branch before editing, commit tested changes there, and use `git push` to publish to its matching upstream. Teammates keep their own feature branches. Leave `main` unchanged until the owner explicitly requests reviewed integration; a feature-branch push does not merge code into `main`. `AGENTS.md` records this workflow for future coding agents.
+
 ## Folder map
 
 ```text

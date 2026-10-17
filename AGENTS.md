@@ -2,6 +2,13 @@
 
 Read `START_HERE.md` and `task_docs/FINAL_BUILD_PLAN.md` before changing code. The latter is the single implementation specification. Research under `task_docs/research/` supplies context; do not restart model selection or redesign the architecture independently.
 
+## Git workflow
+
+- The repository owner's implementation branch is `dev/implementation`, tracking `origin/dev/implementation`. Keep their work on this branch. Other teammates use their own assigned feature branches.
+- Before editing, check `git status --short --branch` and `git branch --show-current`. Never implement or commit directly on `main`; switch to the assigned development branch first and preserve unrelated changes.
+- Commit and push completed, verified implementation changes to the matching development/feature branch. Stage only relevant files; keep private guides, recordings, GT references, weights and generated outputs excluded from Git.
+- Do not merge into, commit to or push `main` until the user explicitly requests integration. Do not force-push or rewrite shared history. Pushing a development branch does not merge it into `main`.
+
 ## Environment and commands
 
 - Target Windows x64, Python 3.12.13, the committed `uv.lock` and `.venv`.
