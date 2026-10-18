@@ -298,7 +298,7 @@ def test_browse_dialog_and_auto_gt_are_offline_only(tmp_path, monkeypatch):
     monkeypatch.setattr(sr.subprocess, "run", lambda *a, **k: types.SimpleNamespace(returncode=0, stdout='{"path": ""}'))
     assert sr.browse("bag", root=tmp_path) == {"path": ""}
     workspace = sr.Workspace(tmp_path)
-    replay = types.SimpleNamespace(state="running", comparison=None, meta={"split": "tune"})
+    replay = types.SimpleNamespace(state="running", comparison=None, meta={"split": "tune"}, folder=tmp_path/"saved")
     workspace.auto_gt(replay)
     assert not hasattr(replay, "gt_tried")  # never before completion
     replay.state = "completed"

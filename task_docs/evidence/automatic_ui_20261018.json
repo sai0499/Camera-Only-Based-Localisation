@@ -1,0 +1,64 @@
+{
+  "date": "2026-10-18",
+  "branch": "dev/implementation",
+  "workflow": ["New run", "Choose MCAP", "Run localization"],
+  "frozen_bank": "artifacts/fit-seven-rescue-v2",
+  "map_id": "fitmap:1135ae388a5d0ee3",
+  "inference_boundary": {
+    "embedded_absolute_initial_poses": 1,
+    "ground_truth_trajectory_in_runner_arguments": false,
+    "ground_truth_export": "after localizer process exits successfully",
+    "motion": "existing validation-twist or state-fields whitelist, otherwise camera-only",
+    "acceleration_read": false,
+    "core_localizer_or_frozen_assets_changed": false
+  },
+  "verification": {
+    "pytest_passed": 1144,
+    "pytest_seconds": 193.39,
+    "ruff": "passed: camloc scripts tests",
+    "javascript_syntax": "passed",
+    "ui_geometry_fixture": "passed"
+  },
+  "whole_original_recording_automatic_holdout": {
+    "run": "ui-bde15d89c9",
+    "selection": "original recording byte count and SHA-256 matched frozen manifest; fixed holdout selected",
+    "poses": 2191,
+    "pose_csv_sha256": "b6a7815c0683e8a062571c1821747e906260ac44969168e9f129a1a4f5b202a7",
+    "matches_retained_frozen_poses_exactly": true,
+    "position_rmse_m": 0.655,
+    "lateral_rmse_m": 0.330,
+    "yaw_rmse_deg": 0.239,
+    "official_coverage_percent": 100.0,
+    "reference_topic": "/tf",
+    "embedded_reference_rows": 23254,
+    "strict_validation_valid": true,
+    "visual_baseline_gate_passed": false,
+    "longest_full_visual_pose_gap_s": 9.8,
+    "postprocessing_note": "Rerun after correcting the open_frame_sets cameras keyword; localization was not rerun or changed."
+  },
+  "fresh_browser_end_to_end": {
+    "run": "ui-74da35f31d",
+    "input": "six-second real MCAP clip retaining static calibration and original messages",
+    "browser_file_chooser_and_upload": true,
+    "uploaded_bytes": 48791646,
+    "manual_configuration_required": false,
+    "poses": 59,
+    "embedded_reference_rows": 636,
+    "evaluated_poses": 59,
+    "position_rmse_m": 0.766,
+    "strict_validation_valid": true,
+    "visual_baseline_gate_passed": true,
+    "scorer_and_gt_comparison_automatic": true,
+    "validation_download_visible": true
+  },
+  "storage": {
+    "minimal_deliverables": "results/ui-<id>/",
+    "uploads_logs_and_offline_reference": "tmp/replay_ui/"
+  },
+  "limits": [
+    "Hidden-test topic/schema variants and accuracy have not been verified.",
+    "Only supported map-frame initial/reference pose formats are accepted; missing or unsupported initial poses fail explicitly.",
+    "The holdout was inspected previously and is a regression, not an unseen accuracy result.",
+    "The unchanged frozen configuration still has a 9.8-second full-visual-pose gap on holdout."
+  ]
+}

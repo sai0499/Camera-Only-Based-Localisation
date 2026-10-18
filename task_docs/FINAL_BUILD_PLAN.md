@@ -2,6 +2,14 @@
 
 Decision date: 17 October 2026. Team: three people. Budget: 48 elapsed hours from the team's actual start, with the organizer's submission deadline taking precedence.
 
+**18 October UI-input amendment:** the owner requested a browser MCAP upload with
+automatic configuration. A UI-only adapter may extract exactly one embedded initial
+pose and select the existing permitted velocity mode. The inference runner remains
+unchanged and receives no GT trajectory or reference path. Only after inference exits
+may a separate postprocessor extract the embedded reference for scoring and display.
+The byte-identical training recording uses the fixed holdout automatically. Unknown
+pose frames/schemas fail explicitly. See [UI usage](../replay_ui/README.md).
+
 **18 October camera-rescue amendment:** the owner subsequently requested intelligent use of all seven feeds and location-specific map improvements. `support-v1` banks append fitting-only auxiliary coverage while preserving the front bank as an exact prefix, stay below 3,000 references, and select work from mapped spatial support and recent causal failures. This supersedes the earlier exclusion of adaptive scheduling only for that explicit bank policy. The existing one-worker, 3 normal / 4 recovery jobs per second, two references per job, same-camera handoff and all geometric/recovery gates remain fixed. Cameras with changed geometry are excluded individually and diagnosed; at least one mapped camera must remain compatible. [MULTICAMERA_IMPROVEMENTS.md](MULTICAMERA_IMPROVEMENTS.md) records the tuning trade-off and scoped verification.
 
 **18 October owner-authorized amendment:** the challenge PDF, page 2, explicitly permits car state accelerations/speed/other fields. The owner has authorized taking over B's work and using these inputs for the deadline. Optional `--vehicle-motion state-fields` reads only timestamp and body vx/vy/yaw rate from a strict raw-layout whitelist; `validation-twist` reads the equivalent separate body-motion topic. Pose, orientation, status, track fields and dynamic TF remain excluded. Samples must be available by the current image-group arrival and no later than its prediction timestamp. One externally supplied initial pose is still required. Controls drive the existing six-state filter's prediction and robust weighting of visual innovations; they never count as visual evidence or clear visual-loss gates. Camera-only remains the default. This amendment supersedes the whole-topic exclusion below only in that explicit mode. See [deadline evidence and commands](DEADLINE_ACCURACY.md).

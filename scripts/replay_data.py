@@ -64,6 +64,7 @@ class Replay:
         self.events = []
         self.gt = {}
         self.comparison = None
+        self.evaluation = None
         self.meta = {}
         self.indices = {}
         self.group_stamps = {}
@@ -158,7 +159,8 @@ class Replay:
                 "meta": self.meta, "origin_ns": str(origin) if origin is not None else "0",
                 "count": len(self.frames), "from": cursor,
                 "frames": [self.frame(i) for i in indices],
-                "events": self.events[-250:], "comparison": self.comparison}
+                "events": self.events[-250:], "comparison": self.comparison,
+                "evaluation": self.evaluation}
 
     def attach_gt(self, path):
         """Explicit offline action, after completion; no GT path reaches a child process."""

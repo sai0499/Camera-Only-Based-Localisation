@@ -184,9 +184,13 @@ async function acceptPayload(payload, reset=false) {
   text('rmse',comparison?`${fmt(comparison.rmse_m)} m`:'Not evaluated');
   text('reference-state',comparison?`Offline / ${comparison.matched.toLocaleString()} matched outputs`:'No ground truth attached');
   $('gt-legend').hidden=!comparison||S.view==='3d';
-  $('compare').disabled=!!window.APEX_REPLAY||payload.state!=='completed';
+  const evaluation=payload.evaluation;
+  if(evaluation&&!comparison)text('reference-state',['pending','evaluating'].includes(evaluation.state)?(payload.state==='running'?'Ground truth will be compared when localization finishes.':'Comparing embedded ground truth…'):evaluation.reason||'Reference unavailable');
+  $('download-score').hidden=evaluation?.state!=='completed';
+  $('download-score').href=`/api/download?id=${S.run}&file=validation/score.txt`;
+  $('compare').disabled=!!window.APEX_REPLAY||payload.state!=='completed'||!!evaluation;
   $('new-run').disabled=!!window.APEX_REPLAY||payload.state==='running';
-  const mode=payload.meta.inference_mode==='vehicle_motion_assisted'?'MOTION-ASSISTED':'CAMERA ONLY';
+  const mode=!payload.meta.inference_mode?'INITIALIZING':payload.meta.inference_mode==='vehicle_motion_assisted'?'MOTION-ASSISTED':'CAMERA ONLY';
   text('mode-note',`${mode} / ${payload.state==='running'?'PASSIVE RUN MONITOR':'SAVED OUTPUT REVIEW'}`);
   $('scrubber').max=Math.max(0,S.frames.length-1);
   $('download-csv').href=window.APEX_REPLAY?'submission.csv':`/api/download?id=${S.run}&file=submission.csv`;
@@ -201,7 +205,7 @@ async function loadRun(id) {
   if(S.run===id)await acceptPayload(payload,true);
 }
 async function poll() {
-  if(S.run&&!S.busy&&S.payload?.state==='running') {
+  if(S.run&&!S.busy&&(S.payload?.state==='running'||['pending','evaluating'].includes(S.payload?.evaluation?.state))) {
     const run=S.run;
     S.busy=true;try{const result=await api(`/api/run?id=${run}&cursor=${S.frames.length}`);if(S.run===run)await acceptPayload(result);}catch(error){notice(error.message);}finally{S.busy=false;}
   }
@@ -211,6 +215,19 @@ function requestSettings() {
   const initial=JSON.parse($('initial-pose').value);
   if(typeof initial.timestamp_ns==='number'&&!Number.isSafeInteger(initial.timestamp_ns))throw new Error('Put timestamp_ns in double quotes to preserve exact nanoseconds.');
   return {bag:$('bag').value.trim(),artifacts:$('artifacts').value.trim(),mode:$('run-mode').value,initial_pose:$('initial-pose').value.trim(),retrieval:$('retrieval').checked,vehicle_motion:$('vehicle-motion').value,start_ns:$('start-ns').value.trim(),end_ns:$('end-ns').value.trim()};
+}
+function uploadRecording(file) {
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();xhr.open('POST','/api/upload');
+    xhr.setRequestHeader('X-Replay-Token',S.token);xhr.setRequestHeader('Content-Type','application/octet-stream');
+    xhr.setRequestHeader('X-File-Name',encodeURIComponent(file.name));
+    $('upload-progress').hidden=false;
+    xhr.upload.onprogress=event=>{if(event.lengthComputable){const percent=Math.round(100*event.loaded/event.total);$('upload-progress').value=percent;text('validation-message',`Uploading recording / ${percent}%`);}};
+    xhr.onload=()=>{try{const result=JSON.parse(xhr.responseText);if(xhr.status!==200)throw new Error(result.error||'Upload failed');resolve(result);}catch(error){reject(error);}};
+    xhr.onerror=()=>reject(new Error('Recording upload failed. Check that the local server is running.'));
+    xhr.onabort=()=>reject(new Error('Recording upload was interrupted.'));
+    xhr.send(file);
+  });
 }
 function initControls() {
   $('run-select').onchange=()=>loadRun($('run-select').value).catch(error=>notice(error.message));
@@ -242,7 +259,22 @@ function initControls() {
   $('new-run').onclick=()=>$('setup-dialog').showModal();
   for(const close of document.querySelectorAll('[data-close]'))close.onclick=()=>$(close.dataset.close).close();
   $('validate-run').onclick=async()=>{const button=$('validate-run');button.disabled=true;text('validation-message','Reading calibration and checking frozen-map compatibility…');try{const result=await api('/api/validate',requestSettings());$('validation-message').classList.remove('error');text('validation-message',`Compatible / ${result.map_id} / cameras ${result.cameras.join(', ')}. Full asset verification runs at startup.`);}catch(error){$('validation-message').classList.add('error');text('validation-message',error.message);}finally{button.disabled=false;}};
-  $('setup-form').onsubmit=async event=>{event.preventDefault();$('start-run').disabled=true;text('validation-message','Validating input and starting the production localizer…');try{const result=await api('/api/start',requestSettings());const option=document.createElement('option');option.value=result.id;option.textContent=result.name+' / running';$('run-select').prepend(option);$('latest').checked=true;$('setup-dialog').close();await loadRun(result.id);}catch(error){$('validation-message').classList.add('error');text('validation-message',error.message);}finally{$('start-run').disabled=false;}};
+  $('mcap-file').onchange=()=>{S.uploaded=null;$('validation-message').classList.remove('error');const f=$('mcap-file').files[0];text('file-summary',f?`${f.name} / ${(f.size/1024**2).toFixed(1)} MB`:'Select a recording to begin.');};
+  $('setup-form').onsubmit=async event=>{
+    event.preventDefault();$('start-run').disabled=true;$('validation-message').classList.remove('error');
+    try{
+      let result;
+      if($('advanced-settings').open){text('validation-message','Validating manual inputs…');result=await api('/api/start',requestSettings());}
+      else{
+        const file=$('mcap-file').files[0];if(!file)throw new Error('Choose an MCAP file first.');
+        const uploaded=S.uploaded||(S.uploaded=await uploadRecording(file));
+        $('upload-progress').hidden=true;text('validation-message','Detecting initial pose and motion, then starting localization…');
+        result=await api('/api/start-auto',{bag:uploaded.bag});
+      }
+      const option=document.createElement('option');option.value=result.id;option.textContent=result.name+' / running';$('run-select').prepend(option);$('latest').checked=true;$('setup-dialog').close();await loadRun(result.id);
+    }catch(error){$('validation-message').classList.add('error');text('validation-message',error.message);}
+    finally{$('start-run').disabled=false;$('upload-progress').hidden=true;}
+  };
   $('compare').onclick=()=>$('gt-dialog').showModal();
   $('gt-form').onsubmit=async event=>{event.preventDefault();$('attach-gt').disabled=true;text('gt-message','Verifying and matching reference timestamps…');try{await acceptPayload(await api('/api/compare',{id:S.run,path:$('gt-path').value.trim()}),true);$('gt-dialog').close();$('metric').value='error_m';await drawMap();await drawChart();}catch(error){text('gt-message',error.message);}finally{$('attach-gt').disabled=false;}};
   $('inspect-camera').onchange=()=>scheduleImage(0);
@@ -273,7 +305,7 @@ async function start() {
   $('run-mode').value=initial.timestamp_ns?'tune':'input';
   const defaultBag=$('bag').value;
   $('bag').addEventListener('change',()=>{if($('bag').value!==defaultBag){$('run-mode').value='input';$('initial-pose').value='';}});
-  const run=configuration.runs.find(r=>r.running)||configuration.runs.find(r=>r.groups&&r.split==='tune');
+  const run=configuration.runs.find(r=>r.running)||configuration.runs.find(r=>r.groups&&r.split==='tune')||configuration.runs.find(r=>r.groups);
   if(run)await loadRun(run.id);else{$('setup-dialog').showModal();}
   poll();
 }

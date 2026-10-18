@@ -1,5 +1,21 @@
 # APEX UI: first implementation
 
+**18 October automatic-input update:** judges now choose an MCAP in the browser and
+press Run, with no path/pose/map/motion configuration. The UI extracts one supported
+map-frame initial pose, selects the frozen release bank and detects permitted motion.
+Embedded GT is exported only after inference exits and is used by the supplied scorer
+and offline viewer. Minimal deliverables go to `results/ui-<id>/`; raw cache/GT/uploads
+stay in `tmp/replay_ui/`. The original training recording is identified by SHA and uses
+the fixed holdout. Manual controls remain under Advanced.
+
+Verification: **1,144 tests passed**, Ruff and JavaScript/geometry checks passed. A real
+browser picker/upload/run completed a 59-pose recording with automatic scoring and GT
+comparison. A whole automatic holdout replay reproduced all 2,191 frozen predictions
+exactly (0.655 m RMSE); its postprocessor was rerun after fixing an integration keyword.
+See [automatic input receipt](evidence/automatic_ui_20261018.json). Unseen organizer
+topic/schema variants and hidden-test accuracy remain unverified. The historical
+implementation notes below describe the earlier manual interface.
+
 18 October 2026. C-owned local run/replay interface. Stage 3/5 localisation gates remain
 open; UI completion does not qualify accuracy, hidden data or real-time performance.
 

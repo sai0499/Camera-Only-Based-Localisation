@@ -18,7 +18,16 @@ The current validation deliverables are in `results/holdout/`: `submission.csv`,
 `validation/`, `validated.json`, `runtime.json`, `run_metadata.json`, and
 `trajectory_vs_ground_truth.png`. Only required outputs are retained in `results/`.
 
-The judge supplies one initial pose JSON, with exactly these keys (replace the example):
+For judges, double-click `launch_ui.cmd`, open <http://127.0.0.1:8765>, and choose
+**New run → Choose MCAP → Run localization**. The UI selects the frozen bank,
+extracts one embedded initial pose and detects supported velocity/yaw-rate data.
+After inference completes it extracts that recording's GT for automatic plots and the
+provided scorer. Download the pose CSV and validation report; minimal deliverables
+are also published to `results/ui-<id>/`. Uploads, raw diagnostics and offline GT stay
+in `tmp/replay_ui/`. Unsupported embedded pose formats fail explicitly; manual input
+remains available under Advanced. Full instructions: [UI guide](replay_ui/README.md).
+
+For direct CLI use, supply one initial pose JSON, with exactly these keys (replace the example):
 
 ```json
 {"timestamp_ns":"1791894452091749130","x":0.0,"y":0.0,"yaw":0.0}

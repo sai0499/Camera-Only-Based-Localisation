@@ -9,3 +9,4 @@
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 
 .path-row{display:flex;gap:6px}.path-row input{flex:1}.path-row button{white-space:nowrap}#camera-image:not([src]){display:none}
+.recording-picker{border:1px solid var(--ink);padding:20px;gap:14px!important;background:var(--surface)}.recording-picker input{border:0;padding:0}.recording-picker input::file-selector-button{border:1px solid var(--ink);background:var(--ink);color:var(--surface);font:inherit;padding:10px 15px;margin-right:12px;cursor:pointer}#upload-progress{width:100%;height:8px;accent-color:var(--accent);border:0}#advanced-settings{border-top:1px solid var(--rule);padding-top:15px}#advanced-settings>summary{cursor:pointer;color:var(--muted)}#advanced-settings>label{display:flex;flex-direction:column;gap:7px;margin:15px 0;font-size:11px}

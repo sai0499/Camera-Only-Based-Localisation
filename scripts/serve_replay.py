@@ -7,12 +7,13 @@ import json
 import mimetypes
 import re
 import secrets
+import shutil
 import subprocess
 import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -117,6 +118,16 @@ class Workspace:
 
     def auto_gt(self, replay):
         """Development splits have reference GT: attach it offline once the run completes."""
+        automatic = self.replay_cache / "inputs" / replay.folder.name / "inspection.json"
+        if automatic.is_file():
+            state = read_json(replay.folder / "evaluation_status.json", {"state": "pending"})
+            if replay.state == "failed":
+                state = {"state": "failed", "reason": "Localization failed; inspect the run diagnostics."}
+            replay.evaluation = {k: v for k, v in state.items() if k != "gt"}
+            if (replay.state == "completed" and state.get("state") == "completed"
+                    and replay.comparison is None):
+                replay.attach_gt(Path(state["gt"]))
+            return
         if (replay.state != "completed" or replay.comparison is not None or getattr(replay, "gt_tried", False)
                 or replay.meta.get("split") not in ("tune", "holdout")):
             return
@@ -204,15 +215,59 @@ class Workspace:
                 "vehicle_motion": vehicle_motion,
                 "map_id": manifest["map_id"], "cameras": compatible}
 
-    def start(self, request):
+    def upload(self, stream, length, name):
+        if not 0 < length <= 64 * 1024**3 or length + 128*1024**2 > shutil.disk_usage(self.root).free:
+            raise ValueError("Recording is too large for the available disk space")
+        if Path(name).name != name or not name.lower().endswith(".mcap") or len(name) > 200:
+            raise ValueError("Select an MCAP file")
+        folder = self.replay_cache / "uploads" / secrets.token_hex(8)
+        folder.mkdir(parents=True)
+        path = folder / name
+        try:
+            with path.open("xb") as handle:
+                remaining = length
+                while remaining:
+                    chunk = stream.read(min(1024**2, remaining))
+                    if not chunk:
+                        raise ValueError("Recording upload was interrupted")
+                    handle.write(chunk)
+                    remaining -= len(chunk)
+            from mcap.reader import make_reader
+            with path.open("rb") as handle:
+                if make_reader(handle).get_summary() is None:
+                    raise ValueError("MCAP has no indexed summary")
+        except Exception as error:
+            path.unlink(missing_ok=True)
+            folder.rmdir()
+            if isinstance(error, (ValueError, OSError)):
+                raise
+            raise ValueError("The selected file is not a valid indexed MCAP recording") from error
+        return {"bag": str(path.relative_to(self.root)), "name": name}
+
+    def start_auto(self, request):
+        from scripts.mcap_input import inspect_recording
+
+        if self.process is not None and self.process.poll() is None:
+            raise ValueError("A localisation process is already running")
+        bag = Path(request["bag"])
+        bag = bag if bag.is_absolute() else self.root / bag
+        if not bag.is_file() or bag.suffix.lower() != ".mcap":
+            raise ValueError("Select a readable MCAP recording")
+        bank = self.root / self.config()["default_artifacts"]
+        inspection = inspect_recording(bag, bank)
+        return self.start({"bag": str(bag), "artifacts": str(bank), "retrieval": True,
+                           **{k: inspection[k] for k in ("mode", "initial_pose", "vehicle_motion")}},
+                          inspection=inspection)
+
+    def start(self, request, inspection=None):
         if self.process is not None and self.process.poll() is None:
             raise ValueError("A localisation process is already running")
         settings = self.validate(request)
         slug = "ui-" + secrets.token_hex(5)
-        folder = self.results / slug
-        inputs = self.results / "ui-inputs"
+        folder = (self.replay_cache if inspection else self.results) / slug
+        inputs = self.replay_cache / "inputs" / slug
         inputs.mkdir(parents=True, exist_ok=True)
-        initial_path = inputs / (slug + ".json")
+        initial_path = inputs / "initial_pose.json"
         initial_path.write_text(json.dumps(settings["initial_pose"]), encoding="utf-8")
         command = [sys.executable, "-u", "-B", str(self.root / "run.py"),
                    "--bag", settings["bag"], "--artifacts", settings["artifacts"],
@@ -228,13 +283,21 @@ class Workspace:
             command.append("--retrieval")
         if settings.get("vehicle_motion"):
             command += ["--vehicle-motion", settings["vehicle_motion"]]
-        log = inputs / (slug + ".log")
+        log = inputs / "localization.log"
         with log.open("wb") as handle:
             self.process = subprocess.Popen(command, cwd=self.root, stdout=handle, stderr=subprocess.STDOUT,
                                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         key = hashlib.sha256(str(folder.resolve()).encode()).hexdigest()[:16]
         self.folders[key] = folder
         self.active = key
+        if inspection is not None:
+            (inputs / "inspection.json").write_text(json.dumps(inspection), encoding="utf-8")
+            process = self.process
+            def finish():
+                if process.wait() == 0:
+                    from scripts.mcap_input import finish_recording
+                    finish_recording(settings["bag"], folder, inputs, inspection, self.root)
+            threading.Thread(target=finish, daemon=True).start()
         return {"id": key, "name": slug, "settings": settings}
 
     def image(self, key, index, camera):
@@ -333,7 +396,7 @@ class Handler(BaseHTTPRequestHandler):
                     return self.respond(replay.payload(max(0, cursor - 64)))
                 if route.path == "/api/download":
                     key, name = query["id"][0], query["file"][0]
-                    if name not in ("submission.csv", "runtime.json", "run.json"):
+                    if name not in ("submission.csv", "runtime.json", "run.json", "validation/score.txt", "validated.json"):
                         raise ValueError("Unknown export")
                     path = within(workspace.folders[key] / name, workspace.replay_roots)
                     return self.respond(path.read_bytes(), mime="text/plain")
@@ -366,6 +429,9 @@ class Handler(BaseHTTPRequestHandler):
             return self.respond({"error": "Local session required"}, 403)
         try:
             length = int(self.headers.get("Content-Length", "0"))
+            if self.path == "/api/upload":
+                return self.respond(self.server.workspace.upload(self.rfile, length,
+                    unquote(self.headers.get("X-File-Name", ""))))
             limit = 6_000_000 if self.path == "/api/snapshot" else 16_384
             if not 0 < length <= limit:
                 raise ValueError("Invalid request size")
@@ -376,6 +442,8 @@ class Handler(BaseHTTPRequestHandler):
                 workspace = self.server.workspace
                 if self.path == "/api/validate":
                     result = workspace.validate(request)
+                elif self.path == "/api/start-auto":
+                    result = workspace.start_auto(request)
                 elif self.path == "/api/start":
                     result = workspace.start(request)
                 elif self.path == "/api/compare":

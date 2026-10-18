@@ -9,18 +9,33 @@ Double-click `launch_ui.cmd` at the project root, or run:
 Open <http://127.0.0.1:8765>. The server binds only to loopback. All JavaScript and
 fonts are local; there is no CDN, cloud upload, npm build or analytics.
 
-The workbench opens a saved run when available. Choose **New run** for a local
-MCAP, frozen artifact directory and one initial pose. Paths can be absolute or relative
-to the repository. Keep `timestamp_ns` quoted in JSON to preserve exact nanoseconds.
-New-recording mode starts at that pose and runs to EOF, or to optional explicit bounds.
-Tuning/holdout presets retain their frozen intervals. Production verifies all artifact
-hashes during startup; a different rig/calibration is rejected rather than adapted.
+The judge workflow is **New run → Choose MCAP → Run localization**. The browser
+uploads the file to this computer only. No path, map, split, pose JSON or motion setting
+is required. The frozen seven-camera rescue bank is selected automatically. One
+map-frame initial pose is extracted from a dedicated initial-pose topic, or the first
+supported embedded reference pose. Supported velocity/yaw-rate data is detected
+automatically; recordings without it use camera-only inference. Acceleration is not read.
+Only that one initial pose and the existing velocity whitelist reach the localizer.
+Production still verifies frozen artifact hashes and camera compatibility at startup.
 
-**Motion input** defaults to camera-only. Choose **Training state velocity whitelist**
-for the original development recording, or **Validation velocity topic** when the input
-contains `/constructor0/validation/twist`. This explicit mode uses only timestamp and
-body vx/vy/yaw rate, never recorded pose, orientation, status or track coordinates.
-The real hidden test still uses the judges' one initial pose. The supplied camera lap
+After inference finishes, embedded ground truth is extracted separately and the supplied
+scorer runs automatically. The trajectory/error plots gain a GT comparison and
+**Download validation** becomes available alongside **Download CSV**. Minimal pose,
+validation and runtime deliverables are saved to `results/ui-<id>/`; uploaded inputs,
+raw logs and offline GT remain in ignored `tmp/replay_ui/`.
+
+Supported reference sources include direct `map → constructor0/base_link` dynamic TF,
+named ground-truth/validation pose topics using ROS 2 PoseStamped,
+PoseWithCovarianceStamped or Odometry, and the development StateEstimation layout.
+Frames and schemas are checked; missing/unsupported initialization fails explicitly.
+Uploading the byte-identical original training recording automatically selects the
+fixed holdout interval, preventing replay of fitting data as a new test.
+
+**Advanced / manual input** retains the previous path/pose/split controls. Keep
+`timestamp_ns` quoted in JSON to preserve exact nanoseconds. New-recording mode starts
+at that pose and runs to EOF, or optional explicit bounds. The CLI remains camera-only
+unless motion is requested. Motion reads only timestamp and body vx/vy/yaw rate, never
+recorded pose, orientation, status or track coordinates. The supplied camera lap
 is an unscored lighting/speed stress test with an experimental image-derived initial
 pose. Geometry-bound banks accept an unchanged selected camera even if an unused
 camera's mount differs; they require exact raw calibration and preprocessing proof.
@@ -47,7 +62,7 @@ valid auxiliary height, preserving gaps; it does not manufacture a 3D GT traject
 **Evidence / Log** navigates recorded tracker/recovery/error events. Rejections and
 height provenance are in the selected-output inspector.
 
-Attach an optional GT CSV only after completion. It is read by the offline viewer,
+For manually configured runs, attach an optional GT CSV only after completion. It is read by the offline viewer,
 never sent to the estimator. The comparison uses existing integer-time interpolation,
 50 ms bracket checks and wrapped heading errors. The header RMSE refers to all matched
 outputs, not the visible replay prefix; it is a diagnostic, not the official scorer.
@@ -76,6 +91,6 @@ The bundled fonts have SIL OFL notices and source hashes in `fonts/`.
 
 ## Input browsing, ground truth and camera images
 
-- **Browse...** buttons open a native local file dialog (localhost server only) for the recording, frozen map directory, initial-pose JSON and ground-truth CSV.
-- Completed tuning/holdout runs attach the development reference `evaluation/reference_reconciled/gt_tf.csv` automatically (offline, after completion; never passed to inference). Other recordings attach a GT CSV with **Attach offline ground truth**.
+- The default MCAP file picker works through the browser; advanced **Browse...** buttons retain native local dialogs for manual paths.
+- Automatic runs attach only their own MCAP's embedded reference after completion. Manually configured tuning/holdout runs retain the development reference; other manual runs can use **Attach offline ground truth**.
 - The recorded image of the chosen camera is always shown for the selected output (falls back to the pose camera or `fr` when that camera is missing). Images load only for completed runs so inference is not contended.
