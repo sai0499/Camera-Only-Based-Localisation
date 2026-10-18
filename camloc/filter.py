@@ -149,11 +149,16 @@ class CameraFilter:
     own full geometry. Neither mechanism injects z/roll/pitch into the six-state covariance.
     """
 
-    def __init__(self, initial_pose: c.InitialPose, *, vehicle_motion=None) -> None:
+    def __init__(self, initial_pose: c.InitialPose, *, vehicle_motion=None, pose_variance_scale=None) -> None:
         if not isinstance(initial_pose, c.InitialPose):
             raise c.ContractError("CameraFilter requires one InitialPose")
         self.initial_pose = initial_pose
         self.vehicle_motion = vehicle_motion
+        self.pose_variance_scale = dict(pose_variance_scale or {})
+        for camera, value in self.pose_variance_scale.items():
+            c.check_camera_id(camera)
+            if not math.isfinite(value) or value < 1:
+                raise c.ContractError("camera pose variance scale must be finite and >= 1")
         self._diagnostics = []
         self.estimate = c.Estimate(
             t_ns=initial_pose.timestamp_ns, group_id=None,
@@ -323,7 +328,7 @@ class CameraFilter:
                 interval = 0.1 if last_pnp is None else (stamp - last_pnp) / c.NS_PER_S
                 if interval <= 0:
                     raise c.ContractError("PnP measurement times must increase")
-                R = np.diag(POSE_STD**2) * quality * max(1.0, 0.1 / interval)
+                R = np.diag(POSE_STD**2) * quality * max(1.0, 0.1 / interval) * self.pose_variance_scale.get(pose.camera_id, 1.)
                 state, P = self._motion_pose_update(state, P, _pose_values(pose.T_WB), R, stamp)
                 aux = _auxiliary(pose.T_WB, stamp, c.AuxSource.PNP)
                 kinds.append(c.EvidenceKind.HANDOFF_PNP if isinstance(evidence.pose, c.HandoffEvidence)
@@ -434,12 +439,14 @@ class CameraFilter:
         scale = _NOISE_SCALE[old.status]
         state0 = np.r_[_pose_values(confirmation.T_WB), 0.0, 0.0, 0.0]
         P0 = np.diag(np.r_[POSE_STD, INITIAL_STD[3:]] ** 2)
+        variance_scale = self.pose_variance_scale.get(confirmation.camera_id, 1.)
+        P0[:3, :3] *= variance_scale
         if self.vehicle_motion is not None and self.vehicle_motion.fresh_at(m):
             predicted, predicted_P = self._propagate(old.state, old.P, old.t_ns, m,
                                                     scale, self._last_full_ns())
             quality = max(1., 40 / confirmation.inlier_count, 8 / confirmation.occupied_cells)
             state0, P0 = self._motion_pose_update(predicted, predicted_P,
-                _pose_values(confirmation.T_WB), np.diag(POSE_STD**2) * quality, m, recovery=True)
+                _pose_values(confirmation.T_WB), np.diag(POSE_STD**2) * quality * variance_scale, m, recovery=True)
         aux = _auxiliary(confirmation.T_WB, m, c.AuxSource.PNP)
         state, P = self._propagate(state0, P0, m, now, scale, m)
         status = _status(aux.valid, now - m, now - m, True, True, False)

@@ -45,3 +45,10 @@ def test_legacy_bank_without_raw_proof_cannot_relabel_another_rig():
 def test_matching_legacy_identity_is_unchanged():
     original = _calibration()
     assert lm.bind_calibrations({"fr": original}, manifest(original))["fr"] is original
+
+
+def test_adaptive_mode_leaves_changed_camera_unbound_for_exclusion():
+    original = _calibration()
+    changed = dataclasses.replace(original, preprocessing_id="prep:different", raw_width=1508)
+    result = lm.bind_calibrations({"fr": changed}, manifest(original), strict=False)
+    assert result["fr"] is changed and result["fr"].preprocessing_id != original.preprocessing_id

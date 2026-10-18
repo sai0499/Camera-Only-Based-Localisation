@@ -27,7 +27,7 @@ def _sha(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def _map(root: Path, cameras: list[str], landmark_counts: list[int]) -> lm.LandmarkMap:
+def _map(root: Path, cameras: list[str], landmark_counts: list[int], *, mask_id=masks.MASK_ID) -> lm.LandmarkMap:
     """Map with one keyframe per entry: camera ``cameras[i % len]``, ``landmark_counts[i]`` links."""
     n = len(landmark_counts)
     kf_cameras = [cameras[i % len(cameras)] for i in range(n)]
@@ -59,7 +59,7 @@ def _map(root: Path, cameras: list[str], landmark_counts: list[int]) -> lm.Landm
         "preprocessing_id": f.PREPROCESSING_ID,
         "canonical_K": {cam: f.canonical_K().tolist() for cam in cameras},
         "T_BC": {cam: f.camera_to_body().tolist() for cam in cameras},
-        "mask_id": masks.MASK_ID,
+        "mask_id": mask_id,
     }
     lm.save_landmark_map(root, arrays, manifest)
     return lm.load_landmark_map(root)
@@ -77,6 +77,17 @@ def _index(root: Path, landmark_map: lm.LandmarkMap, descriptors: np.ndarray,
     rt.write_index(root, landmark_map, descriptors, ids, cams,
                    model.checkpoint_sha256 if model else sha, {"fitting_interval_ns": ["0", "1"]})
     return rt.RetrievalIndex.load(root, landmark_map, model)
+
+
+def test_auxiliary_mask_recipe_is_hash_bound_and_legacy_identity_cannot_be_substituted(tmp_path):
+    bank = _map(tmp_path/"rescue", ["cl"], [40], mask_id=masks.RESCUE_MASK_ID)
+    index = _index(bank.root, bank, _unit(np.random.default_rng(2), 1))
+    assert index.meta["preprocessing_id"] == rt.preprocessing_id(masks.RESCUE_MASK_ID)
+    meta = dict(index.meta, preprocessing_id=rt.PREPROCESSING_ID)
+    meta["retrieval_id"] = rt.retrieval_id(meta)
+    (bank.root/rt.INDEX_META_NAME).write_text(json.dumps(meta), encoding="utf-8")
+    with pytest.raises(c.ContractError, match="preprocessing_id"):
+        rt.RetrievalIndex.load(bank.root, bank, None)
 
 
 @pytest.fixture(scope="module")

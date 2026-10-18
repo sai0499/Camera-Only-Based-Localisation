@@ -16,6 +16,8 @@ import numpy as np
 from camloc import contracts as c
 
 MASK_ID = "bodywork-v1"
+RESCUE_MASK_ID = "bodywork-rescue-v1"
+SUPPORTED_MASK_IDS = (MASK_ID, RESCUE_MASK_ID)
 
 # Pixel polygons (u, v) of the region to EXCLUDE, per camera.
 BODYWORK_POLYGONS: dict[str, tuple[tuple[int, int], ...]] = {
@@ -26,11 +28,18 @@ BODYWORK_POLYGONS: dict[str, tuple[tuple[int, int], ...]] = {
 }
 
 
-def bodywork_mask(camera_id: str) -> np.ndarray:
+def bodywork_mask(camera_id: str, *, rescue=False) -> np.ndarray:
     """Return a new bool (464, 960) mask, True where the pixel is not ego-vehicle bodywork."""
     c.check_camera_id(camera_id)
     usable = np.ones((c.CANONICAL_HEIGHT, c.CANONICAL_WIDTH), np.uint8)
     polygon = BODYWORK_POLYGONS.get(camera_id)
     if polygon is not None:
         cv2.fillPoly(usable, [np.asarray(polygon, np.int32)], 0)
+    if rescue:
+        # Fitting-only inspection at the weak turns: tyres/sidepods must not become landmarks.
+        if camera_id == "fl":
+            usable = bodywork_mask("fr")[:, ::-1].astype(np.uint8)
+        cutoff = {"cl": 200, "cr": 200, "rl": 360, "rr": 260}.get(camera_id)
+        if cutoff is not None:
+            usable[cutoff:] = 0
     return usable.astype(bool)

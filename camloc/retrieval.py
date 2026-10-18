@@ -292,7 +292,7 @@ def write_index(bank_dir: str | Path, landmark_map: Any, descriptors: np.ndarray
         "map_npz_sha256": landmark_map.manifest["map_npz_sha256"],
         "model_id": MODEL_ID,
         "checkpoint_sha256": checkpoint_sha256,
-        "preprocessing_id": PREPROCESSING_ID,
+        "preprocessing_id": preprocessing_id(landmark_map.mask_id),
         "min_landmarks": MIN_LANDMARKS,
         "keyframes": int(keyframe_ids.size),
         "descriptor_sha256": descriptor_sha256(descriptors, keyframe_ids, camera_ids),
@@ -348,9 +348,10 @@ class RetrievalIndex:
             "map_id": (meta.get("map_id"), landmark_map.map_id),
             "map_npz_sha256": (meta.get("map_npz_sha256"),
                                landmark_map.manifest.get("map_npz_sha256")),
-            "preprocessing_id": (meta.get("preprocessing_id"), PREPROCESSING_ID),
-            "mask_id": (preprocessing_id(landmark_map.mask_id), PREPROCESSING_ID),
+            "preprocessing_id": (meta.get("preprocessing_id"), preprocessing_id(landmark_map.mask_id)),
         }
+        if landmark_map.mask_id not in masks.SUPPORTED_MASK_IDS:
+            raise c.ContractError("retrieval index mask_id mismatch: unsupported frozen mask")
         if model is not None:
             checks["checkpoint_sha256"] = (meta.get("checkpoint_sha256"), model.checkpoint_sha256)
         for name, (found, expected) in checks.items():

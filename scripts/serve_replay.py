@@ -76,7 +76,9 @@ class Workspace:
         return {"runs": runs, "bags": [p.name for p in self.root.glob("*.mcap")],
                 "artifacts": sorted(banks), "initial_pose": completed.get("initial_pose", {}),
                 "default_gt": "evaluation/reference_reconciled/gt_tf.csv",
-                "default_artifacts": ("artifacts/fit-stage3-multilap-v5-rigproof-v2"
+                "default_artifacts": ("artifacts/fit-seven-rescue-v2"
+                    if (self.root / "artifacts/fit-seven-rescue-v2/manifest.json").exists()
+                    else "artifacts/fit-stage3-multilap-v5-rigproof-v2"
                     if (self.root / "artifacts/fit-stage3-multilap-v5-rigproof-v2/manifest.json").exists()
                     else "artifacts/fit-stage3-multilap-v5")}
 
@@ -121,18 +123,25 @@ class Workspace:
 
         from camloc.landmark_map import bind_calibrations
 
-        calibrations = bind_calibrations(read_calibrations(bag), manifest)
+        adaptive = manifest.get("camera_policy") == "support-v1"
+        calibrations = bind_calibrations(read_calibrations(bag), manifest, strict=not adaptive)
+        compatible = []
         for camera in manifest["cameras"]:
             cal = calibrations[camera]
-            if not np.allclose(cal.K, manifest["canonical_K"][camera], atol=1e-8, rtol=0) or not np.allclose(
+            if cal.preprocessing_id != manifest["preprocessing_id"] or not np.allclose(cal.K, manifest["canonical_K"][camera], atol=1e-8, rtol=0) or not np.allclose(
                     cal.T_BC, manifest["T_BC"][camera], atol=1e-8, rtol=0):
+                if adaptive:
+                    continue
                 raise ValueError(f"Camera {camera} differs from the frozen map")
+            compatible.append(camera)
+        if not compatible:
+            raise ValueError("No camera matches the frozen map")
         return {"bag": str(bag), "artifacts": str(bank), "mode": mode,
                 "initial_pose": {"timestamp_ns": str(initial.timestamp_ns), "x": initial.x,
                                  "y": initial.y, "yaw": initial.yaw},
                 "episode": wire(episode.summary()), "retrieval": bool(request.get("retrieval", True)),
                 "vehicle_motion": vehicle_motion,
-                "map_id": manifest["map_id"], "cameras": manifest["cameras"]}
+                "map_id": manifest["map_id"], "cameras": compatible}
 
     def start(self, request):
         if self.process is not None and self.process.poll() is None:
@@ -168,7 +177,7 @@ class Workspace:
         return {"id": key, "name": slug, "settings": settings}
 
     def image(self, key, index, camera):
-        if camera not in ("fr", "r"):
+        if camera not in ("fl", "fr", "cl", "cr", "r", "rl", "rr"):
             raise ValueError("Only selected cameras are available")
         replay = self.replay(key)
         if replay.state != "completed":

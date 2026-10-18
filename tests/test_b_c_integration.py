@@ -19,45 +19,52 @@ from test_anchor_worker import FakeBackend
 from validate_run import check_metrics, validate
 
 
-def _dual_bank(bank, output):
+def _dual_bank(bank, output, cameras=("fr", "r"), policy=None):
     with np.load(bank.root / "map.npz", allow_pickle=False) as archive:
         arrays = {key: archive[key] for key in archive.files}
     count = len(arrays["keyframe_ids"])
     total = arrays["keypoint_offsets"][-1]
     for key in ("keyframe_T_WC", "keyframe_exposure_ns", "keypoints", "keypoint_scores",
                 "descriptors", "keypoint_landmarks"):
-        arrays[key] = np.concatenate([arrays[key], arrays[key]])
-    arrays["keyframe_ids"] = np.arange(2 * count, dtype=np.int64) * 2 + 1
-    arrays["keyframe_cameras"] = np.array(["fr"] * count + ["r"] * count, dtype="<U2")
-    arrays["keypoint_offsets"] = np.r_[arrays["keypoint_offsets"], arrays["keypoint_offsets"][1:] + total]
-    arrays["mask_r"] = arrays["mask_fr"].copy()
-    manifest = {**bank.manifest, "cameras": ["fr", "r"],
-                "canonical_K": {camera: bank.K("fr").tolist() for camera in ("fr", "r")},
-                "T_BC": {camera: bank.T_BC("fr").tolist() for camera in ("fr", "r")}}
+        arrays[key] = np.concatenate([arrays[key]] * len(cameras))
+    arrays["keyframe_ids"] = np.arange(len(cameras) * count, dtype=np.int64) * 2 + 1
+    arrays["keyframe_cameras"] = np.repeat(np.array(cameras, dtype="<U2"), count)
+    offsets = arrays["keypoint_offsets"]
+    arrays["keypoint_offsets"] = np.r_[offsets[:1], *[offsets[1:] + i*total for i in range(len(cameras))]]
+    for camera in cameras:
+        arrays[f"mask_{camera}"] = arrays["mask_fr"].copy()
+    manifest = {**bank.manifest, "cameras": list(cameras),
+                "canonical_K": {camera: bank.K("fr").tolist() for camera in cameras},
+                "T_BC": {camera: bank.T_BC("fr").tolist() for camera in cameras}}
+    if policy:
+        manifest["camera_policy"] = policy
     landmark_map.save_landmark_map(output, arrays, manifest)
     return landmark_map.load_landmark_map(output)
 
 
-def _scene_run(tmp_path, *, black=False, dual=False):
+def _scene_run(tmp_path, *, black=False, dual=False, multi=False, healthy_front=False):
     scene = vf.Scene()
     bank = scene.build_map(tmp_path / "bank")
     if dual:
         bank = _dual_bank(bank, tmp_path / "dual")
+    if multi:
+        bank = _dual_bank(bank, tmp_path / "multi", ("fr", "cl", "cr"), "support-v1")
     observations = [scene.observation(k, image=scene.image(k, blank=black and k >= 8))
                     for k in range(16)]
     images = [f.make_image_message(exposure_ns=obs.exposure_ns) for obs in observations]
-    frames = [f.make_frame_set(group_id=k, selected_camera_ids=(("fr", "r") if dual else ("fr",)),
-              images=((image, f.make_image_message(camera_id="r", exposure_ns=image.exposure_ns + 500_000))
-                      if dual else (image,)))
+    selected = ("fr", "cl", "cr") if multi else ("fr", "r") if dual else ("fr",)
+    frames = [f.make_frame_set(group_id=k, selected_camera_ids=selected,
+              images=(image, *[f.make_image_message(camera_id=cam,
+                  exposure_ns=image.exposure_ns + (j+1)*500_000) for j,cam in enumerate(selected[1:])]))
               for k, image in enumerate(images)]
 
     class Canonicalizer:
         def canonicalize(self, image):
             k = (image.exposure_ns - scene.t_ns(0)) // vf.STEP_NS
-            if dual:
+            if dual or multi:
                 return scene.observation(k, camera_id=image.camera_id, exposure_ns=image.exposure_ns,
                     calibration_id=image.calibration_id,
-                    image=(np.zeros_like(observations[k].image) if image.camera_id == "fr"
+                    image=(np.zeros_like(observations[k].image) if image.camera_id == "fr" and not healthy_front
                            else observations[k].image))
             return observations[k]
 
@@ -65,7 +72,7 @@ def _scene_run(tmp_path, *, black=False, dual=False):
         model_ids = FakeBackend.model_ids
 
         def extract(self, image, mask):
-            if dual and image.max() == 0:
+            if (dual or multi) and image.max() == 0:
                 return Features(np.zeros((0, 2), np.float32), np.zeros(0, np.float32),
                                 np.zeros((0, 128), np.float32))
             k = next(k for k, obs in enumerate(observations) if np.array_equal(obs.image, image))
@@ -97,6 +104,43 @@ def test_rear_recovery_is_not_starved_by_failed_front(tmp_path):
     assert any(r["record"] == "GroupEvidence" and r["pose"] is not None
                and r["pose"]["camera_id"] == "r" for r in records)
     assert validate(csv, log, frames, episode)["visual_updates"] >= 6
+
+
+def test_support_policy_uses_side_camera_on_black_front_without_stale_pose(tmp_path):
+    counts, frames, episode, csv, log = _scene_run(tmp_path, multi=True)
+    records = [json.loads(line) for line in log.read_text().splitlines()]
+    assert counts["frontend_errors"] == 0
+    assert any(r["record"] == "GroupEvidence" and r["pose"] is not None
+               and r["pose"]["camera_id"] in ("cl", "cr") for r in records)
+    assert any(r["record"] == "CameraSelection" for r in records)
+    assert validate(csv, log, frames, episode)["visual_updates"] >= 6
+    from scripts.report_camera_support import run_support
+
+    # This fixture uses the same output ledger as production; report inputs carry no GT.
+    (tmp_path/"run.json").write_text(json.dumps({"groups":16,
+        "initial_pose":{"timestamp_ns":episode.start_ns},"episode":{"end_ns":episode.end_ns}}))
+    report = run_support(tmp_path)
+    assert report["full_visual_updates"] >= 6 and not report["processing_errors"]
+    assert report["camera_utilization"]["cl"]["selected_visual_poses"] > 0
+
+
+def test_support_policy_keeps_healthy_front_preferred_after_startup(tmp_path):
+    counts, _, _, _, log = _scene_run(tmp_path, multi=True, healthy_front=True)
+    records = [json.loads(line) for line in log.read_text().splitlines()]
+    selected = [r["pose"]["camera_id"] for r in records
+                if r["record"] == "GroupEvidence" and r["pose"] is not None]
+    assert counts["frontend_errors"] == 0 and selected.count("fr") >= 6
+
+
+def test_no_auxiliary_coverage_cannot_reserve_and_starve_front_refresh(tmp_path, monkeypatch):
+    from camloc.camera_policy import CameraPolicy
+
+    monkeypatch.setattr(CameraPolicy, "scores", lambda self, snapshot, stamp, available: {"fr": 1.})
+    counts, _, _, _, log = _scene_run(tmp_path, multi=True, healthy_front=True)
+    records = [json.loads(line) for line in log.read_text().splitlines()]
+    dispatched = [r for r in records if r["record"] == "SchedulerEvent" and r["kind"] == "dispatched"]
+    assert counts["frontend_errors"] == 0
+    assert len(dispatched) >= 2 and all(r["camera_id"] == "fr" for r in dispatched)
 
 
 @pytest.mark.parametrize("black", [False, True])

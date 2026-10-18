@@ -163,7 +163,11 @@ def main(argv=None):
     from camloc.io import open_frame_sets
 
     episode = c.load_split()[args.split]
-    source = open_frame_sets(args.bag, initial_pose=c.read_initial_pose(args.initial_pose), episode=episode)
+    run_meta = args.submission.parent / "run.json"
+    cameras = ((json.loads(run_meta.read_text(encoding="utf-8")).get("selected_cameras"))
+               if run_meta.exists() else None)
+    source = open_frame_sets(args.bag, initial_pose=c.read_initial_pose(args.initial_pose), episode=episode,
+                            **({"cameras": tuple(cameras)} if cameras else {}))
     result = validate(args.submission, args.diagnostics, source, episode)
     if args.evaluation is not None:
         check_metrics(args.evaluation, args.submission)

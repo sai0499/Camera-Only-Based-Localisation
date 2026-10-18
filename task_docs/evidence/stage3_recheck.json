@@ -1,381 +1,433 @@
 {
   "date": "2026-10-18",
-  "team_c_step_3_signed_off": false,
-  "signed_off_reason": "Unchanged validate_run.py passes 4 of 5 checks on the fresh fix-7 replay (valid, exposure sequence, coverage 1.0, metric sections); the visual-baseline continuity gate fails (longest full-pose gap 6.20 s, 4 gaps over the unchanged 3 s bound).",
-  "scope": "Stage 3 gate-fix round 4: two B-owned changes (build_map.py 3,000-reference bound; camloc/vision.py seeded handoff carry from logged causal priors), front-only whole-fitting-interval bank, one fresh full tuning replay with unchanged runtime gates, thresholds, scheduler caps, contracts, evaluator and validator. Not a holdout result or accuracy certification",
-  "code_changes_b_owned": {
-    "build_map.py": "MAX_REFERENCES = 3000 and check_reference_count(n) replace the inline 2,000 abort; reject-not-truncate; not written to the manifest",
-    "camloc/vision.py": "bounded per-camera _prior_log (<= HISTORY_MAX_FRAMES, written by _remember_prior, cleared on calibration change); _motion_guess extracted from _guess with identical math; handoff seeds each carry transition whose two exposures both have a logged prior, else unseeded; _carry retries seeded failures unseeded (unchanged)"
-  },
-  "verification": {
-    "pytest_passed": 994,
-    "pytest_new": 8,
-    "pytest_skipped_or_xfailed": 0,
-    "pytest_command": ".venv/Scripts/python.exe -B -m pytest --basetemp tmp/round4-suite -q",
-    "ruff_command": ".venv/Scripts/ruff.exe check camloc scripts tests run.py build_map.py validate_run.py",
-    "ruff_passed": true,
-    "new_tests": [
-      "tests/test_map_build.py::test_reference_count_bound_rejects_rather_than_truncates",
-      "tests/test_stage3_handoff_seed.py (7 synthetic tests)"
-    ]
-  },
-  "tuning": {
-    "directory": "results/tune-stage3-fix-7",
-    "selected_as": "only fresh round-4 replay of the committed code; not better than fix-5 on longest gap or RMSE",
-    "bank": {
-      "path": "artifacts/fit-stage3-multilap-v5",
-      "build_command": ".venv/Scripts/python.exe -B build_map.py --output artifacts/fit-stage3-multilap-v5 --window 0 700.39",
-      "cameras": [
-        "fr"
-      ],
-      "windows_s": [
-        [
-          0,
-          700.39
-        ]
-      ],
-      "travel_m": 4.0,
-      "heading_deg": 5.0,
-      "references": 2456,
-      "pairs": 9773,
-      "landmarks": 114855,
-      "median_landmark_error_px": 1.48,
-      "weak_refs_below_30_landmarks": 71,
-      "build_seconds": 481.7,
-      "map_id": "fitmap:cb52ba980ffd803e"
-    },
-    "retrieval": {
-      "build_command": ".venv/Scripts/python.exe -B scripts/build_retrieval_index.py --artifacts artifacts/fit-stage3-multilap-v5",
-      "retrieval_id": "retrieval:eff77597458adb60",
-      "map_id": "fitmap:cb52ba980ffd803e",
-      "model": "EigenPlaces ResNet-18 / 512-D (vendored, MIT)",
-      "checkpoint_sha256": "b47ea1efb51041604e9c135508764175bbaa98dece47b47da664517317d0aff3",
-      "descriptor_sha256": "daf8090de9a02c95f65063af8146960e6d635656cbf09064114c6417d3afed9c",
-      "preprocessing_id": "eigenplaces-r18-512:rgb480x232:imagenet:mask-bodywork-v1",
-      "keyframes": 2385,
-      "camera": "fr",
-      "build_seconds": 53.2
-    },
-    "commands": [
-      ".venv/Scripts/python.exe -B scripts/export_initial_pose.py --split tune --out tmp/round4/tune-initial.json",
-      ".venv/Scripts/python.exe -B run.py --artifacts artifacts/fit-stage3-multilap-v5 --retrieval --initial-pose tmp/round4/tune-initial.json --split tune --output results/tune-stage3-fix-7",
-      ".venv/Scripts/python.exe -B evaluation/reference_eval.py score results/tune-stage3-fix-7/submission.csv --split tune --out results/tune-stage3-fix-7/evaluation",
-      ".venv/Scripts/python.exe -B validate_run.py --submission results/tune-stage3-fix-7/submission.csv --diagnostics results/tune-stage3-fix-7/diagnostics.jsonl --bag c0_2026-10-13_22-53-42_camloc_0.mcap --initial-pose tmp/round4/tune-initial.json --split tune --evaluation results/tune-stage3-fix-7/evaluation --out results/tune-stage3-fix-7/validated.json"
-    ],
-    "submission_sha256": "c175017bf10f26810389aa17265b48aa03dc1ede69e80244c24c848d870944c3",
+  "team_c_step_3_signed_off": true,
+  "signed_off_reason": "Unchanged validate_run.py (3 s full-pose gate) passes all five checks on the fresh full-tuning camera-only replay with bank fit-seven-rescue-v2; no gate or threshold changed.",
+  "scope": "Measured tuning visual-baseline gate only. Rescue regions were chosen from causal tuning predictions/gaps (not tuning GT); fitting GT only for triangulation. Not hidden-test accuracy, not rate qualification. Holdout regression (already-inspected split) still has a 9.8 s gap.",
+  "signoff_run": {
+    "directory": "results/seven-camera-cameraonly-tune-v1",
+    "mode": "camera-only",
+    "bank": "artifacts/fit-seven-rescue-v2",
+    "map_id": "fitmap:1135ae388a5d0ee3",
+    "retrieval_id": "retrieval:b932d15a32aee922",
+    "camera_policy": "support-v1",
+    "submission_sha256": "04d3f8ccc65bcde8109bf789ff3705e9118e98c7785def6b6185cc0b9296daa0",
     "validator_checks": {
-      "csv_and_metric_validation_passed": true,
+      "valid": true,
       "exposure_sequence_matches_input": true,
-      "nominal_coverage_1_0": true,
+      "nominal_coverage": 1.0,
       "metric_sections_complete": true,
-      "visual_baseline_gate_passed": false
+      "visual_baseline_gate_passed": true
     },
     "rows": 2708,
-    "full_pose_updates": 1799,
-    "full_pose_breakdown": {
-      "tracking_pnp": 1294,
-      "handoff_pnp": 494,
-      "resets": 11
+    "full_pose_updates": 1956,
+    "lost_rows": 104,
+    "max_full_pose_gap_ns": 2300035570,
+    "position_rmse_m": 2.554,
+    "lateral_rmse_m": 1.924,
+    "yaw_rmse_deg": 2.673
+  },
+  "assisted_run": {
+    "directory": "results/seven-camera-tune-v3",
+    "mode": "vehicle-motion state-fields (owner-authorized)",
+    "submission_sha256": "ace8ac94b2f8415cd409dd3bf2b62a29e31b925128427d97c650da7b244d6c95",
+    "visual_baseline_gate_passed": true,
+    "full_pose_updates": 1974,
+    "max_full_pose_gap_ns": 2700033529,
+    "position_rmse_m": 0.535,
+    "lateral_rmse_m": 0.289,
+    "isolated_repeat": {
+      "directory": "results/seven-camera-final-tune-v1",
+      "byte_identical_submission": true,
+      "elapsed_per_output_ms": 76.66,
+      "rate_qualified": false
+    }
+  },
+  "holdout_regression": {
+    "directory": "results/seven-camera-holdout-v1",
+    "visual_baseline_gate_passed": false,
+    "max_full_pose_gap_s": 9.8,
+    "position_rmse_m": 0.655,
+    "note": "previously inspected split; regression, not unseen test"
+  },
+  "superseded_round4": {
+    "date": "2026-10-18",
+    "team_c_step_3_signed_off": false,
+    "signed_off_reason": "Unchanged validate_run.py passes 4 of 5 checks on the fresh fix-7 replay (valid, exposure sequence, coverage 1.0, metric sections); the visual-baseline continuity gate fails (longest full-pose gap 6.20 s, 4 gaps over the unchanged 3 s bound).",
+    "scope": "Stage 3 gate-fix round 4: two B-owned changes (build_map.py 3,000-reference bound; camloc/vision.py seeded handoff carry from logged causal priors), front-only whole-fitting-interval bank, one fresh full tuning replay with unchanged runtime gates, thresholds, scheduler caps, contracts, evaluator and validator. Not a holdout result or accuracy certification",
+    "code_changes_b_owned": {
+      "build_map.py": "MAX_REFERENCES = 3000 and check_reference_count(n) replace the inline 2,000 abort; reject-not-truncate; not written to the manifest",
+      "camloc/vision.py": "bounded per-camera _prior_log (<= HISTORY_MAX_FRAMES, written by _remember_prior, cleared on calibration change); _motion_guess extracted from _guess with identical math; handoff seeds each carry transition whose two exposures both have a logged prior, else unseeded; _carry retries seeded failures unseeded (unchanged)"
     },
-    "prediction_only_rows": 909,
-    "lost_rows": 214,
-    "max_full_pose_gap_ns": 6200094729,
-    "max_full_pose_gap_window_s": [
-      231.88,
-      238.08
-    ],
-    "gaps_over_3s_window_s": [
-      [
-        104.28,
-        109.78
+    "verification": {
+      "pytest_passed": 994,
+      "pytest_new": 8,
+      "pytest_skipped_or_xfailed": 0,
+      "pytest_command": ".venv/Scripts/python.exe -B -m pytest --basetemp tmp/round4-suite -q",
+      "ruff_command": ".venv/Scripts/ruff.exe check camloc scripts tests run.py build_map.py validate_run.py",
+      "ruff_passed": true,
+      "new_tests": [
+        "tests/test_map_build.py::test_reference_count_bound_rejects_rather_than_truncates",
+        "tests/test_stage3_handoff_seed.py (7 synthetic tests)"
+      ]
+    },
+    "tuning": {
+      "directory": "results/tune-stage3-fix-7",
+      "selected_as": "only fresh round-4 replay of the committed code; not better than fix-5 on longest gap or RMSE",
+      "bank": {
+        "path": "artifacts/fit-stage3-multilap-v5",
+        "build_command": ".venv/Scripts/python.exe -B build_map.py --output artifacts/fit-stage3-multilap-v5 --window 0 700.39",
+        "cameras": [
+          "fr"
+        ],
+        "windows_s": [
+          [
+            0,
+            700.39
+          ]
+        ],
+        "travel_m": 4.0,
+        "heading_deg": 5.0,
+        "references": 2456,
+        "pairs": 9773,
+        "landmarks": 114855,
+        "median_landmark_error_px": 1.48,
+        "weak_refs_below_30_landmarks": 71,
+        "build_seconds": 481.7,
+        "map_id": "fitmap:cb52ba980ffd803e"
+      },
+      "retrieval": {
+        "build_command": ".venv/Scripts/python.exe -B scripts/build_retrieval_index.py --artifacts artifacts/fit-stage3-multilap-v5",
+        "retrieval_id": "retrieval:eff77597458adb60",
+        "map_id": "fitmap:cb52ba980ffd803e",
+        "model": "EigenPlaces ResNet-18 / 512-D (vendored, MIT)",
+        "checkpoint_sha256": "b47ea1efb51041604e9c135508764175bbaa98dece47b47da664517317d0aff3",
+        "descriptor_sha256": "daf8090de9a02c95f65063af8146960e6d635656cbf09064114c6417d3afed9c",
+        "preprocessing_id": "eigenplaces-r18-512:rgb480x232:imagenet:mask-bodywork-v1",
+        "keyframes": 2385,
+        "camera": "fr",
+        "build_seconds": 53.2
+      },
+      "commands": [
+        ".venv/Scripts/python.exe -B scripts/export_initial_pose.py --split tune --out tmp/round4/tune-initial.json",
+        ".venv/Scripts/python.exe -B run.py --artifacts artifacts/fit-stage3-multilap-v5 --retrieval --initial-pose tmp/round4/tune-initial.json --split tune --output results/tune-stage3-fix-7",
+        ".venv/Scripts/python.exe -B evaluation/reference_eval.py score results/tune-stage3-fix-7/submission.csv --split tune --out results/tune-stage3-fix-7/evaluation",
+        ".venv/Scripts/python.exe -B validate_run.py --submission results/tune-stage3-fix-7/submission.csv --diagnostics results/tune-stage3-fix-7/diagnostics.jsonl --bag c0_2026-10-13_22-53-42_camloc_0.mcap --initial-pose tmp/round4/tune-initial.json --split tune --evaluation results/tune-stage3-fix-7/evaluation --out results/tune-stage3-fix-7/validated.json"
       ],
-      [
-        138.88,
-        142.08
-      ],
-      [
-        142.38,
-        146.58
-      ],
-      [
+      "submission_sha256": "c175017bf10f26810389aa17265b48aa03dc1ede69e80244c24c848d870944c3",
+      "validator_checks": {
+        "csv_and_metric_validation_passed": true,
+        "exposure_sequence_matches_input": true,
+        "nominal_coverage_1_0": true,
+        "metric_sections_complete": true,
+        "visual_baseline_gate_passed": false
+      },
+      "rows": 2708,
+      "full_pose_updates": 1799,
+      "full_pose_breakdown": {
+        "tracking_pnp": 1294,
+        "handoff_pnp": 494,
+        "resets": 11
+      },
+      "prediction_only_rows": 909,
+      "lost_rows": 214,
+      "max_full_pose_gap_ns": 6200094729,
+      "max_full_pose_gap_window_s": [
         231.88,
         238.08
-      ]
-    ],
-    "anchor_dispatched": 855,
-    "anchor_delivered": 829,
-    "anchor_rejected": 0,
-    "anchor_faulted": 0,
-    "worker_failures": {
-      "recovery/pnp_too_few_inliers": 24,
-      "recovery/insufficient_matches": 1,
-      "front_anchor/insufficient_matches": 1
-    },
-    "frontend_errors": 0,
-    "nominal_coverage": 1.0,
-    "position_rmse_m": 12.893,
-    "updated_xy_position_rmse_m": 12.893,
-    "reconciled_supplied_map_xy_rmse_m": 12.895,
-    "reconciled_racing_line_sn_rmse_m": 11.905,
-    "fused_error_median_p90_m": [
-      0.33,
-      1.38
-    ],
-    "wrong_lock_rows_over_10m": [
-      {
-        "t_s": 185.48,
-        "camera": "fr",
-        "source": "tracking",
-        "kind": "recovery_reset",
-        "error_m": 10.1
-      }
-    ],
-    "handoff_reasons_whole_run": {
-      "front_anchor/accepted": 256,
-      "front_anchor/degenerate_geometry": 1,
-      "front_anchor/high_median_error": 11,
-      "front_anchor/poor_image_coverage": 11,
-      "recovery/accepted": 367,
-      "recovery/degenerate_geometry": 19,
-      "recovery/handoff_tracking_failed": 3,
-      "recovery/high_median_error": 38,
-      "recovery/poor_image_coverage": 71,
-      "recovery/too_few_correspondences": 35,
-      "recovery/too_few_inliers": 16
-    },
-    "handoff_reasons_whole_run_fix5": {
-      "front_anchor/accepted": 255,
-      "front_anchor/degenerate_geometry": 1,
-      "front_anchor/high_median_error": 6,
-      "front_anchor/poor_image_coverage": 5,
-      "recovery/accepted": 369,
-      "recovery/degenerate_geometry": 24,
-      "recovery/handoff_tracking_failed": 1,
-      "recovery/high_median_error": 35,
-      "recovery/poor_image_coverage": 76,
-      "recovery/too_few_correspondences": 38,
-      "recovery/too_few_inliers": 12
-    },
-    "gap_diagnosis": "Gaps stay at the recurring places near 104-110 s, 139-147 s and 232-238 s; fix-5 259-262 s gap closed. Inside gaps > 3 s: 57 handoffs, 7 accepted, 23 too_few_correspondences, 12 poor_image_coverage, 7 too_few_inliers, 4 degenerate, 3 handoff_tracking_failed, 1 high_median_error (fix-5 recount with the same script: 38 handoffs, 17 too_few_correspondences; round-3 19-of-51 tally used a different window and is not directly comparable). Denser bank cut worker failures 40 -> 26; seeded carry did not measurably reduce too_few_correspondences (38 -> 35 whole run). RMSE regressed while wrong locks fell 2 -> 1; neither change isolated as the cause. GT used only in a deleted tmp/round4 script.",
-    "fix8_revert_replay": "not run: neither stated trigger held (wrong locks 1 vs 2; accepted handoffs 623 vs 624); attribution of the RMSE/longest-gap regression to one change is not clear from the counts",
-    "startup_seconds": 21.883651700001792,
-    "replay_seconds": 174.01243489999615,
-    "paced_runtime_qualified": false,
-    "source_sha256_changed_vs_fix5": {
-      "camloc/vision.py": "0a2b84a6d86da47433de5434864722c479a863edaaca08d8232cddbfe6be15f1"
-    },
-    "source_sha256_note": "run.py and all other camloc modules hash-identical to fix-5 (results/tune-stage3-fix-7/run.json)"
-  },
-  "previous_run": {
-    "directory": "results/tune-stage3-fix-5",
-    "selected_as": "round-3 best run; previous run for round 4",
-    "bank": {
-      "path": "artifacts/fit-stage3-multilap-v1",
-      "build_command": ".venv/Scripts/python.exe -B build_map.py --output artifacts/fit-stage3-multilap-v1 --window 0 90 --window 321 700.39",
-      "cameras": [
-        "fr"
       ],
-      "windows_s": [
+      "gaps_over_3s_window_s": [
         [
-          0,
-          90
+          104.28,
+          109.78
         ],
         [
-          321,
-          700.39
+          138.88,
+          142.08
+        ],
+        [
+          142.38,
+          146.58
+        ],
+        [
+          231.88,
+          238.08
         ]
       ],
-      "travel_m": 4.0,
-      "heading_deg": 5.0,
-      "references": 1807,
-      "landmarks": 84691,
-      "median_landmark_error_px": 1.48,
-      "weak_refs_below_30_landmarks": 73,
-      "build_seconds": 360.2,
-      "map_id": "fitmap:634545ba3c704d5b"
-    },
-    "retrieval": {
-      "build_command": ".venv/Scripts/python.exe -B scripts/build_retrieval_index.py --artifacts artifacts/fit-stage3-multilap-v1",
-      "retrieval_id": "retrieval:acaaf3f6edd7174e",
-      "map_id": "fitmap:634545ba3c704d5b",
-      "model": "EigenPlaces ResNet-18 / 512-D (vendored, MIT)",
-      "checkpoint_sha256": "b47ea1efb51041604e9c135508764175bbaa98dece47b47da664517317d0aff3",
-      "descriptor_sha256": "cdcaf70e34a3249a8e9763d143c4a9e4d27a5047c8d4b1c246491c32e8862ebf",
-      "preprocessing_id": "eigenplaces-r18-512:rgb480x232:imagenet:mask-bodywork-v1",
-      "keyframes": 1734,
-      "camera": "fr"
-    },
-    "submission_sha256": "d6055beab77b91a983d67089eeb9ea23684ccdb83da7dbc3a6f50a651117c3bc",
-    "validator_checks": {
-      "csv_and_metric_validation_passed": true,
-      "exposure_sequence_matches_input": true,
-      "nominal_coverage_1_0": true,
-      "metric_sections_complete": true,
-      "visual_baseline_gate_passed": false
-    },
-    "rows": 2708,
-    "full_pose_updates": 1755,
-    "full_pose_breakdown": {
-      "tracking_pnp": 1231,
-      "handoff_pnp": 512,
-      "resets": 12
-    },
-    "prediction_only_rows": 953,
-    "lost_rows": 239,
-    "max_full_pose_gap_ns": 5400089761,
-    "max_full_pose_gap_window_s": [
-      232.38,
-      237.78
-    ],
-    "gaps_over_3s_window_s": [
-      [
-        104.98,
-        109.68
+      "anchor_dispatched": 855,
+      "anchor_delivered": 829,
+      "anchor_rejected": 0,
+      "anchor_faulted": 0,
+      "worker_failures": {
+        "recovery/pnp_too_few_inliers": 24,
+        "recovery/insufficient_matches": 1,
+        "front_anchor/insufficient_matches": 1
+      },
+      "frontend_errors": 0,
+      "nominal_coverage": 1.0,
+      "position_rmse_m": 12.893,
+      "updated_xy_position_rmse_m": 12.893,
+      "reconciled_supplied_map_xy_rmse_m": 12.895,
+      "reconciled_racing_line_sn_rmse_m": 11.905,
+      "fused_error_median_p90_m": [
+        0.33,
+        1.38
       ],
-      [
-        142.28,
-        146.48
+      "wrong_lock_rows_over_10m": [
+        {
+          "t_s": 185.48,
+          "camera": "fr",
+          "source": "tracking",
+          "kind": "recovery_reset",
+          "error_m": 10.1
+        }
       ],
-      [
+      "handoff_reasons_whole_run": {
+        "front_anchor/accepted": 256,
+        "front_anchor/degenerate_geometry": 1,
+        "front_anchor/high_median_error": 11,
+        "front_anchor/poor_image_coverage": 11,
+        "recovery/accepted": 367,
+        "recovery/degenerate_geometry": 19,
+        "recovery/handoff_tracking_failed": 3,
+        "recovery/high_median_error": 38,
+        "recovery/poor_image_coverage": 71,
+        "recovery/too_few_correspondences": 35,
+        "recovery/too_few_inliers": 16
+      },
+      "handoff_reasons_whole_run_fix5": {
+        "front_anchor/accepted": 255,
+        "front_anchor/degenerate_geometry": 1,
+        "front_anchor/high_median_error": 6,
+        "front_anchor/poor_image_coverage": 5,
+        "recovery/accepted": 369,
+        "recovery/degenerate_geometry": 24,
+        "recovery/handoff_tracking_failed": 1,
+        "recovery/high_median_error": 35,
+        "recovery/poor_image_coverage": 76,
+        "recovery/too_few_correspondences": 38,
+        "recovery/too_few_inliers": 12
+      },
+      "gap_diagnosis": "Gaps stay at the recurring places near 104-110 s, 139-147 s and 232-238 s; fix-5 259-262 s gap closed. Inside gaps > 3 s: 57 handoffs, 7 accepted, 23 too_few_correspondences, 12 poor_image_coverage, 7 too_few_inliers, 4 degenerate, 3 handoff_tracking_failed, 1 high_median_error (fix-5 recount with the same script: 38 handoffs, 17 too_few_correspondences; round-3 19-of-51 tally used a different window and is not directly comparable). Denser bank cut worker failures 40 -> 26; seeded carry did not measurably reduce too_few_correspondences (38 -> 35 whole run). RMSE regressed while wrong locks fell 2 -> 1; neither change isolated as the cause. GT used only in a deleted tmp/round4 script.",
+      "fix8_revert_replay": "not run: neither stated trigger held (wrong locks 1 vs 2; accepted handoffs 623 vs 624); attribution of the RMSE/longest-gap regression to one change is not clear from the counts",
+      "startup_seconds": 21.883651700001792,
+      "replay_seconds": 174.01243489999615,
+      "paced_runtime_qualified": false,
+      "source_sha256_changed_vs_fix5": {
+        "camloc/vision.py": "0a2b84a6d86da47433de5434864722c479a863edaaca08d8232cddbfe6be15f1"
+      },
+      "source_sha256_note": "run.py and all other camloc modules hash-identical to fix-5 (results/tune-stage3-fix-7/run.json)"
+    },
+    "previous_run": {
+      "directory": "results/tune-stage3-fix-5",
+      "selected_as": "round-3 best run; previous run for round 4",
+      "bank": {
+        "path": "artifacts/fit-stage3-multilap-v1",
+        "build_command": ".venv/Scripts/python.exe -B build_map.py --output artifacts/fit-stage3-multilap-v1 --window 0 90 --window 321 700.39",
+        "cameras": [
+          "fr"
+        ],
+        "windows_s": [
+          [
+            0,
+            90
+          ],
+          [
+            321,
+            700.39
+          ]
+        ],
+        "travel_m": 4.0,
+        "heading_deg": 5.0,
+        "references": 1807,
+        "landmarks": 84691,
+        "median_landmark_error_px": 1.48,
+        "weak_refs_below_30_landmarks": 73,
+        "build_seconds": 360.2,
+        "map_id": "fitmap:634545ba3c704d5b"
+      },
+      "retrieval": {
+        "build_command": ".venv/Scripts/python.exe -B scripts/build_retrieval_index.py --artifacts artifacts/fit-stage3-multilap-v1",
+        "retrieval_id": "retrieval:acaaf3f6edd7174e",
+        "map_id": "fitmap:634545ba3c704d5b",
+        "model": "EigenPlaces ResNet-18 / 512-D (vendored, MIT)",
+        "checkpoint_sha256": "b47ea1efb51041604e9c135508764175bbaa98dece47b47da664517317d0aff3",
+        "descriptor_sha256": "cdcaf70e34a3249a8e9763d143c4a9e4d27a5047c8d4b1c246491c32e8862ebf",
+        "preprocessing_id": "eigenplaces-r18-512:rgb480x232:imagenet:mask-bodywork-v1",
+        "keyframes": 1734,
+        "camera": "fr"
+      },
+      "submission_sha256": "d6055beab77b91a983d67089eeb9ea23684ccdb83da7dbc3a6f50a651117c3bc",
+      "validator_checks": {
+        "csv_and_metric_validation_passed": true,
+        "exposure_sequence_matches_input": true,
+        "nominal_coverage_1_0": true,
+        "metric_sections_complete": true,
+        "visual_baseline_gate_passed": false
+      },
+      "rows": 2708,
+      "full_pose_updates": 1755,
+      "full_pose_breakdown": {
+        "tracking_pnp": 1231,
+        "handoff_pnp": 512,
+        "resets": 12
+      },
+      "prediction_only_rows": 953,
+      "lost_rows": 239,
+      "max_full_pose_gap_ns": 5400089761,
+      "max_full_pose_gap_window_s": [
         232.38,
         237.78
       ],
-      [
-        258.98,
-        261.98
-      ]
-    ],
-    "anchor_dispatched": 864,
-    "anchor_delivered": 824,
-    "anchor_rejected": 0,
-    "anchor_faulted": 0,
-    "frontend_errors": 0,
-    "nominal_coverage": 1.0,
-    "position_rmse_m": 9.665,
-    "updated_xy_position_rmse_m": 9.665,
-    "reconciled_supplied_map_xy_rmse_m": 9.667,
-    "reconciled_racing_line_sn_rmse_m": 9.025,
-    "fused_error_median_p90_m": [
-      0.31,
-      1.21
-    ],
-    "wrong_lock_rows_over_10m": [
-      {
-        "t_s": 33.28,
-        "camera": "fr",
-        "source": "tracking",
-        "kind": "pnp",
-        "error_m": 10.3
-      },
-      {
-        "t_s": 185.38,
-        "camera": "fr",
-        "source": "tracking",
-        "kind": "pnp",
-        "error_m": 10.4
-      }
-    ],
-    "gap_diagnosis": "Retrieval correct (79/83 recovery jobs had both refs within 15 m of GT). Map support limited: near-GT refs hold 31-60 landmarks at place B; 32/83 worker jobs failed pnp_too_few_inliers/insufficient_matches. Of 51 delivered handoffs: 11 accepted, 19 too_few_correspondences (worker delivered 30-56 points, LK carry dropped below 30), 11 poor_image_coverage at 4 cells (pose error 0.1-2 m), 5 degenerate. No C/B code defect, no slot starvation.",
-    "startup_seconds": 18.971602500008885,
-    "replay_seconds": 171.15696380000736,
-    "paced_runtime_qualified": false,
-    "source_sha256": {
-      "run.py": "b6e908f05fea5cd72e26d032304d46d6f565cecaf8a7ba07efa83728f76e18ee",
-      "camloc/__init__.py": "ab9d35eefd1b5029a35b4dfe1510b2c9c89cf953be9d31f8211c32935036828d",
-      "camloc/borders.py": "d6d3e9eca9f1d80bf498a93a67e8ae94c1ed10958bb75a9f36bf834f31312550",
-      "camloc/contracts.py": "b6012b4b7a2b6cea2fb1b9a4a1f0581e12a2f35b03f38ba3031f6f90de644e74",
-      "camloc/features.py": "129eca6957b7fc02aa73f41ec71a427f52c6cf2cf57beed2727f69c2452289f1",
-      "camloc/filter.py": "5ad04a242014cf91d356b062eeaef03afa7a2b0dfb840bbe64c103fc8f00eb27",
-      "camloc/frontend.py": "22320f705548e0db7d739b44bc551a598b74a573662fffc527103ac13e6d4eff",
-      "camloc/geometry.py": "45ee53559036b28e9483fccb2da784bb6a677b7c718b2e3a5da6f6fce6a7ebf8",
-      "camloc/ground_motion.py": "eb035a053d84567fe93b5de0816a44d05dd81c7ad7a85642aebb5af945dc42aa",
-      "camloc/io.py": "0df2a31cc6b222931220a67dd36c216109bfcf9a2f16da21b999e385840e615f",
-      "camloc/landmark_map.py": "f85e5989b092e751bb13ae491bca582ccee7d0cd4cd854061d8be68ab971b187",
-      "camloc/masks.py": "ab348b12e4a5d56cef3ac83b8c9a2d2e3007dcbd3047f15aa755d6bbf1418d46",
-      "camloc/pnp.py": "f23c31379bd7e16613d0f86425808f7e6fd88ff2c91a7afce344bc537f430093",
-      "camloc/recovery.py": "3f2742b3813c76b474f7bd8bed42149d461faf39e203d52379dd78bb21735a4e",
-      "camloc/retrieval.py": "50c639340238061d1e7885c28ff9b811a59213a85b0df4d7e24678c3b95f6c65",
-      "camloc/scheduler.py": "fdb58b0ff049c16669f4970665f655b4855e6767284110e9384eeecba4b91e75",
-      "camloc/submission.py": "ac1f4f50d5f6b52a0a3922fbf56ba7259cdefe4f8ae9ce022587d0bccd84d8b8",
-      "camloc/track_coords.py": "d223d706027f8da870bdddbc100da9e961fbdd31179533c4cab3e370f262fa12",
-      "camloc/vision.py": "c28f2259d362fdac1637aec2cd67b27026064bf979d8f43d933db9c7fff01e18"
-    },
-    "gap_diagnosis_round4_recount": "Same deleted-script recount as fix-7: 38 handoffs inside its gaps > 3 s, 17 too_few_correspondences; whole run 624 accepted handoffs, 38 recovery too_few_correspondences"
-  },
-  "intermediate_runs": [
-    {
-      "directory": "results/tune-stage3-fix-6",
-      "change": "bank artifacts/fit-stage3-multilap-v4 (B4): --window 0 700.39 --travel-m 5.7, fr only; smallest 0.1 m travel step under the 2,000-reference cap",
-      "map_id": "fitmap:618ee99e157e2291",
-      "retrieval_id": "retrieval:c1996fe897e054d0",
-      "references": 1909,
-      "landmarks": 86251,
-      "median_landmark_error_px": 1.49,
-      "weak_refs_below_30_landmarks": 91,
-      "build_seconds": 381.9,
-      "submission_sha256": "df461848c2b20878154b9b0fce04cfdbf3f9eee612df70f1b73056fdda694b65",
-      "visual_baseline_gate_passed": false,
-      "full_pose_updates": 1762,
-      "lost_rows": 244,
-      "max_full_pose_gap_s": 7.6,
       "gaps_over_3s_window_s": [
         [
-          59.18,
-          63.08
+          104.98,
+          109.68
         ],
         [
-          139.08,
-          146.68
+          142.28,
+          146.48
         ],
         [
-          232.88,
-          237.58
+          232.38,
+          237.78
+        ],
+        [
+          258.98,
+          261.98
         ]
       ],
-      "position_rmse_m": 9.561,
-      "reconciled_supplied_map_xy_rmse_m": 9.562,
-      "reconciled_racing_line_sn_rmse_m": 8.86,
-      "wrong_lock_rows_over_10m": 3,
-      "not_selected_because": "longer longest gap (7.60 s vs 5.40 s)"
+      "anchor_dispatched": 864,
+      "anchor_delivered": 824,
+      "anchor_rejected": 0,
+      "anchor_faulted": 0,
+      "frontend_errors": 0,
+      "nominal_coverage": 1.0,
+      "position_rmse_m": 9.665,
+      "updated_xy_position_rmse_m": 9.665,
+      "reconciled_supplied_map_xy_rmse_m": 9.667,
+      "reconciled_racing_line_sn_rmse_m": 9.025,
+      "fused_error_median_p90_m": [
+        0.31,
+        1.21
+      ],
+      "wrong_lock_rows_over_10m": [
+        {
+          "t_s": 33.28,
+          "camera": "fr",
+          "source": "tracking",
+          "kind": "pnp",
+          "error_m": 10.3
+        },
+        {
+          "t_s": 185.38,
+          "camera": "fr",
+          "source": "tracking",
+          "kind": "pnp",
+          "error_m": 10.4
+        }
+      ],
+      "gap_diagnosis": "Retrieval correct (79/83 recovery jobs had both refs within 15 m of GT). Map support limited: near-GT refs hold 31-60 landmarks at place B; 32/83 worker jobs failed pnp_too_few_inliers/insufficient_matches. Of 51 delivered handoffs: 11 accepted, 19 too_few_correspondences (worker delivered 30-56 points, LK carry dropped below 30), 11 poor_image_coverage at 4 cells (pose error 0.1-2 m), 5 degenerate. No C/B code defect, no slot starvation.",
+      "startup_seconds": 18.971602500008885,
+      "replay_seconds": 171.15696380000736,
+      "paced_runtime_qualified": false,
+      "source_sha256": {
+        "run.py": "b6e908f05fea5cd72e26d032304d46d6f565cecaf8a7ba07efa83728f76e18ee",
+        "camloc/__init__.py": "ab9d35eefd1b5029a35b4dfe1510b2c9c89cf953be9d31f8211c32935036828d",
+        "camloc/borders.py": "d6d3e9eca9f1d80bf498a93a67e8ae94c1ed10958bb75a9f36bf834f31312550",
+        "camloc/contracts.py": "b6012b4b7a2b6cea2fb1b9a4a1f0581e12a2f35b03f38ba3031f6f90de644e74",
+        "camloc/features.py": "129eca6957b7fc02aa73f41ec71a427f52c6cf2cf57beed2727f69c2452289f1",
+        "camloc/filter.py": "5ad04a242014cf91d356b062eeaef03afa7a2b0dfb840bbe64c103fc8f00eb27",
+        "camloc/frontend.py": "22320f705548e0db7d739b44bc551a598b74a573662fffc527103ac13e6d4eff",
+        "camloc/geometry.py": "45ee53559036b28e9483fccb2da784bb6a677b7c718b2e3a5da6f6fce6a7ebf8",
+        "camloc/ground_motion.py": "eb035a053d84567fe93b5de0816a44d05dd81c7ad7a85642aebb5af945dc42aa",
+        "camloc/io.py": "0df2a31cc6b222931220a67dd36c216109bfcf9a2f16da21b999e385840e615f",
+        "camloc/landmark_map.py": "f85e5989b092e751bb13ae491bca582ccee7d0cd4cd854061d8be68ab971b187",
+        "camloc/masks.py": "ab348b12e4a5d56cef3ac83b8c9a2d2e3007dcbd3047f15aa755d6bbf1418d46",
+        "camloc/pnp.py": "f23c31379bd7e16613d0f86425808f7e6fd88ff2c91a7afce344bc537f430093",
+        "camloc/recovery.py": "3f2742b3813c76b474f7bd8bed42149d461faf39e203d52379dd78bb21735a4e",
+        "camloc/retrieval.py": "50c639340238061d1e7885c28ff9b811a59213a85b0df4d7e24678c3b95f6c65",
+        "camloc/scheduler.py": "fdb58b0ff049c16669f4970665f655b4855e6767284110e9384eeecba4b91e75",
+        "camloc/submission.py": "ac1f4f50d5f6b52a0a3922fbf56ba7259cdefe4f8ae9ce022587d0bccd84d8b8",
+        "camloc/track_coords.py": "d223d706027f8da870bdddbc100da9e961fbdd31179533c4cab3e370f262fa12",
+        "camloc/vision.py": "c28f2259d362fdac1637aec2cd67b27026064bf979d8f43d933db9c7fff01e18"
+      },
+      "gap_diagnosis_round4_recount": "Same deleted-script recount as fix-7: 38 handoffs inside its gaps > 3 s, 17 too_few_correspondences; whole run 624 accepted handoffs, 38 recovery too_few_correspondences"
     },
-    {
-      "directory": "results/tune-stage3-fix-4",
-      "change": "dual-camera bank artifacts/fit-stage3-dual-v1 (fr + r, round-2 windows)",
-      "map_id": "fitmap:41f4f38f269fa64f",
-      "retrieval_id": "retrieval:d10c40cdb6185006",
-      "submission_sha256": "3c36db482f1012f7a611858b937006431ee773bb1113d486ddc95a493a1de5eb",
-      "visual_baseline_gate_passed": false,
-      "full_pose_updates": 1221,
-      "lost_rows": 721,
-      "max_full_pose_gap_s": 13.7,
-      "gaps_over_3s": 9,
-      "position_rmse_m": 37.157,
-      "reconciled_supplied_map_xy_rmse_m": 37.164,
-      "reconciled_racing_line_sn_rmse_m": 37.31,
-      "wrong_lock_rows_over_10m": 10,
-      "rejected_because": "rear jobs took up to 85 % of recovery slots in some gaps; 9 of 10 wrong locks from r; front full poses fell by 335"
+    "intermediate_runs": [
+      {
+        "directory": "results/tune-stage3-fix-6",
+        "change": "bank artifacts/fit-stage3-multilap-v4 (B4): --window 0 700.39 --travel-m 5.7, fr only; smallest 0.1 m travel step under the 2,000-reference cap",
+        "map_id": "fitmap:618ee99e157e2291",
+        "retrieval_id": "retrieval:c1996fe897e054d0",
+        "references": 1909,
+        "landmarks": 86251,
+        "median_landmark_error_px": 1.49,
+        "weak_refs_below_30_landmarks": 91,
+        "build_seconds": 381.9,
+        "submission_sha256": "df461848c2b20878154b9b0fce04cfdbf3f9eee612df70f1b73056fdda694b65",
+        "visual_baseline_gate_passed": false,
+        "full_pose_updates": 1762,
+        "lost_rows": 244,
+        "max_full_pose_gap_s": 7.6,
+        "gaps_over_3s_window_s": [
+          [
+            59.18,
+            63.08
+          ],
+          [
+            139.08,
+            146.68
+          ],
+          [
+            232.88,
+            237.58
+          ]
+        ],
+        "position_rmse_m": 9.561,
+        "reconciled_supplied_map_xy_rmse_m": 9.562,
+        "reconciled_racing_line_sn_rmse_m": 8.86,
+        "wrong_lock_rows_over_10m": 3,
+        "not_selected_because": "longer longest gap (7.60 s vs 5.40 s)"
+      },
+      {
+        "directory": "results/tune-stage3-fix-4",
+        "change": "dual-camera bank artifacts/fit-stage3-dual-v1 (fr + r, round-2 windows)",
+        "map_id": "fitmap:41f4f38f269fa64f",
+        "retrieval_id": "retrieval:d10c40cdb6185006",
+        "submission_sha256": "3c36db482f1012f7a611858b937006431ee773bb1113d486ddc95a493a1de5eb",
+        "visual_baseline_gate_passed": false,
+        "full_pose_updates": 1221,
+        "lost_rows": 721,
+        "max_full_pose_gap_s": 13.7,
+        "gaps_over_3s": 9,
+        "position_rmse_m": 37.157,
+        "reconciled_supplied_map_xy_rmse_m": 37.164,
+        "reconciled_racing_line_sn_rmse_m": 37.31,
+        "wrong_lock_rows_over_10m": 10,
+        "rejected_because": "rear jobs took up to 85 % of recovery slots in some gaps; 9 of 10 wrong locks from r; front full poses fell by 335"
+      },
+      {
+        "directory": "results/tune-stage3-fix-3",
+        "bank": "artifacts/fit-b-integrated-v2",
+        "map_id": "fitmap:8637237e723b6b8e",
+        "retrieval_id": "retrieval:294a97a90ef0922c",
+        "submission_sha256": "5f7808ba1ef0780f90323dc3129a9f11d50db2068045f7bcf9469959ebb6d9f1",
+        "visual_baseline_gate_passed": false,
+        "full_pose_updates": 1378,
+        "lost_rows": 602,
+        "max_full_pose_gap_s": 11.8,
+        "gaps_over_3s": 10,
+        "position_rmse_m": 27.961,
+        "reconciled_supplied_map_xy_rmse_m": 27.967,
+        "reconciled_racing_line_sn_rmse_m": 27.878,
+        "wrong_lock_rows_over_10m": 5,
+        "change": "round-2 bank (previous run of round 3)"
+      }
+    ],
+    "unchanged_assets": {
+      "split_sha256": "894b41790af50e2f555a34001ef00821164ebc4f2f2589eb2e24280088c09222",
+      "static_map_sha256": "648e8cf954d8cd39823ca31c0b62d89c8fd76b170df999ac2e3d4327439972ef"
     },
-    {
-      "directory": "results/tune-stage3-fix-3",
-      "bank": "artifacts/fit-b-integrated-v2",
-      "map_id": "fitmap:8637237e723b6b8e",
-      "retrieval_id": "retrieval:294a97a90ef0922c",
-      "submission_sha256": "5f7808ba1ef0780f90323dc3129a9f11d50db2068045f7bcf9469959ebb6d9f1",
-      "visual_baseline_gate_passed": false,
-      "full_pose_updates": 1378,
-      "lost_rows": 602,
-      "max_full_pose_gap_s": 11.8,
-      "gaps_over_3s": 10,
-      "position_rmse_m": 27.961,
-      "reconciled_supplied_map_xy_rmse_m": 27.967,
-      "reconciled_racing_line_sn_rmse_m": 27.878,
-      "wrong_lock_rows_over_10m": 5,
-      "change": "round-2 bank (previous run of round 3)"
-    }
-  ],
-  "unchanged_assets": {
-    "split_sha256": "894b41790af50e2f555a34001ef00821164ebc4f2f2589eb2e24280088c09222",
-    "static_map_sha256": "648e8cf954d8cd39823ca31c0b62d89c8fd76b170df999ac2e3d4327439972ef"
-  },
-  "remaining_gate": "Four gaps of 3.2-6.2 s at recurring places near 104-110 s, 139-147 s and 232-238 s exceed the unchanged 3 s continuity bound; x/y RMSE 12.89 m (fix-5: 9.67 m). Next options: attribute the seed effect (v1 bank with new code, or v5 unseeded); per-place densification; handoff image coverage. Each needs a fresh scored and independently validated run"
+    "remaining_gate": "Four gaps of 3.2-6.2 s at recurring places near 104-110 s, 139-147 s and 232-238 s exceed the unchanged 3 s continuity bound; x/y RMSE 12.89 m (fix-5: 9.67 m). Next options: attribute the seed effect (v1 bank with new code, or v5 unseeded); per-place densification; handoff image coverage. Each needs a fresh scored and independently validated run"
+  }
 }

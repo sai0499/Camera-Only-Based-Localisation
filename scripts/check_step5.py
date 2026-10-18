@@ -116,13 +116,14 @@ def image_change(case, image):
     raise ValueError(f'unknown image case {case}')
 
 
-def variant(source, output, case, initial_ns):
+def variant(source, output, case, initial_ns, *, cameras=(c.PRIMARY_CAMERA, c.SECONDARY_CAMERA)):
     from mcap_ros2._dynamic import serialize_dynamic
     from mcap_ros2.decoder import DecoderFactory
 
     decoder, encoders = DecoderFactory(), {}
     begin, end = stress_window(case, initial_ns)
     changed_exposures = []
+    changed_cameras = set()
 
     def transform(schema, channel, message):
         if channel.topic in io.PROHIBITED_TOPICS:
@@ -130,7 +131,7 @@ def variant(source, output, case, initial_ns):
                 return None
             if case == 'prohibited_poison':
                 return b'PROHIBITED_PAYLOAD_MUST_NOT_BE_DECODED'
-        camera = next((cam for cam in (c.PRIMARY_CAMERA, c.SECONDARY_CAMERA)
+        camera = next((cam for cam in cameras
                        if channel.topic == io.image_topic(cam)), None)
         if camera is None or case in ('baseline', 'repeat', 'prohibited_remove', 'prohibited_poison'):
             return message.data
@@ -144,6 +145,7 @@ def variant(source, output, case, initial_ns):
         if case.startswith(('fr_drop_', 'r_drop_')):
             if camera == case.split('_')[0]:
                 changed_exposures.append(stamp)
+                changed_cameras.add(camera)
                 return None
             return message.data
         import cv2
@@ -158,10 +160,12 @@ def variant(source, output, case, initial_ns):
             encoders[schema.id] = serialize_dynamic(schema.name, schema.data.decode())[schema.name]
         decoded.data = jpeg.tobytes()
         changed_exposures.append(stamp)
+        changed_cameras.add(camera)
         return encoders[schema.id](decoded)
 
     receipt = copy_messages(source, output, lambda channel, message: True, transform)
     receipt['changed_images'] = len(changed_exposures)
+    receipt['changed_camera_ids'] = sorted(changed_cameras)
     receipt['first_changed_exposure_ns'] = min(changed_exposures, default=None)
     if case not in ('baseline', 'repeat') and not (receipt['messages'].get('changed', 0)
                                                   or receipt['messages'].get('removed', 0)):

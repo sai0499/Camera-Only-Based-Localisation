@@ -1,5 +1,11 @@
 # Team C Step 5: real-recording verification and runtime instrumentation
 
+Seven-camera update: the dedicated 30 s weak-turn audit passes exact pose-field
+isolation (300 outputs) and future-motion/all-seven-future-image prefix checks (100
+outputs each). The full suite passes 1,130 tests. Both new whole-tuning modes pass the
+unchanged visual continuity gate; the rate-faithful/native-frequency qualification
+below remains separate. See [MULTICAMERA_IMPROVEMENTS.md](MULTICAMERA_IMPROVEMENTS.md).
+
 18 October: [DEADLINE_ACCURACY.md](DEADLINE_ACCURACY.md) adds owner-authorized optional
 velocity/yaw-rate controls. The dedicated motion audit passes 300-output pose-field
 isolation and a 100-output future-motion prefix check with exact predictions/decisions.

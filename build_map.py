@@ -441,7 +441,8 @@ def build(args: argparse.Namespace) -> dict:
     skipped = {"no_gt_support": 0, "decode_failure": 0}
     for camera_id in args.cameras:
         calibration = calibrations[camera_id]
-        mask = canonicalizer.camera_map(camera_id).valid_mask & masks.bodywork_mask(camera_id)
+        mask = canonicalizer.camera_map(camera_id).valid_mask & masks.bodywork_mask(
+            camera_id, rescue=getattr(args, "rescue_masks", False))
         usable_masks[camera_id] = mask
         count = 0
         for start, end in windows:
@@ -545,7 +546,7 @@ def build(args: argparse.Namespace) -> dict:
         "raw_camera_geometry": {cam: lm.raw_calibration_geometry(calibrations[cam]) for cam in args.cameras},
         "canonical_K": {cam: calibrations[cam].K.tolist() for cam in args.cameras},
         "T_BC": {cam: calibrations[cam].T_BC.tolist() for cam in args.cameras},
-        "mask_id": masks.MASK_ID,
+        "mask_id": masks.RESCUE_MASK_ID if getattr(args, "rescue_masks", False) else masks.MASK_ID,
         "fitting_interval_ns": [str(fit.start_ns), str(fit.end_ns)],
         "windows_ns": [[str(a), str(b)] for a, b in windows],
         "split_sha256": c.BUILD_SPLIT_SHA256,
@@ -616,6 +617,8 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--neighbors", type=int, default=8)
     parser.add_argument("--spatial-features", action="store_true",
                         help="reserve up to 32 DISK detections per usable-image grid cell, still <=1024 total")
+    parser.add_argument("--rescue-masks", action="store_true",
+                        help="fitting-inspected bodywork masks for auxiliary-camera rescue banks")
     parser.add_argument("--pair-target-baseline-m", type=float, default=0.0,
                         help="reserve half the existing pair budget for wider baselines near this distance")
     parser.add_argument("--device", default=None)

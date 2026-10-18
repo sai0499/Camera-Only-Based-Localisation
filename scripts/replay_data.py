@@ -103,10 +103,12 @@ class Replay:
                     "rejected": [pose_details(x) for x in r.get("rejected", [])
                                  if x.get("record") in ("PoseEvidence", "HandoffEvidence")],
                 }
-            elif kind in ("RecoveryEvent", "TrackerEvent") or kind.endswith("Error"):
+            elif kind in ("RecoveryEvent", "TrackerEvent", "CameraSelection") or kind.endswith("Error"):
                 event_group = self.current_group if kind == "TrackerEvent" and gid is None else gid
                 self.events.append({"group_id": event_group, "kind": r.get("kind", r.get("event", kind)),
-                                    "reason": r.get("reason", r.get("detail", ""))})
+                                    "reason": ("decoded=" + ",".join(r.get("decoded", [])) +
+                                        " / proposed=" + ",".join(r.get("proposed", [])))
+                                        if kind == "CameraSelection" else r.get("reason", r.get("detail", ""))})
         for line in self.readers["runtime.jsonl"].read(finished):
             r = json.loads(line)
             if r.get("record") == "RuntimeSample":

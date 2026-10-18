@@ -52,7 +52,7 @@ def raw_calibration_geometry(calibration):
             "T_BC": calibration.T_BC.tolist()}
 
 
-def bind_calibrations(calibrations, manifest):
+def bind_calibrations(calibrations, manifest, *, strict=True):
     """Bind a matching mapped camera to its frozen remap ID using hash-bound raw proof.
 
     Legacy banks without raw proof retain their original strict identity check. A change
@@ -69,6 +69,8 @@ def bind_calibrations(calibrations, manifest):
                 or manifest.get("raw_camera_geometry", {}).get(camera) != raw_calibration_geometry(calibration)
                 or not np.array_equal(calibration.K, manifest["canonical_K"][camera])
                 or not np.array_equal(calibration.T_BC, manifest["T_BC"][camera])):
+            if not strict:
+                continue  # Leave it unbound so the tracker's compatibility check excludes it.
             raise c.ContractError(f"camera {camera} lacks matching frozen raw preprocessing geometry")
         result[camera] = dataclasses.replace(calibration, preprocessing_id=manifest["preprocessing_id"])
     return result

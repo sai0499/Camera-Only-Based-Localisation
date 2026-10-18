@@ -461,10 +461,16 @@ def main(argv=None):
                 or bool(((bank.keyframe_exposure_ns < fit.start_ns)
                          | (bank.keyframe_exposure_ns >= fit.end_ns)).any())):
             raise c.ContractError("map fitting provenance or feature configuration is incompatible")
-        calibrations = landmark_map.bind_calibrations(io.read_calibrations(args.bag), manifest)
+        adaptive_cameras = manifest.get("camera_policy") == "support-v1"
+        calibrations = landmark_map.bind_calibrations(io.read_calibrations(args.bag), manifest,
+                                                     strict=not adaptive_cameras)
         tracker = vision.load_tracker(bank, calibrations)
-        if any(reason != "valid" for reason in tracker.calibration_compatibility.values()):
+        compatible = [cam for cam, reason in tracker.calibration_compatibility.items() if reason == "valid"]
+        if not compatible or (not adaptive_cameras and
+                any(reason != "valid" for reason in tracker.calibration_compatibility.values())):
             raise c.ContractError(f"incompatible map/rig: {tracker.calibration_compatibility}")
+        selected_cameras = (tuple(cam for cam in c.CAMERA_IDS if cam == "fr" or cam in compatible)
+                            if adaptive_cameras else (c.PRIMARY_CAMERA, c.SECONDARY_CAMERA))
         index = None
         if args.retrieval:
             from camloc import retrieval
@@ -484,12 +490,13 @@ def main(argv=None):
             from camloc.vehicle_motion import VehicleMotion
 
             controls = VehicleMotion.load(args.bag, args.vehicle_motion, initial.timestamp_ns, episode.end_ns)
-        estimator = CameraFilter(initial, vehicle_motion=controls)
+        pose_variance_scale = ({cam: 4. for cam in compatible if cam != "fr"} if adaptive_cameras else {})
+        estimator = CameraFilter(initial, vehicle_motion=controls, pose_variance_scale=pose_variance_scale)
         frontend = VisualFrontend(geometry.make_canonicalizer(calibrations), tracker, estimator,
             road=road, borders=borders.make_border_source(road), motion=vision.make_ground_motion(),
             retrieval_enabled=index is not None)
         source = io.open_frame_sets(args.bag, initial_pose=initial, episode=episode,
-                                   calibrations=calibrations)
+                                   calibrations=calibrations, cameras=selected_cameras)
         runtime = None
         if args.runtime or args.transport_speed is not None:
             from camloc.runtime import RuntimeSource
@@ -506,6 +513,9 @@ def main(argv=None):
                     "query_bag": args.bag.name,
                     "query_bag_path": str(args.bag.resolve()),
                     "calibration_compatibility": tracker.calibration_compatibility,
+                    "selected_cameras": list(selected_cameras),
+                    "camera_policy": manifest.get("camera_policy", "legacy_front_rear"),
+                    "camera_pose_variance_scale": pose_variance_scale,
                     "source_sha256": {str(path.relative_to(c.PROJECT_ROOT)): hashlib.sha256(
                         path.read_bytes()).hexdigest() for path in [
                             c.PROJECT_ROOT / "run.py", *sorted((c.PROJECT_ROOT / "camloc").glob("*.py"))]},

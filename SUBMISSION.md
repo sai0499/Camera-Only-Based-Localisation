@@ -2,7 +2,7 @@
 
 Use Windows x64 and one CUDA GPU. Run `setup.cmd --no-pause` for the locked Python
 3.12.13 environment and declared public checkpoints. Extract the accompanying private
-`deadline-submission-assets-v1.zip` at the repository root; it preserves `artifacts/`
+`seven-camera-submission-assets-v1.zip` at the repository root; it preserves `artifacts/`
 paths and supplies the frozen fitting-only landmark/retrieval bank and pinned weights.
 Do not copy recordings, GT or `.venv` into the source archive.
 
@@ -16,7 +16,7 @@ Use the image exposure timestamp as an integer decimal string, metres and radian
 For a recording with the separate body-velocity topic:
 
 ```powershell
-& .\.venv\Scripts\python.exe -B run.py --bag C:\path\test.mcap --input-recording --initial-pose C:\path\initial.json --artifacts artifacts/fit-stage3-multilap-v5-rigproof-v2 --retrieval --vehicle-motion validation-twist --runtime --output results/submission-test
+& .\.venv\Scripts\python.exe -B run.py --bag C:\path\test.mcap --input-recording --initial-pose C:\path\initial.json --artifacts artifacts/fit-seven-rescue-v2 --retrieval --vehicle-motion validation-twist --runtime --output results/submission-test
 ```
 
 If the recording provides `/constructor0/state_estimation` with the supported velocity
@@ -32,24 +32,38 @@ identities, rejected/weak/prediction-only outputs and measured timing. Inference
 reads an evaluation reference, dynamic TF or a GT CSV. It uses no future images or
 motion samples. The one initial pose is the only external absolute query pose.
 
-The selected configuration was frozen before this reserved holdout evaluation:
+The selected bank maps all seven cameras. Front coverage spans the fitting route;
+auxiliary coverage targets three weak regions. Camera selection uses mapped support
+and recent source-time failures within the existing worker budget. Compatible cameras
+are selected automatically; changed camera geometry is excluded and logged. If no
+mapped camera remains compatible, startup fails explicitly.
 
-| Motion-assisted result | Tuning (270.8 s) | Holdout (219.2 s) |
+The retained configuration was frozen before its holdout regression. This split had
+already been inspected in earlier work, so this is not a new unseen test:
+
+| Motion-assisted result | Tuning (270.8 s) | Holdout regression (219.2 s) |
 |---|---:|---:|
-| Position RMSE m | 0.530 | 0.635 |
-| Lateral RMSE m | 0.262 | 0.300 |
-| Yaw RMSE deg | 0.195 | 0.300 |
-| Poses within 1 m | 92.3% | 90.6% |
+| Position RMSE m | 0.535 | 0.655 |
+| Lateral RMSE m | 0.289 | 0.330 |
+| Yaw RMSE deg | 0.210 | 0.239 |
+| Poses within 1 m | 91.5% | 86.5% |
 | Coverage, official 1 s bins | 100% | 100% |
-| Average steady file-replay time/output ms | 66.3 | 76.6 |
+| Longest full-visual-pose gap s | 2.7 | 9.8 |
 
-Measured on an NVIDIA GeForce RTX 4060 Laptop GPU (8 GB), CUDA 12.8, Windows 11.
-Timing includes reader and worker waiting; startup is separate. These averages do not
-certify bounded latency or a higher native camera frequency. The motion-assisted mode
-still has full-visual-pose gaps up to 7.2 s on holdout. The separate unscored camera lap
+The camera-only tuning ablation improves position RMSE from 12.893 m to **2.554 m**
+and passes the unchanged continuity gate with a 2.3 s longest full-pose gap. Its lateral
+RMSE is 1.924 m: camera-only accuracy is not represented by the assisted table.
+
+Runtime is measured on an NVIDIA GeForce RTX 4060 Laptop GPU (8 GB), CUDA 12.8,
+Windows 11; raw summaries are retained per run. Holdout averages 73.9 ms/output and
+the camera-only tuning run averages 68.1 ms/output, including reader and worker waiting.
+Startup is separate. These averages do not certify bounded latency or a higher native
+camera frequency. The motion-assisted mode still has a 9.8 s full-visual-pose gap on
+holdout, so the map is not globally gap-free. The separate unscored camera lap
 has no GT and uses an experimental image-derived initialization; it is not the hidden test.
 
-See [the full accuracy report](task_docs/DEADLINE_ACCURACY.md),
-[selection receipt](task_docs/evidence/deadline_selection.json),
+See [camera-map improvements and limits](task_docs/MULTICAMERA_IMPROVEMENTS.md),
+[pre-holdout selection receipt](task_docs/evidence/multicam_selection.json),
+[earlier lower-lateral-error bank](task_docs/DEADLINE_ACCURACY.md),
 [model declarations and notices](config/MODEL_NOTICES.md), and
 [offline/live viewer instructions](replay_ui/README.md).

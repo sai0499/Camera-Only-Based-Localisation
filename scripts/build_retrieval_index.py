@@ -45,7 +45,7 @@ def build(args: argparse.Namespace) -> dict:
         raise SystemExit(f"{bank} already holds a retrieval index; refusing to overwrite")
     landmark_map = lm.load_landmark_map(bank)
     manifest = landmark_map.manifest
-    if landmark_map.mask_id != rt.masks.MASK_ID:
+    if landmark_map.mask_id not in rt.masks.SUPPORTED_MASK_IDS:
         raise SystemExit("bank mask id differs from the current frozen mask")
     bag = Path(args.bag)
     source = manifest["source_bag"]

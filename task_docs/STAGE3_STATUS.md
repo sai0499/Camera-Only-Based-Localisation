@@ -1,5 +1,17 @@
 # Team C Step 3: B integration and the real baseline gate
 
+**Team C Step 3: signed off (measured tuning gate)** - receipt [stage3_recheck.json](evidence/stage3_recheck.json).
+
+**Latest measured gate:** `fit-seven-rescue-v2` passes the unchanged visual-baseline
+validator on full tuning in both camera-only and motion-assisted modes. Camera-only:
+2,708 outputs, 1,956 visual updates, 104 Lost outputs, 2.300 s longest full-pose gap,
+2.554 m position RMSE. Assisted: 1,974 visual updates, 79 Lost outputs, 2.700 s longest
+gap, 0.535 m position RMSE. All output/exposure/metric checks pass; no threshold was
+relaxed. See [MULTICAMERA_IMPROVEMENTS.md](MULTICAMERA_IMPROVEMENTS.md) for the exact bank,
+camera usage and accuracy trade-off. This clears the previously blocked **measured
+tuning visual-baseline gate**; camera-only sub-metre accuracy, hidden-test behavior
+and rate qualification are not established. The older failure reports below are history.
+
 **18 October deadline update:** optional vehicle-motion assistance reaches 0.530 m
 whole-tuning position RMSE, 0.262 m lateral RMSE and 0.195-degree yaw RMSE with 100%
 output coverage. See [DEADLINE_ACCURACY.md](DEADLINE_ACCURACY.md) for the owner-authorized

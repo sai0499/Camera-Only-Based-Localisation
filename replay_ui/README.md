@@ -30,6 +30,10 @@ changes the viewer only; closing the browser does not stop inference. Only one o
 inference job may run at a time. The UI does not currently offer forced cancellation.
 Camera image inspection is enabled after completion and uses exact camera/exposure/log
 timestamps from that run; it does not resample images or recompute feature evidence.
+Use **Inspect camera** to choose any feed recorded in that output. A `support-v1` bank
+selectively decodes mapped auxiliary views, records camera-priority decisions in the
+evidence log and excludes changed camera geometry individually. The default artifact
+choice is the seven-camera rescue bank when it is available locally.
 
 **2D / Track** shows equal-scale metre coordinates, surveyed borders, current heading
 and the trail up to the selected output. **3D / Geometry** uses a CPU orthographic renderer for real border XYZ and

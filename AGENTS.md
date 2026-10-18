@@ -22,7 +22,7 @@ Read `START_HERE.md` and `task_docs/FINAL_BUILD_PLAN.md` before changing code. T
 - A owns input/geometry/borders/track coordinates. B owns map/vision/retrieval/ground motion. C owns shared records/filter/scheduler/runner/evaluation integration/demo.
 - C defines `camloc/contracts.py` first. Propose shared-record changes explicitly; reuse existing records and one estimator/runner.
 - Do not create stub implementations that silently return plausible poses. Unsupported/failed evidence must be rejected and diagnosed.
-- The current `camloc` package is a scaffold. Evaluation and setup are implemented; localizer accuracy, runtime and high-rate support have not been established.
+- The integrated `camloc` package has scoped real-recording measurements in `task_docs/DEADLINE_ACCURACY.md` and `task_docs/MULTICAMERA_IMPROVEMENTS.md`. Preserve the distinction between these results and hidden-test accuracy or native high-rate qualification.
 
 ## Preserve these assets
 

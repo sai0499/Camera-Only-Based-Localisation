@@ -45,6 +45,15 @@ class VisualFrontend:
         self._last_rear_proposal_ns = estimator.initial_pose.timestamp_ns - 750_000_000
         self._recovery_camera_index = 0
         self._recovery_switch_ns = None
+        self.camera_policy = None
+        if tracker.map.manifest.get("camera_policy") == "support-v1":
+            from camloc.camera_policy import CameraPolicy
+
+            cameras = [cam for cam in tracker.map.cameras
+                       if tracker.calibration_compatibility.get(cam, "valid") == "valid"]
+            self.camera_policy = CameraPolicy(tracker.map, cameras)
+        self._decode_until = {}
+        self._last_auxiliary_ns = estimator.initial_pose.timestamp_ns - c.NS_PER_S
 
     def drain_diagnostics(self):
         events, self.events = self.events, []
@@ -130,13 +139,30 @@ class VisualFrontend:
         if self.retrieval_enabled:
             self._update_carry(context.settled)
         observations, poses, rejected, unused = {}, [], [], []
+        policy = self.camera_policy
+        scores, auxiliary = {}, None
+        auxiliary_due = frame.t_ns - self._last_auxiliary_ns >= c.NS_PER_S
+        if policy is not None:
+            for result in context.settled:
+                if result.status is c.AnchorStatus.FAILED:
+                    policy.feedback(result.camera_id, False, frame.t_ns)
+            scores = policy.scores(prior, frame.t_ns, {image.camera_id for image in frame.images})
+            auxiliary = next((cam for cam in policy.rank(scores) if cam != "fr"), None)
         rear_due = ("r" in self.tracker.map.cameras
                     and frame.t_ns - self._last_rear_proposal_ns >= c.NS_PER_S)
         # Rear JPEGs are needed only for a mapped rear stream, an in-flight job or fallback.
         for image in sorted(frame.images, key=lambda item: (item.camera_id != "fr", item.exposure_ns)):
             front_supported = any(item.camera_id == "fr" and self.estimator.pose_in_gate(_pose(item))
                                   for item in poses)
-            if image.camera_id == "r" and front_supported and not context.rear_in_flight and not rear_due:
+            if policy is not None:
+                camera = image.camera_id
+                due = any(result.camera_id == camera for result in context.results)
+                carried = frame.t_ns <= self._decode_until.get(camera, -1)
+                if camera not in policy.cameras or (camera != "fr" and not due and not carried
+                        and not (camera == auxiliary and (not front_supported or auxiliary_due
+                                 or self.tracker.active_count(camera) >= 30))):
+                    continue
+            elif image.camera_id == "r" and front_supported and not context.rear_in_flight and not rear_due:
                 continue
             try:
                 obs = self.canonicalizer.canonicalize(image)
@@ -168,6 +194,8 @@ class VisualFrontend:
                 continue
             handoff = self.tracker.handoff(result, current)
             (poses if handoff.accepted else rejected).append(handoff)
+            if policy is not None:
+                policy.feedback(result.camera_id, handoff.accepted and self.estimator.pose_in_gate(handoff.pose), frame.t_ns)
 
         eligible = [item for item in poses if self.estimator.pose_in_gate(_pose(item))]
         # Compare current poses at the group exposure using only the preceding causal velocity.
@@ -182,7 +210,8 @@ class VisualFrontend:
                        or abs(c.wrap_angle(a[2] - b[2])) > math.radians(3))
                        for i, a in enumerate(common) for b in common[i + 1:])
         selected = None if conflict or not eligible else max(
-            eligible, key=lambda item: (_pose(item).occupied_cells, _pose(item).inlier_count,
+            eligible, key=lambda item: (policy is not None and item.camera_id == "fr",
+                                        _pose(item).occupied_cells, _pose(item).inlier_count,
                                         -_pose(item).median_error_px))
         for item in poses:
             if item is not selected:
@@ -237,7 +266,18 @@ class VisualFrontend:
             refs = self._proposal_refs(obs, snapshot, selected is not None or recent_full)
             if refs is not None:  # () is a retrieval request, None no proposal
                 proposals.append((camera, obs, refs))
-        if selected is None:
+        if policy is not None:
+            if selected is not None and auxiliary_due and any(value[0] == auxiliary for value in proposals):
+                choices = [value for value in proposals if value[0] == auxiliary]
+            elif selected is not None:
+                choices = [value for value in proposals if value[0] == "fr"]
+            else:
+                choices = [value for value in proposals if scores.get(value[0], 0.) > 0]
+            proposals = sorted(choices, key=lambda value: (-scores.get(value[0], 0.), value[0]))[:1]
+            self.events.append({"record": "CameraSelection", "group_id": frame.group_id,
+                "scores": scores, "decoded": list(observations),
+                "proposed": [value[0] for value in proposals], "reason": "mapped_support_and_recent_failures"})
+        elif selected is None:
             # Alternate available cameras so failed front tracks cannot starve rear rescue.
             # Hold each camera for one delivery delay: per-group alternation would let the
             # next camera's request always replace the pending one at the same group parity.
@@ -256,12 +296,16 @@ class VisualFrontend:
             proposals = [proposal for proposal in proposals if proposal[0] == "fr"]
         for camera, obs, refs in proposals:
             purpose = (c.AnchorPurpose.RECOVERY if selected is None else
-                       c.AnchorPurpose.FRONT_ANCHOR if camera == "fr" else c.AnchorPurpose.REAR_ANCHOR)
+                       c.AnchorPurpose.FRONT_ANCHOR if camera == "fr" else
+                       c.AnchorPurpose.REAR_ANCHOR if camera == "r" else c.AnchorPurpose.WARM_RETRIEVAL)
             context.propose(purpose=purpose, observation=obs, reference_ids=refs,
                             track_count=max((_pose(item).inlier_count for item in poses
                                              if item.camera_id == camera), default=0))
             if camera == "r":
                 self._last_rear_proposal_ns = obs.exposure_ns
+            if policy is not None and camera != "fr":
+                self._last_auxiliary_ns = obs.exposure_ns
+                self._decode_until[camera] = obs.exposure_ns + c.HISTORY_MAX_AGE_NS
             if self.retrieval_enabled and refs == ():
                 # Keep only exposures whose results could still be fresh carry sources.
                 requested = self._retrieval_exposures.setdefault(camera, set())

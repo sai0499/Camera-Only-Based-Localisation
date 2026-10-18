@@ -1,13 +1,22 @@
 # Start here: TrackCode Apex
 
+**Seven-camera rescue update:** the new fitting-only bank maps all seven feeds and
+selects auxiliary work by spatial support and recent failures. Camera-only tuning
+position RMSE improves from 12.893 m to 2.554 m, and its full-visual-pose gate now passes
+(2.300 s longest gap). With permitted velocity/yaw-rate assistance, tuning position
+RMSE is 0.535 m and its longest gap is 2.700 s. See
+[the camera audit and scoped results](task_docs/MULTICAMERA_IMPROVEMENTS.md).
+The previous bank remains available for its lower assisted lateral RMSE.
+
 **18 October deadline update:** the owner authorized B's accuracy work and the challenge
 PDF's permitted vehicle-motion inputs. Optional motion propagation plus robust visual
 fusion improves full tuning position RMSE from 12.893 m to 0.530 m (lateral 0.262 m,
 yaw 0.195 degrees, 92.3% within 1 m). Camera-only stays the default. See
 [the mode, safety boundary, commands and independent evidence](task_docs/DEADLINE_ACCURACY.md).
-These scores do not clear the unchanged camera-only visual continuity gate below.
+That earlier bank did not clear the camera-only visual continuity gate; the rescue
+update above supersedes its continuity status on the measured tuning episode.
 
-This is the shared development workspace for the three-person camera-localization team. A's geometry/input, B's vision/map components through Step 3, and C's contracts/filter/scheduler/recovery are integrated on `dev/implementation`. The raw-camera runner and validator now work; [Stage 3 integration status](task_docs/STAGE3_STATUS.md) records commands and real tuning results. The best full forward-camera replay (multi-lap fitting bank, `tune-stage3-fix-5`) fused 1,755 visual corrections across 2,708 outputs but still had a 5.4 s full-pose gap and four gaps over the 3 s bound (x/y RMSE 9.67 m); Team C Step 3 is **not signed off**. [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. [Step 5](task_docs/STAGE5_STATUS.md) now tracks real-recording integrity/stress checks and runtime telemetry; it is not signed off. The evaluation adapter and native-coordinate reconciliation already work.
+This is the shared development workspace for the three-person camera-localization team. A's geometry/input, B's vision/map components through Step 3, and C's contracts/filter/scheduler/recovery are integrated on `dev/implementation`. The raw-camera runner and validator now work; [Stage 3 integration status](task_docs/STAGE3_STATUS.md) records commands and real tuning results. With the seven-camera rescue bank the unchanged validator passes all five checks on the full tuning replay in camera-only mode (2.3 s longest full-pose gap); Team C Step 3 is **signed off for the measured tuning gate** (holdout still has a 9.8 s gap). [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. [Step 5](task_docs/STAGE5_STATUS.md) now tracks real-recording integrity/stress checks and runtime telemetry; it is not signed off. The evaluation adapter and native-coordinate reconciliation already work.
 
 B's [PR #2](https://github.com/sai0499/Camera-Only-Based-Localisation/pull/2) verification and
 profiling tools are integrated; [the paired integration report](task_docs/B_PR2_INTEGRATION.md)

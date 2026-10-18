@@ -17,7 +17,7 @@ sys.path.insert(0, str(ROOT))
 
 from camloc import contracts as c  # noqa: E402
 from camloc.vehicle_motion import _align, _header, decode_sample  # noqa: E402
-from scripts.check_step5 import compare, copy_messages, dump  # noqa: E402
+from scripts.check_step5 import compare, copy_messages, dump, variant  # noqa: E402
 
 
 def poison(data):
@@ -36,6 +36,8 @@ def main():
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--initial-pose", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--future-images", action="store_true",
+                        help="also poison future images of all seven cameras and compare the earlier prefix")
     args = parser.parse_args()
     if args.output.exists():
         parser.error("audit output must be fresh")
@@ -46,7 +48,8 @@ def main():
     args.output.mkdir(parents=True)
     cases = {}
     cutoff = start + 10*c.NS_PER_S
-    for case in ("baseline", "pose_poison", "future_motion"):
+    names = ["baseline", "pose_poison", "future_motion"] + (["future_images"] if args.future_images else [])
+    for case in names:
         path = args.output/(case+".mcap")
         motion_digest = hashlib.sha256()
 
@@ -72,8 +75,11 @@ def main():
                 motion_digest.update(json.dumps(dataclasses.asdict(sample), sort_keys=True).encode())
             return data
 
-        receipt = copy_messages(args.bag, path, select, transform)
-        receipt["allowed_motion_sha256"] = motion_digest.hexdigest()
+        if case == "future_images":
+            receipt = variant(args.output/"baseline.mcap", path, "future", start, cameras=c.CAMERA_IDS)
+        else:
+            receipt = copy_messages(args.bag, path, select, transform)
+            receipt["allowed_motion_sha256"] = motion_digest.hexdigest()
         folder = args.output/case
         command = [sys.executable, "-u", "-B", str(ROOT/"run.py"), "--bag", str(path),
             "--artifacts", str(args.artifacts), "--initial-pose", str(args.initial_pose),
@@ -94,6 +100,11 @@ def main():
         "episode":{"start_ns":str(start),"end_ns":str(end)}, "cases":cases,
         "pose_isolation":isolation,"future_motion_prefix":future,
         "passed":isolation["passed"] and future["passed"]}
+    if args.future_images:
+        report["future_image_prefix"] = compare(baseline, args.output/"future_images", before_ns=cutoff)
+        assert cases["future_images"]["changed_images"] > 0
+        assert set(cases["future_images"]["changed_camera_ids"]) == set(c.CAMERA_IDS)
+        report["passed"] &= report["future_image_prefix"]["passed"]
     dump(args.output/"report.json", report)
     print(json.dumps(report,indent=2))
     if not report["passed"]:
