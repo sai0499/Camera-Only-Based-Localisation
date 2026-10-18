@@ -4,9 +4,10 @@ Estimate the car's position and heading from a ROS 2 MCAP recording and replay t
 result against its embedded ground truth. The local web interface handles input
 selection, initialization, localization, scoring and pose/validation downloads.
 
-**Start here:** copy the supplied frozen map into the project, then double-click
+**Start here:** place the original training MCAP in the project root, then double-click
 **[start_project.cmd](start_project.cmd)**. It installs/checks the locked environment
-and public weights, starts the UI and opens <http://127.0.0.1:8765> in your browser.
+and public weights, builds the frozen map if missing, starts the UI and opens
+<http://127.0.0.1:8765> in your browser.
 Keep its console window open while using the application. Start only one UI server.
 
 ## Requirements and supplied assets
@@ -17,10 +18,17 @@ Keep its console window open while using the application. Start only one UI serv
 - A compatible NVIDIA GPU/driver for the measured performance. Our reference machine
   uses an **RTX 4060 Laptop GPU, 8 GB**, on Windows 11. Setup does not install drivers.
   CPU component checks are supported; CPU localization throughput is not qualified.
-- The separately supplied frozen map directory. **A Git clone alone is insufficient:**
-  setup downloads pretrained weights but does not download or rebuild this fitted map.
+- For a first map build, the original training recording named
+  `c0_2026-10-13_22-53-42_camloc_0.mcap` in the project root. It is approximately
+  7.53 GB and is transferred separately under the organizer's dataset access rules;
+  **the recording is not tracked in Git**. A dataset already present in your local
+  checkout can be used directly. A test/holdout clip cannot replace it.
+- Keep the committed `task_docs/build_split.json` and supplied
+  `23-00-38_cut_120m_update/map.mcap` unchanged. The build verifies their hashes.
+- Alternatively, a complete prebuilt release map can be supplied at the paths below;
+  a valid existing bank is reused without rebuilding or requiring the training MCAP.
 
-Place the complete directory at these exact paths, without renaming its contents:
+The automatic build creates these files. A supplied prebuilt bank uses the same paths:
 
 ```text
 artifacts/
@@ -31,7 +39,7 @@ artifacts/
     retrieval.npz
 ```
 
-Use the supplied four files together. Their hashes, camera geometry and retrieval
+Keep the four generated/supplied files together. Their hashes, camera geometry and retrieval
 identity are checked during localization startup. Do not build a map from test data.
 Pinned pretrained checkpoints are prepared in `artifacts/weights/` by setup; their
 download URLs, sizes and SHA-256 hashes are in
@@ -45,9 +53,11 @@ minutes. The environment and caches remain inside this project.
 ## One-click setup and launch
 
 1. Clone/download the submitted **`dev/implementation`** branch and extract it into a
-   normal local folder. Copy the frozen map directory above into `artifacts/`.
-2. Double-click **`start_project.cmd`**. It checks the map files, runs `setup.cmd`,
-   verifies dependencies/checkpoints and component smoke checks, and launches the UI.
+   normal local folder. Place the original training MCAP at the project root, or
+   supply the complete prebuilt bank under `artifacts/fit-seven-rescue-v2/`.
+2. Double-click **`start_project.cmd`**. It runs `setup.cmd`, verifies dependencies,
+   checkpoints and component smoke checks, then builds/verifies the map and launches
+   the UI. A first map build can take many minutes on a GPU; it is not instant.
 3. If the browser opens before the server is ready, refresh once. The URL is
    **http://127.0.0.1:8765**. Setup errors remain visible in the console.
 
@@ -55,6 +65,64 @@ For later launches, double-click **[launch_ui.cmd](launch_ui.cmd)** and open tha
 To install/check the environment separately, double-click **[setup.cmd](setup.cmd)**.
 Rerunning setup is safe; it uses the committed dependency lock and checksum-pinned
 weights. It never installs packages globally. Do not run multiple launchers at once.
+
+## Build the frozen map from the training dataset
+
+The launcher invokes the existing builders through
+[scripts/build_submission_assets.py](scripts/build_submission_assets.py). To prepare
+assets without opening the UI, first run `setup.cmd`, then:
+
+```powershell
+& .\.venv\Scripts\python.exe -u -B scripts/build_submission_assets.py
+```
+
+The source recording must have SHA-256
+`fe5a0b9565b1bc03dd1ad775645722645e135b2f19012cf7bc815a8bcb91d613`.
+The script refuses another dataset, including an uploaded test or the holdout clip.
+It uses the published recipe, with times relative to the fixed fitting interval:
+
+1. Build the front-camera bank over **0?700.39 seconds**, with 4 m / 5-degree
+   keyframe selection and eight-neighbor matching.
+2. Build the other six cameras over fitting windows **265?274, 299?309 and 372?379
+   seconds**, using 5 m / 10-degree selection, rescue masks and 12 m target-baseline
+   pairing.
+3. Merge the disjoint camera banks using the existing 3,000-reference bound and
+   fitting/provenance checks.
+4. Build and verify the EigenPlaces retrieval index, then publish the completed bank
+   to `artifacts/fit-seven-rescue-v2/`.
+
+All triangulation pose support is limited to the fitting interval. Tuning, holdout
+and test GT are not used for fitting. Neither `evaluation/reference/` nor
+`evaluation/reference_reconciled/` is needed by this build. The supplied static map
+is read for the existing provenance/geometry contract; it is not the visual bank.
+
+Intermediates are kept in ignored `artifacts/submission-map-build/`. Existing frozen
+banks are verified and reused, never overwritten. If a build fails, its partial work
+is preserved; read the error and rename that work directory before retrying. A partial
+or invalid final bank also fails explicitly rather than being silently replaced.
+Allow additional disk space for fitting intermediates.
+
+A fresh build has its own manifest/map identity. GPU/library numerical differences
+may affect its landmarks, so the historical RMSE table below is **not a guarantee for
+an untested rebuild**. Validate the rebuilt bank on the fixed development split
+before quoting its accuracy. The locked supplied bank remains the exact measured
+reference; rebuilding does not overwrite it when it is already present.
+
+### Evaluation-reference folders
+
+The automatic UI reads its uploaded MCAP's embedded GT only after inference ends;
+no pre-generated reference folders are needed. For development scoring through
+`evaluation/reference_eval.py`, the active reference can be generated separately
+from the original recording after setup:
+
+```powershell
+& .\.venv\Scripts\python.exe -B evaluation/reference_eval.py prepare
+```
+
+This creates `evaluation/reference_reconciled/` when absent and refuses to overwrite
+an existing reference. `evaluation/reference/` is a legacy source cache and is not
+required for this preparation. These folders contain evaluation GT, stay excluded
+from Git, and must never become inference inputs.
 
 ## Run a test recording
 
@@ -86,7 +154,8 @@ limited to the supported formats, not arbitrary ROS topic names or custom schema
 The original development recording is recognized by content hash and runs only its
 fixed holdout interval. The separately exported `holdout-evaluation.mcap`, when supplied,
 contains that interval and can be selected directly. Keep its original timestamps.
-The original training recording is not required to run a separately supplied test.
+After the map has been built, the original training recording is not required to run
+a separately supplied test.
 
 ## Replay and downloads
 
@@ -152,8 +221,9 @@ See the [reference receipt](task_docs/evidence/submission_holdout_20261018.json)
 
 ## Troubleshooting and development
 
-- **Missing frozen map:** obtain the supplied `fit-seven-rescue-v2` directory and copy
-  all four files into `artifacts/`. Public pretrained weights do not replace the map.
+- **Missing frozen map:** run `start_project.cmd` with the original training MCAP
+  at the project root. It builds the map automatically. A complete supplied prebuilt
+  bank can also be used; pretrained weights alone do not replace the map.
 - **Setup/download error:** check internet/disk space and rerun `setup.cmd`. See the
   console and `.setup/environment_report.json`. Do not use an unpinned package upgrade.
 - **Port already in use:** reuse the existing local UI. Stop its console before
@@ -172,7 +242,7 @@ For developers, use the project interpreter and pinned environment:
 & .\.venv\Scripts\python.exe -B scripts/serve_replay.py --port 8765
 ```
 
-The latest full regression suite passed **1,144 tests**; UI-only follow-up checks also
+The latest full regression suite passed **1,149 tests**; UI-only follow-up checks also
 passed. These checks do not replace measured recording accuracy. No setup rerun on a
 fresh judge machine is implied by those results.
 

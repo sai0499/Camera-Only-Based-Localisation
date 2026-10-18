@@ -1,5 +1,9 @@
 # Start here: TrackCode Apex
 
+For the submission workflow, see [README_SUBMISSION.md](README_SUBMISSION.md).
+Double-click `start_project.cmd` to set up, build missing frozen assets from the
+original recording using the fixed fitting recipe, and launch the automatic UI.
+
 **Workspace cleanup:** current assets, retained comparisons and archived historical
 evidence are listed in [WORKSPACE_LAYOUT.md](task_docs/WORKSPACE_LAYOUT.md). The
 original recording and fixed split manifest remain the dataset.

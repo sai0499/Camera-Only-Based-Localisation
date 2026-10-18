@@ -6,10 +6,15 @@
 Use Windows x64 and one CUDA GPU. Run `setup.cmd --no-pause` for the locked Python
 3.12.13 environment and declared public checkpoints. The frozen fitting-only bank is
 already in `artifacts/fit-seven-rescue-v2/`, and pinned weights are in `artifacts/weights/`.
-Provide the frozen bank alongside the source when handing the system to the organizers;
-these ignored local assets are not included in Git. Public checkpoint download links
-and checksums are in `config/pretrained_models.json`. The redundant local asset ZIP was
-removed. Do not include recordings, GT or `.venv` in a source handoff.
+A prebuilt bank can accompany the source, or judges can rebuild it from the original
+training recording using `start_project.cmd`. That launcher runs locked setup and
+`scripts/build_submission_assets.py`, using only the fixed fitting windows. The training
+recording is transferred separately and must be placed at the project root; the map
+and recording are not in Git. Existing complete banks are verified and reused. Full
+instructions and rebuild limits: [submission README](README_SUBMISSION.md). Public
+checkpoint download links/checksums are in `config/pretrained_models.json`; setup
+prepares them automatically. Evaluation-reference folders are not required by the UI
+or map builder. Do not include GT caches or `.venv` in a source handoff.
 
 Pages 2-3 of the challenge PDF require the test pose CSV, mandatory reproducible source
 and weights/download links, validation scoring outputs, measured runtime/hardware,
