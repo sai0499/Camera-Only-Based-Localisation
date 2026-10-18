@@ -52,7 +52,7 @@
     "disk-lightglue:b5b21d47ea24"
   ],
   "query_bag": "holdout-evaluation.mcap",
-  "query_bag_path": "D:\\Camera Only Based Localisation - Hackathon\\c0_2026-10-13_22-53-42_camloc\\tmp\\replay_ui\\uploads\\d385bf2876a048a7\\holdout-evaluation.mcap",
+  "query_bag_path": "D:\\Camera Only Based Localisation - Hackathon\\c0_2026-10-13_22-53-42_camloc\\tmp\\replay_ui\\uploads\\6007741ffe2424e8\\holdout-evaluation.mcap",
   "calibration_compatibility": {
     "fl": "valid",
     "fr": "valid",
@@ -116,7 +116,7 @@
     "descriptor_sha256": "c02758c76d45b893ba29f09b2977708824b02f1f51a38d78b0662a65b3b769e8",
     "keyframes": 2798
   },
-  "startup_seconds": 14.949272199999541,
+  "startup_seconds": 17.255985700001474,
   "groups": 2191,
   "frontend_errors": 0,
   "prediction_only": 787,
@@ -131,7 +131,7 @@
   "candidate_confirmations": 18,
   "candidate_discards": 21,
   "anchor_disabled": 0,
-  "replay_seconds": 158.98817719999352,
-  "total_seconds": 173.93805900000734,
-  "outputs_per_second": 13.780898923345159
+  "replay_seconds": 170.0835398999916,
+  "total_seconds": 187.34020070001134,
+  "outputs_per_second": 12.881904982035879
 }
