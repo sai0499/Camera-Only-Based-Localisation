@@ -33,6 +33,12 @@ The deliverable `results/seven-camera-submission-assets-v1.zip` and checksum rec
 remain unchanged. Earlier redundant asset/source ZIPs were removed; source history
 and release tags remain in Git, and the alternative banks remain unpacked locally.
 
+The subsequent fresh submission-evidence run is
+`results/submission-evidence-holdout-20261018-v1/`: its `replay/` folder contains the
+whole-holdout predictions, evaluation and offline viewer; `evidence.zip` packages
+the evidence without recordings, weights or map arrays. The tracked receipt is
+`task_docs/evidence/submission_holdout_20261018.json`.
+
 `results/workspace-cleanup/historical-evidence*.zip` retains compact predictions, scores,
 metadata, audit summaries and temporary analysis commands from removed experiments.
 Large diagnostics, synthetic poison/future-message MCAPs, intermediate map arrays and

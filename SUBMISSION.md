@@ -70,3 +70,11 @@ See [camera-map improvements and limits](task_docs/MULTICAMERA_IMPROVEMENTS.md),
 [earlier lower-lateral-error bank](task_docs/DEADLINE_ACCURACY.md),
 [model declarations and notices](config/MODEL_NOTICES.md), and
 [offline/live viewer instructions](replay_ui/README.md).
+
+A fresh whole-holdout replay after workspace cleanup reproduces all 2,191 predictions
+and localization decisions exactly, with the same 0.655 m RMSE and 9.8 s visual gap.
+It averages 73.3 ms/output; frozen assets, weights, source and split hashes are unchanged
+during the run. See the [fresh evidence receipt](task_docs/evidence/submission_holdout_20261018.json).
+The local `results/submission-evidence-holdout-20261018-v1/` directory contains the
+prediction CSV, scorer/validator reports, offline GT viewer and `evidence.zip`.
+This is a previously inspected holdout regression, not a new unseen test.

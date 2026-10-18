@@ -1,0 +1,243 @@
+{
+  "scope": "Fresh fixed whole-holdout regression with locked submission artifacts and parameters. Holdout was inspected previously; no fitting, tuning, or selection using this run.",
+  "started_at_utc": "2026-10-18T19:24:20.755285+00:00",
+  "completed_at_utc": "2026-10-18T19:28:42.766524+00:00",
+  "source_commit": "7cf06833638810711571eb7012e99a2149c1886b",
+  "branch": "dev/implementation",
+  "release_tag_configuration": "release-seven-camera-assisted-v1",
+  "run_directory": "results/submission-evidence-holdout-20261018-v1/replay",
+  "configuration": {
+    "bank": "artifacts/fit-seven-rescue-v2",
+    "map_id": "fitmap:1135ae388a5d0ee3",
+    "retrieval_id": "retrieval:b932d15a32aee922",
+    "camera_policy": "support-v1",
+    "auxiliary_pose_variance_scale": 4.0,
+    "retrieval": true,
+    "default_mode": "runner built-in default is still camera-only (no code change); the locked submission command passes --vehicle-motion",
+    "assisted_mode": "--vehicle-motion state-fields (or validation-twist on recordings with the separate body-velocity topic)",
+    "camera_turn_bias": false,
+    "gate_thresholds_changed": false,
+    "submission_mode": "assisted: camera feeds + permitted vehicle velocity and yaw rate",
+    "vehicle_motion_inputs": "timestamp, body vx, vy and yaw rate only; acceleration fields are not read; pose/orientation/status fields never decoded"
+  },
+  "artifact_sha256": {
+    "artifacts/fit-seven-rescue-v2/manifest.json": "d8a4ca6dbbf4478a458c327585435c04049be728eebc88955dda9bdfb958164c",
+    "artifacts/fit-seven-rescue-v2/map.npz": "fb87b47548b15da3885faf384bf1e25d505fc9e097b5ad0bcbce8d7218480f3d",
+    "artifacts/fit-seven-rescue-v2/retrieval.json": "141d5f034a77e50c0d5a14df618fb8116f2814bf9ef7648f1d55646071efe148",
+    "artifacts/fit-seven-rescue-v2/retrieval.npz": "5ca0ba6d3c0354eede1e88616fe47fe39e1cfc83b5fd4442dc187f1a75491cca"
+  },
+  "frozen_artifacts_weights_source_and_split_unchanged": true,
+  "source_sha256": {
+    "run.py": "d5d20480c5baa80505946d558cce5a3b8d30a8d2f738f12756e2083321c184a7",
+    "camloc/__init__.py": "ab9d35eefd1b5029a35b4dfe1510b2c9c89cf953be9d31f8211c32935036828d",
+    "camloc/borders.py": "d6d3e9eca9f1d80bf498a93a67e8ae94c1ed10958bb75a9f36bf834f31312550",
+    "camloc/camera_policy.py": "c880366e2909fffd1532ddc8fb6309bb3ad04902c9d3c36c5d79595ae4bfbdfe",
+    "camloc/contracts.py": "b6012b4b7a2b6cea2fb1b9a4a1f0581e12a2f35b03f38ba3031f6f90de644e74",
+    "camloc/features.py": "a17e2f7237e38ee4aaf6741f00c1fb584d0192fd3a51223ae7d5705c1693ba0b",
+    "camloc/filter.py": "269a32e5a943eae135ffe277655c30902d86189026768d6bb3b047dbbe996ee7",
+    "camloc/frontend.py": "a8a8c547267022ba3c47811248e5beafa7ee181a15814bf7498cd80f634246c6",
+    "camloc/geometry.py": "45ee53559036b28e9483fccb2da784bb6a677b7c718b2e3a5da6f6fce6a7ebf8",
+    "camloc/ground_motion.py": "eb035a053d84567fe93b5de0816a44d05dd81c7ad7a85642aebb5af945dc42aa",
+    "camloc/io.py": "fc791eaaffa2aaac57543c332262a2727e14d4f3902c7fa095c0719907c9baf1",
+    "camloc/landmark_map.py": "81ee0536a2373e234f49ebbb627e1d36706cbc8008db76aad1976637be11b154",
+    "camloc/masks.py": "4f0a6c9728337af03fa988981945f2f840bb387c3e06093b90a26582d22645cb",
+    "camloc/pnp.py": "3248b053c658709a79bfafb96c939bbbdbc38e06911f14f917bb1d69f9c56132",
+    "camloc/recovery.py": "3f2742b3813c76b474f7bd8bed42149d461faf39e203d52379dd78bb21735a4e",
+    "camloc/retrieval.py": "2172ad35e3bf17fef2297d8034e9d63f476d0705834512a75dd5e6b61f5f4996",
+    "camloc/runtime.py": "ca90d352adef1ceeb8da095b1ce3ae697fa5d36ad420af15d807aa95b2180d6d",
+    "camloc/scheduler.py": "fdb58b0ff049c16669f4970665f655b4855e6767284110e9384eeecba4b91e75",
+    "camloc/submission.py": "ac1f4f50d5f6b52a0a3922fbf56ba7259cdefe4f8ae9ce022587d0bccd84d8b8",
+    "camloc/track_coords.py": "d223d706027f8da870bdddbc100da9e961fbdd31179533c4cab3e370f262fa12",
+    "camloc/vehicle_motion.py": "59cfbacccb37019fc7b93191379f0a616600299ff3fc51e28260a15e7c2569f3",
+    "camloc/vision.py": "bb1656c8b772db8b67f3322f3e92d700f69a5ffe27b167411fc426b56f9f437c"
+  },
+  "bag": {
+    "path": "c0_2026-10-13_22-53-42_camloc_0.mcap",
+    "sha256": "fe5a0b9565b1bc03dd1ad775645722645e135b2f19012cf7bc815a8bcb91d613"
+  },
+  "bounds": {
+    "start_ns": "1791919132302537034",
+    "end_ns": "1791919351506836680"
+  },
+  "initial_pose_sha256": "92ce0a6b3e84882d982475cc3545d90ac402c61cda2ba5d56c2166ca2575201e",
+  "official_rounded_metrics": {
+    "position_rmse_m": 0.655,
+    "lateral_rmse_m": 0.33,
+    "longitudinal_rmse_m": 0.566,
+    "yaw_rmse_deg": 0.239,
+    "within_1m_percent": 86.5,
+    "coverage_1s_bins_percent": 100.0
+  },
+  "validation": {
+    "valid": true,
+    "rows": 2191,
+    "visual_updates": 1404,
+    "full_pose_updates": 1404,
+    "lost_rows": 199,
+    "max_full_pose_gap_ns": 9800117788,
+    "visual_baseline_gate_passed": false,
+    "first_timestamp_ns": "1791919132389622550",
+    "last_timestamp_ns": "1791919351392432198",
+    "median_cadence_ns": 100000764,
+    "max_gap_ns": 100023813,
+    "nominal_coverage": 0.9995318261449901,
+    "exposure_sequence_matches_input": true,
+    "metric_sections_complete": true
+  },
+  "runtime": {
+    "groups": 2191,
+    "transport_speed": null,
+    "profile": "unpaced file replay",
+    "steady_elapsed_seconds": 160.6622365,
+    "elapsed_per_output_ms": 73.32826859881332,
+    "reader": {
+      "mean_ms": 6.661368735737108,
+      "p95_ms": 11.55225,
+      "p99_ms": 14.948269999999994
+    },
+    "group_service": {
+      "mean_ms": 66.65478407120035,
+      "p95_ms": 162.46695,
+      "p99_ms": 182.95801999999986
+    },
+    "nonwaiting_pipeline": {
+      "mean_ms": 36.348600684618894,
+      "p95_ms": 52.106300000000005,
+      "p99_ms": 65.83315999999999
+    },
+    "nonwaiting_pipeline_definition": "reader plus complete group service, subtracting logged worker join stalls; includes handoff",
+    "last_packet_to_completion": null,
+    "timing_limit": "pacing uses constituent packet arrivals; deadline-closure wait and physical exposure latency are not instrumented",
+    "rate_qualified": false,
+    "qualification_limit": "telemetry only; five-minute rate-faithful workload and queue gates are separate",
+    "process_memory": {
+      "peak_working_set_bytes": 2755571712,
+      "peak_commit_bytes": 6147870720
+    },
+    "cuda_memory": {
+      "peak_allocated_bytes": 1217751040,
+      "peak_reserved_bytes": 1694498816
+    }
+  },
+  "repeatability_against_previous_holdout": {
+    "passed": true,
+    "rows_compared": 2191,
+    "max_position_difference_m": 0.0,
+    "max_yaw_difference_rad": 0.0,
+    "same_logical_decisions": true,
+    "submission_bytes_identical": true
+  },
+  "motion_control_causality_records_checked": 2191,
+  "processing_errors": [],
+  "camera_usage": {
+    "fr": {
+      "anchor_jobs": 648,
+      "decoded": 2191,
+      "selected_visual_poses": 1244
+    },
+    "rl": {
+      "decoded": 272,
+      "anchor_jobs": 35,
+      "selected_visual_poses": 130
+    },
+    "r": {
+      "decoded": 41,
+      "anchor_jobs": 6,
+      "selected_visual_poses": 5
+    },
+    "rr": {
+      "decoded": 60,
+      "anchor_jobs": 12,
+      "selected_visual_poses": 5
+    },
+    "cr": {
+      "anchor_jobs": 11,
+      "decoded": 66,
+      "selected_visual_poses": 16
+    },
+    "cl": {
+      "decoded": 5
+    },
+    "fl": {
+      "decoded": 17,
+      "anchor_jobs": 1,
+      "selected_visual_poses": 4
+    }
+  },
+  "gaps_over_3s": 3,
+  "longest_gaps": [
+    {
+      "start_s": 203.987967206,
+      "end_s": 213.788096875,
+      "duration_s": 9.800129669
+    },
+    {
+      "start_s": 191.387806172,
+      "end_s": 197.587884855,
+      "duration_s": 6.200078683
+    },
+    {
+      "start_s": 200.587922917,
+      "end_s": 203.687966917,
+      "duration_s": 3.100044
+    },
+    {
+      "start_s": 137.787114923,
+      "end_s": 139.687141464,
+      "duration_s": 1.900026541
+    },
+    {
+      "start_s": 96.186583088,
+      "end_s": 97.686604132,
+      "duration_s": 1.500021044
+    },
+    {
+      "start_s": 180.287667259,
+      "end_s": 181.787685721,
+      "duration_s": 1.500018462
+    },
+    {
+      "start_s": 132.68705273,
+      "end_s": 134.087071587,
+      "duration_s": 1.400018857
+    },
+    {
+      "start_s": 19.885605541,
+      "end_s": 21.285623625,
+      "duration_s": 1.400018084
+    },
+    {
+      "start_s": 68.986236912,
+      "end_s": 70.386250498,
+      "duration_s": 1.400013586
+    },
+    {
+      "start_s": 214.988110391,
+      "end_s": 216.288124914,
+      "duration_s": 1.300014523
+    },
+    {
+      "start_s": 103.486680771,
+      "end_s": 104.786690439,
+      "duration_s": 1.300009668
+    },
+    {
+      "start_s": 199.287911447,
+      "end_s": 200.287920777,
+      "duration_s": 1.00000933
+    }
+  ],
+  "submission_sha256": "b6a7815c0683e8a062571c1821747e906260ac44969168e9f129a1a4f5b202a7",
+  "limits": [
+    "This previously inspected holdout is a regression replay, not a new unseen hidden test.",
+    "Full-visual-pose continuity gate remains failed; weak/prediction-only outputs stay in the score.",
+    "Unpaced replay timing does not qualify bounded latency or a higher native camera rate."
+  ],
+  "private_evidence_archive": {
+    "path": "results/submission-evidence-holdout-20261018-v1/evidence.zip",
+    "bytes": 10722101,
+    "sha256": "35065ef1dddc652159b454553ee566de04f32d1d4a4579a1d54e892f2db627e3",
+    "files": 34,
+    "crc_verified": true
+  }
+}
