@@ -1,0 +1,15 @@
+{
+  "valid": true,
+  "rows": 2191,
+  "visual_updates": 1404,
+  "full_pose_updates": 1404,
+  "lost_rows": 199,
+  "max_full_pose_gap_ns": 9800117788,
+  "visual_baseline_gate_passed": false,
+  "first_timestamp_ns": "1791919132389622550",
+  "last_timestamp_ns": "1791919351392432198",
+  "median_cadence_ns": 100000764,
+  "max_gap_ns": 100023813,
+  "nominal_coverage": 0.9996054122272916,
+  "exposure_sequence_matches_input": true
+}

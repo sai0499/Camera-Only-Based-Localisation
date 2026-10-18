@@ -85,7 +85,7 @@ The original driving MCAP, `metadata.yaml`, `README.md` and challenge PDF keep t
 
 ## Data and Git
 
-Commit the source, setup scripts, `pyproject.toml`, `uv.lock`, `requirements.txt`, model manifest, documentation and small supplied map. Use a private team repository. The `.gitignore` excludes the large recording, videos, generated GT references, environments, weights, fitted maps and results. Virtual environments are recreated locally; do not copy or commit `.venv`.
+Commit the source, setup scripts, `pyproject.toml`, `uv.lock`, `requirements.txt`, model manifest, documentation and small supplied map. Use a private team repository. Published result CSVs, runtime/run metadata and validation reports under `results/<run>/` are tracked at the owner's request. The `.gitignore` still excludes recordings, videos, GT references, environments, weights, fitted maps and raw replay caches. Virtual environments are recreated locally; do not copy or commit `.venv`.
 
 Transfer `c0_2026-10-13_22-53-42_camloc_0.mcap` privately to each teammate and place it at the project root. Its SHA-256 is `fe5a0b9565b1bc03dd1ad775645722645e135b2f19012cf7bc815a8bcb91d613`. Videos are optional for coding. The new `map.mcap` stays in its organizer folder.
 

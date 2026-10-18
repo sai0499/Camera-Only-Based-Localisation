@@ -1,0 +1,8 @@
+{
+  "state": "completed",
+  "source": {
+    "topic": "/tf",
+    "kind": "tf2_msgs/msg/TFMessage"
+  },
+  "ground_truth_rows": 23254
+}

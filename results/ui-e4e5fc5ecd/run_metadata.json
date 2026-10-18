@@ -1,0 +1,137 @@
+{
+  "split": "input",
+  "initial_pose": {
+    "record": "InitialPose",
+    "timestamp_ns": 1791919132304270069,
+    "x": 86.64542962193319,
+    "y": 368.0150667878228,
+    "yaw": 2.313809139401716
+  },
+  "inference_mode": "vehicle_motion_assisted",
+  "vehicle_motion": {
+    "source": "state-fields",
+    "topic": "/constructor0/state_estimation",
+    "fields": [
+      "timestamp",
+      "body_vx_mps",
+      "body_vy_mps",
+      "body_wz_radps"
+    ],
+    "schema_sha256": "155f40e5d0c15a9e0ab2375fd0b6bf2243dd687746bd3a8d2430976020be1690",
+    "samples": 23254,
+    "max_age_ns": 100000000,
+    "pose_fields_decoded": false,
+    "accuracy_status": "noise floors are conservative assumptions, not calibrated accuracy"
+  },
+  "motion_visual_weighting": "student_t_5dof",
+  "episode": {
+    "record": "EpisodeBounds",
+    "name": "input",
+    "start_ns": 1791919132304270069,
+    "end_ns": null
+  },
+  "map": {
+    "map_id": "fitmap:1135ae388a5d0ee3",
+    "cameras": [
+      "fr",
+      "fl",
+      "cl",
+      "cr",
+      "r",
+      "rl",
+      "rr"
+    ],
+    "landmarks": 133610,
+    "keyframes": 2942,
+    "keypoints": 3009614,
+    "preprocessing_id": "prep:canonical-960x464:5a920d63",
+    "mask_id": "bodywork-rescue-v1"
+  },
+  "models": [
+    "disk-depth:9c2ee4ded238",
+    "disk-lightglue:b5b21d47ea24"
+  ],
+  "query_bag": "holdout-evaluation.mcap",
+  "query_bag_path": "D:\\Camera Only Based Localisation - Hackathon\\c0_2026-10-13_22-53-42_camloc\\tmp\\replay_ui\\uploads\\d385bf2876a048a7\\holdout-evaluation.mcap",
+  "calibration_compatibility": {
+    "fl": "valid",
+    "fr": "valid",
+    "cl": "valid",
+    "cr": "valid",
+    "r": "valid",
+    "rl": "valid",
+    "rr": "valid"
+  },
+  "selected_cameras": [
+    "fl",
+    "fr",
+    "cl",
+    "cr",
+    "r",
+    "rl",
+    "rr"
+  ],
+  "camera_policy": "support-v1",
+  "camera_turn_bias": false,
+  "camera_pose_variance_scale": {
+    "fl": 4.0,
+    "cl": 4.0,
+    "cr": 4.0,
+    "r": 4.0,
+    "rl": 4.0,
+    "rr": 4.0
+  },
+  "source_sha256": {
+    "run.py": "d5d20480c5baa80505946d558cce5a3b8d30a8d2f738f12756e2083321c184a7",
+    "camloc\\__init__.py": "ab9d35eefd1b5029a35b4dfe1510b2c9c89cf953be9d31f8211c32935036828d",
+    "camloc\\borders.py": "d6d3e9eca9f1d80bf498a93a67e8ae94c1ed10958bb75a9f36bf834f31312550",
+    "camloc\\camera_policy.py": "c880366e2909fffd1532ddc8fb6309bb3ad04902c9d3c36c5d79595ae4bfbdfe",
+    "camloc\\contracts.py": "b6012b4b7a2b6cea2fb1b9a4a1f0581e12a2f35b03f38ba3031f6f90de644e74",
+    "camloc\\features.py": "a17e2f7237e38ee4aaf6741f00c1fb584d0192fd3a51223ae7d5705c1693ba0b",
+    "camloc\\filter.py": "269a32e5a943eae135ffe277655c30902d86189026768d6bb3b047dbbe996ee7",
+    "camloc\\frontend.py": "a8a8c547267022ba3c47811248e5beafa7ee181a15814bf7498cd80f634246c6",
+    "camloc\\geometry.py": "45ee53559036b28e9483fccb2da784bb6a677b7c718b2e3a5da6f6fce6a7ebf8",
+    "camloc\\ground_motion.py": "eb035a053d84567fe93b5de0816a44d05dd81c7ad7a85642aebb5af945dc42aa",
+    "camloc\\io.py": "fc791eaaffa2aaac57543c332262a2727e14d4f3902c7fa095c0719907c9baf1",
+    "camloc\\landmark_map.py": "81ee0536a2373e234f49ebbb627e1d36706cbc8008db76aad1976637be11b154",
+    "camloc\\masks.py": "4f0a6c9728337af03fa988981945f2f840bb387c3e06093b90a26582d22645cb",
+    "camloc\\pnp.py": "3248b053c658709a79bfafb96c939bbbdbc38e06911f14f917bb1d69f9c56132",
+    "camloc\\recovery.py": "3f2742b3813c76b474f7bd8bed42149d461faf39e203d52379dd78bb21735a4e",
+    "camloc\\retrieval.py": "2172ad35e3bf17fef2297d8034e9d63f476d0705834512a75dd5e6b61f5f4996",
+    "camloc\\runtime.py": "ca90d352adef1ceeb8da095b1ce3ae697fa5d36ad420af15d807aa95b2180d6d",
+    "camloc\\scheduler.py": "fdb58b0ff049c16669f4970665f655b4855e6767284110e9384eeecba4b91e75",
+    "camloc\\submission.py": "ac1f4f50d5f6b52a0a3922fbf56ba7259cdefe4f8ae9ce022587d0bccd84d8b8",
+    "camloc\\track_coords.py": "d223d706027f8da870bdddbc100da9e961fbdd31179533c4cab3e370f262fa12",
+    "camloc\\vehicle_motion.py": "59cfbacccb37019fc7b93191379f0a616600299ff3fc51e28260a15e7c2569f3",
+    "camloc\\vision.py": "bb1656c8b772db8b67f3322f3e92d700f69a5ffe27b167411fc426b56f9f437c"
+  },
+  "border_corrections": false,
+  "ground_motion_corrections": false,
+  "global_retrieval": true,
+  "retrieval": {
+    "retrieval_id": "retrieval:b932d15a32aee922",
+    "map_id": "fitmap:1135ae388a5d0ee3",
+    "checkpoint_sha256": "b47ea1efb51041604e9c135508764175bbaa98dece47b47da664517317d0aff3",
+    "preprocessing_id": "eigenplaces-r18-512:rgb480x232:imagenet:mask-bodywork-rescue-v1",
+    "descriptor_sha256": "c02758c76d45b893ba29f09b2977708824b02f1f51a38d78b0662a65b3b769e8",
+    "keyframes": 2798
+  },
+  "startup_seconds": 14.949272199999541,
+  "groups": 2191,
+  "frontend_errors": 0,
+  "prediction_only": 787,
+  "anchor_dispatched": 713,
+  "anchor_delivered": 667,
+  "anchor_replaced": 0,
+  "anchor_expired": 0,
+  "anchor_rejected": 0,
+  "anchor_cancelled": 0,
+  "anchor_stalled": 713,
+  "anchor_faulted": 0,
+  "candidate_confirmations": 18,
+  "candidate_discards": 21,
+  "anchor_disabled": 0,
+  "replay_seconds": 158.98817719999352,
+  "total_seconds": 173.93805900000734,
+  "outputs_per_second": 13.780898923345159
+}

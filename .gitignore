@@ -18,8 +18,18 @@ htmlcov/
 /evaluation/reference_reconciled/
 /artifacts/*
 !/artifacts/.gitkeep
-/results/*
+# Track published submission reports; keep raw replay data and GT excluded.
+/results/**
+!/results/*/
 !/results/.gitkeep
+!/results/*/submission.csv
+!/results/*/runtime.json
+!/results/*/run_metadata.json
+!/results/*/validated.json
+!/results/*/validation_status.json
+!/results/*/validation/
+!/results/*/validation/*.txt
+!/results/*/validation/*.json
 /tmp/
 *.log
 *.zip

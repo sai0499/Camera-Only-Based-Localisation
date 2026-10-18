@@ -1,0 +1,35 @@
+{
+  "groups": 2191,
+  "transport_speed": null,
+  "profile": "unpaced file replay",
+  "steady_elapsed_seconds": 157.9718208,
+  "elapsed_per_output_ms": 72.10032898219991,
+  "reader": {
+    "mean_ms": 1.6228040164308535,
+    "p95_ms": 3.09575,
+    "p99_ms": 4.032219999999999
+  },
+  "group_service": {
+    "mean_ms": 70.46500543130989,
+    "p95_ms": 177.80845,
+    "p99_ms": 195.20545999999982
+  },
+  "nonwaiting_pipeline": {
+    "mean_ms": 32.47001068005477,
+    "p95_ms": 52.588449999999995,
+    "p99_ms": 65.45238999999992
+  },
+  "nonwaiting_pipeline_definition": "reader plus complete group service, subtracting logged worker join stalls; includes handoff",
+  "last_packet_to_completion": null,
+  "timing_limit": "pacing uses constituent packet arrivals; deadline-closure wait and physical exposure latency are not instrumented",
+  "rate_qualified": false,
+  "qualification_limit": "telemetry only; five-minute rate-faithful workload and queue gates are separate",
+  "process_memory": {
+    "peak_working_set_bytes": 2758807552,
+    "peak_commit_bytes": 6162915328
+  },
+  "cuda_memory": {
+    "peak_allocated_bytes": 1217751040,
+    "peak_reserved_bytes": 1694498816
+  }
+}
