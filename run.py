@@ -433,6 +433,8 @@ def main(argv=None):
     parser.add_argument("--end-ns", help="optional exclusive input-recording bound")
     parser.add_argument("--output", type=Path, required=True, help="fresh result directory")
     parser.add_argument("--runtime", action="store_true", help="record wall-time and peak-memory telemetry")
+    parser.add_argument("--camera-turn-bias", action="store_true",
+                        help="support-v1 banks: prefer side cameras on the inside of a turn (causal yaw rate)")
     parser.add_argument("--transport-speed", type=float,
                         help="pace original packet arrivals at this speed; implies --runtime; no rate qualification")
     parser.add_argument("--retrieval", action="store_true",
@@ -494,7 +496,7 @@ def main(argv=None):
         estimator = CameraFilter(initial, vehicle_motion=controls, pose_variance_scale=pose_variance_scale)
         frontend = VisualFrontend(geometry.make_canonicalizer(calibrations), tracker, estimator,
             road=road, borders=borders.make_border_source(road), motion=vision.make_ground_motion(),
-            retrieval_enabled=index is not None)
+            retrieval_enabled=index is not None, camera_turn_bias=args.camera_turn_bias)
         source = io.open_frame_sets(args.bag, initial_pose=initial, episode=episode,
                                    calibrations=calibrations, cameras=selected_cameras)
         runtime = None
@@ -515,6 +517,7 @@ def main(argv=None):
                     "calibration_compatibility": tracker.calibration_compatibility,
                     "selected_cameras": list(selected_cameras),
                     "camera_policy": manifest.get("camera_policy", "legacy_front_rear"),
+                    "camera_turn_bias": bool(args.camera_turn_bias),
                     "camera_pose_variance_scale": pose_variance_scale,
                     "source_sha256": {str(path.relative_to(c.PROJECT_ROOT)): hashlib.sha256(
                         path.read_bytes()).hexdigest() for path in [

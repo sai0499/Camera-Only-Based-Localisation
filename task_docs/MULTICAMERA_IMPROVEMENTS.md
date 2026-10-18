@@ -130,6 +130,25 @@ isolated repeat supplies the delivery timing.
 The isolated repeat `results/seven-camera-final-tune-v1` reproduces the selected assisted
 submission byte-for-byte and averages 76.7 ms/output (not rate-qualified).
 
+## Turn-aware camera bias experiment (opt-in, not selected)
+
+`run.py --camera-turn-bias` multiplies a side camera's support score by 2 when it looks
+toward the inside of a turn and by 0.5 on the outside, when the causal prior's yaw rate is
+at least 0.15 rad/s (`cl`/`rl` look left, `cr`/`rr` right; `fr`, `fl`, `r` unchanged). Same
+bank `fit-seven-rescue-v2`, fresh replays, unchanged gates/evaluator/validator:
+
+| Result | Camera-only tune | Assisted tune | Assisted holdout regression |
+|---|---|---|---|
+| Position RMSE m (baseline -> turn bias) | 2.554 -> 2.619 | 0.535 -> **0.521** | 0.655 -> 0.730 |
+| Lateral RMSE m | 1.924 -> 1.732 | 0.289 -> 0.268 | 0.330 -> 0.500 |
+| Yaw RMSE deg | 2.673 -> 2.942 | 0.210 -> 0.186 | 0.239 -> 0.314 |
+| Within 1 m | 72.0% -> 71.9% | 91.5% -> 92.6% | 86.5% -> 86.1% |
+| Longest full-pose gap s | 2.3 -> 2.3 | 2.7 -> 2.4 | 9.8 -> 10.6 |
+
+It helps assisted tuning but is mixed camera-only and worse on the (already inspected)
+holdout, so it does not generalise and stays **off by default**; the frozen release is
+unchanged. Runs: `results/turnbias-{cameraonly,assisted}-tune-v1`, `results/turnbias-assisted-holdout-v1`.
+
 ## Reproduce and audit
 
 ```powershell

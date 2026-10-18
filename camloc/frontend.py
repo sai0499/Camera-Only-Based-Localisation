@@ -29,7 +29,7 @@ class VisualFrontend:
     """
 
     def __init__(self, canonicalizer, tracker, estimator: CameraFilter, *, road, borders, motion,
-                 retrieval_enabled=False):
+                 retrieval_enabled=False, camera_turn_bias=False):
         self.canonicalizer = canonicalizer
         self.tracker = tracker
         self.estimator = estimator
@@ -51,7 +51,7 @@ class VisualFrontend:
 
             cameras = [cam for cam in tracker.map.cameras
                        if tracker.calibration_compatibility.get(cam, "valid") == "valid"]
-            self.camera_policy = CameraPolicy(tracker.map, cameras)
+            self.camera_policy = CameraPolicy(tracker.map, cameras, turn_bias=camera_turn_bias)
         self._decode_until = {}
         self._last_auxiliary_ns = estimator.initial_pose.timestamp_ns - c.NS_PER_S
 

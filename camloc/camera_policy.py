@@ -4,10 +4,22 @@ import math
 from camloc import contracts as c
 from camloc.pnp import occupied_cells
 
+# Opt-in turn bias (owner suggestion): while turning, prefer side cameras looking toward the
+# inside of the turn and de-prioritise the outside side. Uses only the causal prior's yaw rate.
+TURN_RATE_RAD_S = 0.15
+TURN_INSIDE_GAIN, TURN_OUTSIDE_GAIN = 2.0, 0.5
+SIDE_AXIS_MIN = 0.5  # |body-y| of the optical axis that makes a camera side-looking
+
 
 class CameraPolicy:
-    def __init__(self, bank, cameras):
+    def __init__(self, bank, cameras, *, turn_bias=False):
         self.bank = bank
+        self.turn_bias = bool(turn_bias)
+        # +1 looks left, -1 looks right, 0 forward/rear (frozen camera-to-body axis).
+        self.side = {}
+        for camera in (cameras if self.turn_bias else ()):
+            axis_y = float(bank.T_BC(camera)[1, 2])
+            self.side[camera] = (1 if axis_y > SIDE_AXIS_MIN else -1 if axis_y < -SIDE_AXIS_MIN else 0)
         self.cameras = tuple(cameras)
         self.failed = {}
         self.quality = {}
@@ -34,6 +46,9 @@ class CameraPolicy:
             # The primary can still request global recovery outside local mapped support.
             if camera == c.PRIMARY_CAMERA:
                 score = max(score, 1.)
+            if self.turn_bias and self.side.get(camera) and abs(snapshot.state[5]) >= TURN_RATE_RAD_S:
+                inside = self.side[camera] * snapshot.state[5] > 0
+                score *= TURN_INSIDE_GAIN if inside else TURN_OUTSIDE_GAIN
             failures, last = self.failed.get(camera, (0, 0))
             if 0 <= stamp - last < 500_000_000:
                 score /= (1 + 3 * failures) ** 2
