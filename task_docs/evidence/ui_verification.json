@@ -1,0 +1,54 @@
+{
+  "scope": "first local UI implementation; not localisation qualification",
+  "python_tests": {
+    "passed": 1036,
+    "seconds": 179.32,
+    "skips": 0
+  },
+  "ruff": "passed",
+  "javascript_checks": [
+    "app syntax",
+    "3D scene syntax",
+    "XYZ metre scale and axis signs",
+    "missing-height path gaps"
+  ],
+  "browser_checks": [
+    "configuration and compatibility validation",
+    "UI-launched new recording",
+    "running and completed states",
+    "saved 2708-output replay",
+    "exact-exposure front image",
+    "offline GT comparison",
+    "2D / CPU 3D switch",
+    "3D drag orbit",
+    "2D and 3D PNGs saved to results",
+    "offline bundle without API requests",
+    "390px breakpoint without horizontal overflow"
+  ],
+  "smoke_run": {
+    "path": "results/ui-edd897df42",
+    "mode": "input",
+    "groups": 200,
+    "frontend_errors": 0,
+    "worker_faults": 0,
+    "saved_baseline_prefix_identical": true,
+    "initialisation_seconds": 26.021755900001153,
+    "replay_seconds": 23.8771732999885
+  },
+  "source_sha256": {
+    "run.py": "480c9724a269052c8ac03d8bc48ed6f1817df837e38691cae12a956a324c50d8",
+    "render_replay.py": "5b91836a2221dd7739ead77cba93b109d01d464adbce06e0c76d0a50ce516e4a",
+    "scripts/replay_data.py": "0552f6fdc3219f4c61324c3311ec9ee0d9329b40f78d83331f61ec0250201756",
+    "scripts/serve_replay.py": "7ac1e6844667c637be9f9c447488ab460db776b9c65b1e25eeec6d9a6e6759e9",
+    "replay_ui/index.html": "bdcc08fc4a730638b5a6c432234e84a4dfd86f1ab7358ea85cda1674028ee76a",
+    "replay_ui/style.css": "9e70323bac7629928ad7d18d58f32366a7af89e4dc38d6eafc1ad5f04e7277e3",
+    "replay_ui/app.js": "00cbab6ba6afb696ee53002e9e715ee5e7023b74785201226bdac52224e07572",
+    "replay_ui/scene3d.js": "cf1b83551065524331c513a3a6a2f8242d2888b8249f87fda1e314811bd3f38f"
+  },
+  "qualified": {
+    "hidden_input": false,
+    "holdout": false,
+    "observer_overhead": false,
+    "localisation_visual_gate": false
+  }
+}

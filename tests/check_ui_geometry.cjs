@@ -1,0 +1,21 @@
+// Run with node tests/check_ui_geometry.cjs; no npm packages or browser required.
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const vm = require('node:vm');
+const path = require('node:path');
+const scope = {window:{}};
+vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../replay_ui/scene3d.js'),'utf8'),scope);
+const scene = Object.create(scope.window.ApexScene3D.prototype);
+Object.assign(scene,{centre:[100,200,10],width:1000,height:1000,radius:100,zoom:1,yaw:0,pitch:0});
+assert.deepEqual(Array.from(scene.project([100,200,10])),[500,500]);
+const x=scene.project([101,200,10]),z=scene.project([100,200,11]);
+assert.ok(Math.abs((x[0]-500)-(500-z[1]))<1e-10,'x/z metre scale must match');
+assert.equal(scene.project([100,201,10])[1],500,'side view hides depth');
+scene.pitch=Math.PI/2;
+assert.ok(scene.project([100,201,10])[1]<500,'top view must put positive map-y upward');
+assert.ok(Math.abs(scene.project([100,200,11])[1]-500)<1e-10,'top view hides height');
+let moves=0,segments=0;
+scene.ctx={beginPath(){},moveTo(){moves++},lineTo(){segments++},stroke(){}};
+scene.path([[100,200,10],[101,200,10],null,[102,200,10]],'black',1);
+assert.equal(moves,2);assert.equal(segments,1,'missing height must break the trajectory');
+console.log('3D projection: metre scale, axis signs and missing-height gaps passed');

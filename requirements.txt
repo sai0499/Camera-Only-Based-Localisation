@@ -163,7 +163,9 @@ pillow==13.0.0 ; platform_machine == 'AMD64' and sys_platform == 'win32' \
 plotly==7.1.0 ; platform_machine == 'AMD64' and sys_platform == 'win32' \
     --hash=sha256:dbb7fa18afce40d0a8e80d1bf162eceb3faa0ce5a77fe741ad09a74cf78f53f3 \
     --hash=sha256:f860166a4a3d78c69cb1f4a15f28a5c8283eade98a282a698f3bb853a449ace5
-    # via hloc
+    # via
+    #   hloc
+    #   trackcode-apex
 pluggy==1.7.0 ; platform_machine == 'AMD64' and sys_platform == 'win32' \
     --hash=sha256:7dd7b0d8832ba3cb632c306926ded123429211b83641b35dc5c41ad2d34f9bec \
     --hash=sha256:d1eaa46ebb595891b860ab086b4d09c8588af65ebd4361b8e8f4bb8920b90ba8

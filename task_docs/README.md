@@ -9,7 +9,8 @@ Read [FINAL_BUILD_PLAN.md](FINAL_BUILD_PLAN.md) to build. It is the authoritativ
 | `STAGE3_STATUS.md` | Integrated B PR, raw-camera runner/validator, fitting builds, real tuning failures and remaining visual-baseline gate |
 | `STAGE4_STATUS.md` | Implemented C anchor scheduler, recovery manager, status machine, synthetic checks and resolved lifecycle decisions |
 | `STAGE5_STATUS.md` | Real-recording repeatability, prohibited-input and future-prefix checks, bounded stress cases and runtime telemetry; remaining qualification gates |
-| `REPLAY_UI_PLAN.md` | Planned local input/run/monitor workflow and passive 2D/3D replay; no UI or hidden-run qualification claimed |
+| `REPLAY_UI_PLAN.md` | Local input/run/monitor workflow and passive 2D/3D replay design |
+| `UI_STATUS.md` | Implemented workbench, verification and remaining UI/hidden-run limits |
 | `A_C_INTEGRATION_STATUS.md` | A's reviewed merge into C, input/geometry/worker fixes, combined checks and remaining B integration |
 | `build_split.json` | Frozen exact fitting/tuning/holdout boundaries and source identities; do not edit |
 | `research/FINAL_RESEARCH_REVIEW.md` | Primary-source comparisons and final design reasoning |

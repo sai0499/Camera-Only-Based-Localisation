@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light"><title>APEX — Localisation workbench</title>
+  <link rel="stylesheet" href="style.css"><script defer src="plotly.js"></script><script defer src="scene3d.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+<header class="masthead">
+  <div class="identity"><span class="wordmark">APEX<span class="registration">/</span></span><div class="identity-copy"><strong>TRACKCODE</strong><span>LOCALISATION WORKBENCH</span></div></div>
+  <div class="run-choice"><label for="run-select">RECORDING / RUN</label><select id="run-select" aria-label="Saved run"></select></div>
+  <div class="header-actions"><span class="local-note">LOCAL EXECUTION<br>CAMERA-ONLY INPUT</span><button id="new-run" class="primary">New run <span aria-hidden="true">↗</span></button></div>
+</header>
+<div id="notice" role="status" class="notice" hidden></div>
+<section class="readouts" aria-label="Run summary">
+  <div class="readout"><span class="label">01 / PROCESS</span><strong id="process-state">Loading</strong><small id="run-name">Connecting to local workspace</small></div>
+  <div class="readout"><span class="label">02 / OUTPUTS</span><strong id="output-count">—</strong><small id="duration">Exposure timeline</small></div>
+  <div class="readout"><span class="label">03 / POSITION RMSE</span><strong id="rmse">Not evaluated</strong><small id="reference-state">No ground truth attached</small></div>
+  <div class="readout"><span class="label">04 / PROCESSING</span><strong id="processing">—</strong><small>Selected group, reader + service</small></div>
+</section>
+<main class="workspace">
+  <section class="scene-panel" aria-label="Trajectory scene">
+    <div class="section-bar"><nav class="views" aria-label="Visualisation view"><button class="view active" data-view="2d" aria-pressed="true">2D / TRACK</button><button class="view" data-view="3d" aria-pressed="false">3D / GEOMETRY</button><button class="view" data-view="diagnostics" aria-pressed="false">EVIDENCE / LOG</button></nav><div class="scene-actions"><label><input type="checkbox" id="follow"> Follow car</label><button id="fit-map" title="Reset scene view">Fit map</button></div></div>
+    <div class="scene-legend"><span><i class="legend-estimate"></i>Estimate</span><span id="gt-legend" hidden><i class="legend-gt"></i>Ground truth</span><span><i class="legend-border"></i>Surveyed borders</span><span>+ Lost</span><span class="scene-caption" id="scene-caption">MAP FRAME · METRES · EQUAL SCALE</span></div>
+    <div id="scene" aria-label="Trajectory plot"></div>
+    <div id="evidence-log" hidden><div class="log-heading"><h2>Decision ledger</h2><span>RECORDED EVIDENCE, INCLUDING FAILURES</span></div><div id="events" class="event-list"></div></div>
+    <div class="scene-foot"><span id="geometry-note">Trajectory values are recorded outputs. No alignment or smoothing.</span><button id="save-image">Save scene PNG ↓</button></div>
+  </section>
+  <aside class="inspector" aria-label="Selected output inspector">
+    <div class="inspector-heading"><span class="label">SELECTED OUTPUT</span><span id="group-id">GROUP —</span></div>
+    <div class="tracking-state" id="tracking-state">Awaiting output</div><p id="status-reason" class="status-reason">Select a saved run or start a new recording.</p>
+    <dl class="pose-values"><div><dt>X / m</dt><dd id="pose-x">—</dd></div><div><dt>Y / m</dt><dd id="pose-y">—</dd></div><div><dt>YAW / deg</dt><dd id="pose-yaw">—</dd></div></dl>
+    <div class="inspector-block"><h2>Evidence</h2><div id="evidence-source" class="evidence-source">—</div><dl class="detail-values"><div><dt>Inliers</dt><dd id="inliers">—</dd></div><div><dt>Median / p90</dt><dd id="reprojection">—</dd></div><div><dt>Grid coverage</dt><dd id="coverage">—</dd></div><div><dt>Position error</dt><dd id="position-error">Unavailable</dd></div></dl></div>
+    <div class="inspector-block"><h2>Camera exposures</h2><div id="cameras" class="camera-lines">—</div><button id="load-camera" class="text-button">Inspect recorded image ↗</button><div id="camera-preview" hidden><img id="camera-image" alt="Raw front-camera image at the selected exposure"><span id="camera-caption"></span></div></div>
+    <details class="inspector-block"><summary>Rejections &amp; geometry</summary><div id="rejections"></div><p id="height-detail"></p><p class="small-note">Height is auxiliary geometry. No vertical accuracy is inferred.</p></details>
+    <div class="inspector-bottom"><button id="compare">Attach offline ground truth</button><a id="download-csv" href="#" download="submission.csv">Export prediction CSV ↓</a></div>
+  </aside>
+  <section class="timeline-panel" aria-label="Replay timeline">
+    <div class="transport"><div class="transport-left"><button id="previous" aria-label="Previous output">←</button><button id="play" class="play-button" aria-label="Play replay">Play</button><button id="next" aria-label="Next output">→</button><select id="speed" aria-label="Replay speed"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="5">5×</option><option value="10">10×</option></select></div><div class="time-display"><strong id="selected-time">0.00</strong><span>s / <span id="end-time">0.00</span> s</span><span id="frame-number">OUTPUT —</span></div><div class="transport-right"><button id="next-loss">Next loss ↗</button><label><input id="latest" type="checkbox"> Follow latest</label></div></div>
+    <label for="scrubber" class="sr-only">Selected output</label><input type="range" id="scrubber" min="0" max="0" value="0" step="1">
+    <div class="chart-label"><label for="metric">TIMELINE /</label><select id="metric"><option value="processing_ms">Processing time [ms]</option><option value="error_m">Position error [m]</option><option value="lateral_error_m">Car-frame lateral error [m]</option><option value="longitudinal_error_m">Car-frame longitudinal error [m]</option><option value="yaw_error_deg">Wrapped heading error [deg]</option></select><span id="chart-note">All outputs retained · click plot to seek</span></div>
+    <div id="timeline" aria-label="Selected metric over exposure time"></div>
+  </section>
+</main>
+<footer><span>ENGINEERING REPLAY / <strong id="mode-note">PASSIVE VIEWER</strong></span><span id="absolute-stamp">EXPOSURE — ns</span><span>Process completion ≠ localisation qualification</span></footer>
+<dialog id="setup-dialog">
+  <form id="setup-form"><div class="dialog-heading"><div><span class="label">RUN CONFIGURATION</span><h1>Give it a recording.</h1></div><button type="button" data-close="setup-dialog" aria-label="Close run configuration">×</button></div>
+    <p class="dialog-intro">One initial pose. Frozen artifacts. Every completed camera group produces an output.</p>
+    <label>Recording path <input id="bag" name="bag" list="bag-options" required placeholder="Local path to a .mcap recording"></label><datalist id="bag-options"></datalist>
+    <div class="form-grid"><label>Run interval <select id="run-mode"><option value="input">New recording · initial pose to EOF</option><option value="tune">Fixed tuning interval</option><option value="holdout">Fixed holdout interval</option></select></label><label>Frozen map <input id="artifacts" list="artifact-options" required></label></div><datalist id="artifact-options"></datalist>
+    <label>Initial pose JSON <textarea id="initial-pose" rows="4" spellcheck="false" required></textarea></label><p class="small-note">timestamp_ns, x [m], y [m], yaw [rad]. Exactly one pose; never the vehicle-state stream.</p>
+    <details><summary>Explicit recording bounds</summary><div class="form-grid"><label>Start ns (optional)<input id="start-ns" inputmode="numeric"></label><label>End ns (exclusive, optional)<input id="end-ns" inputmode="numeric"></label></div></details>
+    <label class="check-label"><input type="checkbox" id="retrieval" checked> Use the frozen retrieval index</label>
+    <div id="validation-message" role="status" class="validation-message">Compatibility and asset hashes are checked again by the production runner.</div>
+    <div class="dialog-actions"><button type="button" id="validate-run">Check inputs</button><button type="submit" id="start-run" class="primary">Start localisation ↗</button></div>
+  </form>
+</dialog>
+<dialog id="gt-dialog"><form id="gt-form"><div class="dialog-heading"><div><span class="label">OFFLINE REVIEW ONLY</span><h1>Compare with reference.</h1></div><button type="button" data-close="gt-dialog" aria-label="Close ground truth comparison">×</button></div><p class="dialog-intro">The run must be complete. This reference is never passed to inference. No alignment or smoothing is applied.</p><label>Ground-truth CSV path<input id="gt-path" required></label><p class="small-note">Requires timestamp_ns, x, y, yaw. Uses integer-time matching, ≤50 ms brackets and wrapped heading errors. This diagnostic is separate from the official scorer.</p><p id="gt-message" role="status"></p><div class="dialog-actions"><button type="submit" class="primary" id="attach-gt">Attach reference ↗</button></div></form></dialog>
+</body></html>

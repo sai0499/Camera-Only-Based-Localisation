@@ -74,6 +74,11 @@ This reads training GT for evaluation only and writes the ignored reconciled bun
 
 ## Daily commands
 
+For the local input/run/monitor and 2D/3D replay workbench, run `launch_ui.cmd` and open
+`http://127.0.0.1:8765`. See [UI usage](replay_ui/README.md) and
+[UI implementation status](task_docs/UI_STATUS.md). GT comparison is optional and offline;
+the viewer does not change the estimator's evidence or localisation acceptance gates.
+
 ```powershell
 # Run both new tests and the existing evaluation regression tests.
 & .\.venv\Scripts\python.exe -B -m pytest

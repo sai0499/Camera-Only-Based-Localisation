@@ -1,9 +1,11 @@
 # Localisation UI implementation plan
 
-Status: design only, 18 October 2026. Owner: C. Implements the presentation/run workflow
+Status: first implementation available, 18 October 2026; see [UI_STATUS.md](UI_STATUS.md).
+Owner: C. Implements the presentation/run workflow
 in [FINAL_BUILD_PLAN.md section 9](FINAL_BUILD_PLAN.md); it does not replace the estimator
 specification or close Stage 3/5 gates. The user has authorised UI work while B improves
-visual support. No UI, generic-input runner or live monitor is implemented by this plan.
+visual support. This document retains the intended scope; status records verified work
+and remaining features. UI readiness is separate from localisation qualification.
 
 ## Intended workflow
 
@@ -45,10 +47,11 @@ not apply training camera-stamp/GT membership checks to a new recording.
 ## Screen layout
 
 See the [layout sketch](figures/replay_ui_layout.svg). A precise engineering workspace:
-large central scene, compact evidence inspector, synchronised bottom timeline. Dark
-neutral surfaces, readable labels, cyan estimate, white dashed reference and red loss
-markers; markers/line patterns carry meaning independently of colour. Include a light
-theme, keyboard focus, units and a compact legend. Avoid a wall of metric cards.
+large central scene, compact evidence inspector, synchronised bottom timeline. The user's
+design contract supersedes the original dark sketch: warm paper, graphite grid rules and
+a signal-red estimate. Barlow Condensed 600/700 headings pair with IBM Plex Sans
+400/500/600 body text. Use line patterns/markers as well as colour, visible keyboard
+focus, units and compact legends. No gradients, shadows or generic card grids.
 
 The header always shows run identity, input name, Running/Completed/Failed/Stopped,
 latest processed exposure, outputs and the estimator's separate Tracking/Degraded/
@@ -128,16 +131,18 @@ under `results/`, `artifacts/` and the original recording; do not embed them in 
 
 ## Implementation structure
 
-Use a local browser UI: buildless HTML/CSS/JavaScript with Plotly for 2D/3D plots. Reuse
+Use a local browser UI: buildless HTML/CSS/JavaScript with Plotly for 2D plots and a
+CPU Canvas orthographic renderer for real XYZ geometry. This avoids the unreliable
+WebGL export observed during browser verification and keeps 3D off the inference GPU. Reuse
 the current plotting approach and avoid adding an npm build, cloud service or database
 for this scope. Plotly supports [3D scatter scenes](https://plotly.com/javascript/3d-scatter-plots/)
 and [incremental chart updates](https://plotly.com/javascript/plotlyjs-function-reference/).
 Bundle JavaScript locally; no CDN, external map tiles, analytics or project uploads.
 
-Plotly 7.1.0 is installed locally but is not declared in the committed lock. If adopted
-for the delivered exporter, C must pin/resolve/test it and update `pyproject.toml`,
-`uv.lock` and exported `requirements.txt` together. Do not rely on this workstation's
-incidental installation. Use Python standard-library HTTP/subprocess support initially.
+Plotly 7.1.0 was already locked transitively through hloc; the UI now declares it as a
+direct pinned dependency. C updated `pyproject.toml`, `uv.lock` and exported
+`requirements.txt` together without changing resolved versions. Use Python
+standard-library HTTP/subprocess support initially.
 
 Planned files:
 

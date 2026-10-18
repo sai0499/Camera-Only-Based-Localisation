@@ -394,13 +394,33 @@ def _run_stage4(
             scheduler.close()
 
 
+def resolve_episode(args, initial):
+    """Keep fixed evaluation presets separate from a new recording's own clock."""
+    if args.split is not None:
+        if args.start_ns is not None or args.end_ns is not None:
+            raise c.ContractError("--start-ns/--end-ns require --input-recording")
+        episode = c.load_split()[args.split]
+    else:
+        start = (initial.timestamp_ns if args.start_ns is None else
+                 c.parse_decimal_ns(args.start_ns, "--start-ns"))
+        end = None if args.end_ns is None else c.parse_decimal_ns(args.end_ns, "--end-ns")
+        episode = c.EpisodeBounds(name="input", start_ns=start, end_ns=end)
+    episode.check_initial_pose(initial)
+    return episode
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--bag", type=Path, default=c.PROJECT_ROOT /
                         "c0_2026-10-13_22-53-42_camloc_0.mcap")
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--initial-pose", type=Path, required=True)
-    parser.add_argument("--split", choices=("tune", "holdout"), required=True)
+    mode = parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--split", choices=("tune", "holdout"))
+    mode.add_argument("--input-recording", action="store_true",
+                      help="use this recording's own clock, from its initial pose to EOF")
+    parser.add_argument("--start-ns", help="optional inclusive input-recording bound")
+    parser.add_argument("--end-ns", help="optional exclusive input-recording bound")
     parser.add_argument("--output", type=Path, required=True, help="fresh result directory")
     parser.add_argument("--runtime", action="store_true", help="record wall-time and peak-memory telemetry")
     parser.add_argument("--transport-speed", type=float,
@@ -410,8 +430,7 @@ def main(argv=None):
                              "checkpoint for global recovery retrieval (fails if missing)")
     args = parser.parse_args(argv)
     initial = c.read_initial_pose(args.initial_pose)
-    episode = c.load_split()[args.split]
-    episode.check_initial_pose(initial)
+    episode = resolve_episode(args, initial)
     args.output.mkdir(parents=True, exist_ok=False)
     began = time.perf_counter()
     try:
@@ -459,10 +478,11 @@ def main(argv=None):
             runtime = RuntimeSource(source, args.output / "runtime.jsonl",
                                     transport_speed=args.transport_speed)
             source = runtime
-        metadata = {"split": args.split, "initial_pose": initial.summary(),
+        metadata = {"split": args.split or "input", "initial_pose": initial.summary(),
                     "episode": episode.summary(), "map": bank.summary(),
                     "models": list(worker.backend.model_ids),
                     "query_bag": args.bag.name,
+                    "query_bag_path": str(args.bag.resolve()),
                     "calibration_compatibility": tracker.calibration_compatibility,
                     "source_sha256": {str(path.relative_to(c.PROJECT_ROOT)): hashlib.sha256(
                         path.read_bytes()).hexdigest() for path in [
