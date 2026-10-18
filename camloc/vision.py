@@ -439,14 +439,22 @@ class VisionTracker:
             return
         if not handoff.accepted:
             raise c.ContractError("VisionTracker.settle: only an accepted handoff can be adopted")
-        self._adopt(tracks)
+        self._adopt(tracks, handoff.pose.T_WB)
         self._remember_prior(tracks.camera_id, handoff.measurement_ns, handoff.pose.T_WB)
 
-    def _adopt(self, tracks: _TrackSet) -> None:
+    def _adopt(self, tracks: _TrackSet, T_WB: np.ndarray) -> None:
         fresh = dataclasses.replace(tracks, track_ids=self._new_track_ids(len(tracks)))
         active = self._active.get(tracks.camera_id)
         if active is not None and active.exposure_ns == tracks.exposure_ns and len(active):
-            keep = ~np.isin(active.landmark_ids, fresh.landmark_ids)
+            # Keep only old tracks consistent with the verified adopted pose (map's frozen
+            # K/T_BC): within the RANSAC threshold and in front of the camera.
+            projected, depth = project(self.map.points(active.landmark_ids), T_WB,
+                                       self.map.T_BC(tracks.camera_id),
+                                       self.map.K(tracks.camera_id))
+            error = np.linalg.norm(projected - active.pixels, axis=1)
+            consistent = (np.isfinite(error) & (error <= self.gates.ransac_threshold_px)
+                          & (depth > self.gates.min_depth_m))
+            keep = consistent & ~np.isin(active.landmark_ids, fresh.landmark_ids)
             room = max(c.MAX_ACTIVE_TRACKS - len(fresh), 0)
             old = active.subset(np.flatnonzero(keep)[:room])
             fresh = _TrackSet(

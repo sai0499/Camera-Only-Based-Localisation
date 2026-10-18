@@ -457,8 +457,14 @@ def test_property_status_precedence_and_process_noise(monkeypatch):
                 if snap is not None:
                     allowed.add(max(allowed | {module._NOISE_SCALE[snap.status]}))
             scales.clear()
+            boundary = estimator._last_full_ns() + module.FULL_POSE_LOSS_NS
+            starts_before_boundary = old.t_ns < boundary
             result = estimator.step(evidence, recovery_search_active=flag)
-            assert scales and set(scales) <= allowed
+            # stage3-visual-baseline-gate-fix design: past B = last full pose + 3 s the
+            # prediction uses loss_transition (no status scale), so transition may not run.
+            assert set(scales) <= allowed
+            if starts_before_boundary:
+                assert scales
             applied = set(result.evidence_kinds)
             expected_applied = {"pnp": {c.EvidenceKind.PNP},
                                 "handoff": {c.EvidenceKind.HANDOFF_PNP},

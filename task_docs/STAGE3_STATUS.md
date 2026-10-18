@@ -10,9 +10,56 @@ anchor correspondence worker and ground motion. Its base was the current A+C com
 B's PR also explicitly disclosed this gate as unmet. Do not advertise the prediction-only
 tuning CSV as camera localization or proceed to holdout/optional demo work on that basis.
 
-## Latest recheck: not signed off
+## Gate-fix recheck, 19 October 2026: not signed off
 
-Small shareable receipt: [stage3_recheck.json](evidence/stage3_recheck.json). Generated
+Receipt: [stage3_recheck.json](evidence/stage3_recheck.json). Same bank
+(`artifacts/fit-b-integrated-v2`), split, evaluator, validator, gates and thresholds; fresh
+process, full unchanged tuning interval, no row cropping. Suite: **963 passed** in 167.19 s
+(`--basetemp tmp/stage3-gate-fix-recheck`); Ruff passed.
+
+| Measured value | `tune-stage3-recheck-fr-final` (previous) | `tune-stage3-fix-1` (this run) |
+|---|---|---|
+| Output / validated rows | 2,708 / 2,708 | 2,708 / 2,708 |
+| Fused full-pose updates / prediction-only rows | 2 / 2,706 | **537** / 2,171 |
+| Lost rows / longest full-pose gap | 2,695 / 269.716 s | 1,926 / **125.602 s** (t = 1.1–126.7 s) |
+| Original x/y RMSE | 5,838.073 m | **323.450 m** |
+| Updated x/y / reconciled map x/y RMSE | — | 323.450 / 323.500 m |
+| Reconciled racing-line s/n RMSE | — | 673.008 m |
+| Anchors created / dispatched / delivered / rejected | — | 1,014 / 1,014 / 304 / 0 |
+| Frontend errors / backend faults | 0 / 0 | 0 / 0 |
+| Startup / replay elapsed | 24.42 / 57.54 s | 20.18 / 160.88 s |
+| CSV, exposure sequence, coverage 1.0, metric sections | pass | pass |
+| Visual-baseline gate | fail | **fail** |
+
+Of the 537 updates, 373 are tracking PnP, 161 handoff PnP and 3 confirmed recovery resets.
+Undelivered anchor jobs failed with `insufficient_matches` (538), `pnp_too_few_inliers`
+(164) and `pnp_pnp_failed` (8). Handoffs were rejected for `poor_image_coverage` (68),
+`high_median_error` (25), `too_few_correspondences` (12), `too_few_inliers` (6),
+`degenerate_geometry` (2) and `handoff_tracking_failed` (1). Submission SHA-256
+`96f18d10…75eaea3`; source hashes are in `run.json` and the receipt.
+
+Fixes in this round:
+
+- `camloc/filter.py`: after the 3 s full-pose loss boundary the velocity is extrapolated
+  as a bounded Ornstein–Uhlenbeck process, so loss no longer drives the position off-track.
+- `camloc/frontend.py`: stranding-proof recovery search (uncapped, falls back to the whole
+  bank, sweeps a tried set), forward reference ordering at startup, removal of the recovery
+  throttle and a per-delivery-delay camera hold.
+- `camloc/vision.py` (B's file, minimal change reported to B): `_adopt` applies a
+  consistency filter so adopted correspondences agree with the accepted pose.
+- Hypothesis H4b was not confirmed, so it was not implemented.
+- One justified assertion change in `tests/test_filter.py`
+  (`test_property_status_precedence_and_process_noise`) to match the bounded loss model.
+
+Remaining limitation: there is still no full pose from 1.1 s to 126.7 s, plus gaps of 22.2,
+14.2 and 12.5 s, against the unchanged 3 s continuity bound. Recovery jobs run, but B's map
+support there sits in a far-field horizon band that cannot pass the unchanged ≥6-cell /
+≤2 px gates. Closing the gate needs B's map/vision support in those sections, then a fresh
+scored and independently validated run. The 323 m RMSE is not a usable localizer.
+
+## Superseded: latest recheck, 18 October 2026 (not signed off)
+
+Small shareable receipt (now replaced by the gate-fix recheck): [stage3_recheck.json](evidence/stage3_recheck.json). Generated
 maps, full diagnostics and submissions remain local and ignored.
 
 The reviewed fixes now apply the frozen usable-image extent to the PnP grid, retain bounded

@@ -7,6 +7,7 @@ import numpy as np
 
 from camloc import contracts as c
 from camloc.filter import CameraFilter
+from camloc.landmark_map import planar_camera_center, planar_camera_heading
 from camloc.scheduler import GroupContext
 
 
@@ -24,8 +25,8 @@ class VisualFrontend:
         self.events = []
         self._search = {}
         self._last_rear_proposal_ns = estimator.initial_pose.timestamp_ns - 750_000_000
-        self._last_recovery_proposal_ns = None
         self._recovery_camera_index = 0
+        self._recovery_switch_ns = None
 
     def drain_diagnostics(self):
         events, self.events = self.events, []
@@ -35,20 +36,47 @@ class VisualFrontend:
 
     def _references(self, obs, snapshot, supported):
         # shortcut: geometric search only; B's Step 5 adds global EigenPlaces retrieval.
+        bank, camera = self.tracker.map, obs.camera_id
         x, y, yaw = snapshot.state[:3]
-        sigma = min(math.sqrt(max(snapshot.P[0, 0], snapshot.P[1, 1])), 60.0)
-        refs = self.tracker.map.select_references(
-            obs.camera_id, x, y, yaw, sigma_xy_m=sigma,
-            max_heading_rad=min(math.pi, math.radians(30) + 3 * math.sqrt(snapshot.P[2, 2])))
-        if supported or len(refs) <= 2:
-            self._search.pop(obs.camera_id, None)
-            return refs[:2]
-        # Cycle the bounded geometric shortlist when a stationary startup prior misses.
-        stamp, offset = self._search.get(obs.camera_id, (obs.exposure_ns, 0))
-        if obs.exposure_ns - stamp >= 500_000_000:
-            stamp, offset = obs.exposure_ns, offset + 2
-        self._search[obs.camera_id] = (stamp, offset)
-        return tuple(refs[(offset + i) % len(refs)] for i in range(2))
+        sigma = math.sqrt(max(snapshot.P[0, 0], snapshot.P[1, 1]))
+        heading = min(math.pi, math.radians(30) + 3 * math.sqrt(snapshot.P[2, 2]))
+        if supported:
+            self._search.pop(camera, None)
+            return bank.select_references(camera, x, y, yaw, sigma_xy_m=min(sigma, 60.0),
+                                          max_heading_rad=heading)[:2]
+        # Unsupported: the drifted prediction gets no false radius cutoff, and an empty radius
+        # falls back to the whole eligible camera bank under the same ranking cost.
+        count = max(int(np.size(bank.keyframe_ids)), 1)
+        refs = bank.select_references(camera, x, y, yaw, sigma_xy_m=sigma, count=count,
+                                      max_heading_rad=heading)
+        if not refs:
+            refs = bank.select_references(camera, x, y, yaw, sigma_xy_m=math.inf, count=count,
+                                          max_heading_rad=math.pi)
+        if not refs:
+            return ()
+        if self.estimator._last_pnp_ns is None:
+            refs = self._forward_first(camera, refs)
+        # One episode per camera: sweep untried references, restart once all were tried.
+        tried = self._search.setdefault(camera, set())
+        untried = [ref for ref in refs if ref not in tried]
+        if not untried:
+            tried.clear()
+            untried = list(refs)
+        chosen = tuple(untried[:2])
+        tried.update(chosen)
+        return chosen
+
+    def _forward_first(self, camera, refs):
+        """Startup: references ahead of the initial camera (offset >= -5 m), nearest first."""
+        bank, initial = self.tracker.map, self.estimator.initial_pose
+        T_BC = bank.T_BC(camera)
+        center = planar_camera_center(initial.x, initial.y, initial.yaw, T_BC)
+        heading = planar_camera_heading(initial.yaw, T_BC)
+        axis = np.array([math.cos(heading), math.sin(heading)])
+        rows = np.searchsorted(bank.keyframe_ids, np.asarray(refs, np.int64))
+        offsets = (bank.keyframe_T_WC[rows, :2, 3] - center) @ axis
+        return tuple(sorted(refs, key=lambda ref, o=dict(zip(refs, offsets.tolist())):
+                            (0, o[ref]) if o[ref] >= -5.0 else (1, 0.0)))
 
     def __call__(self, frame: c.FrameSet, prior: c.SearchSnapshot, context: GroupContext):
         observations, poses, rejected, unused = {}, [], [], []
@@ -160,15 +188,17 @@ class VisualFrontend:
             if refs:
                 proposals.append((camera, obs, refs))
         if selected is None:
-            last = self._last_recovery_proposal_ns
-            if proposals and (last is None or frame.t_ns - last >= 250_000_000):
-                # Alternate available cameras; failed front tracks cannot starve rear rescue.
-                proposal = proposals[self._recovery_camera_index % len(proposals)]
-                self._recovery_camera_index += 1
-                self._last_recovery_proposal_ns = frame.t_ns
-                proposals = [proposal]
-            else:
-                proposals = []
+            # Alternate available cameras so failed front tracks cannot starve rear rescue.
+            # Hold each camera for one delivery delay: per-group alternation would let the
+            # next camera's request always replace the pending one at the same group parity.
+            # Every group still proposes; the scheduler alone enforces the ceilings.
+            if proposals:
+                switch = self._recovery_switch_ns
+                if switch is not None and frame.t_ns - switch >= c.DELIVERY_MIN_DELAY_NS:
+                    self._recovery_camera_index += 1
+                if switch is None or frame.t_ns - switch >= c.DELIVERY_MIN_DELAY_NS:
+                    self._recovery_switch_ns = frame.t_ns
+                proposals = [proposals[self._recovery_camera_index % len(proposals)]]
         elif rear_due and any(camera == "r" for camera, _, _ in proposals):
             # Reserve this normal slot for the staggered 1 Hz rear anchor.
             proposals = [proposal for proposal in proposals if proposal[0] == "r"]

@@ -1,6 +1,6 @@
 # Start here: TrackCode Apex
 
-This is the shared development workspace for the three-person camera-localization team. A's geometry/input, B's vision/map components through Step 3, and C's contracts/filter/scheduler/recovery are integrated on `dev/implementation`. The raw-camera runner and validator now work; [Stage 3 integration status](task_docs/STAGE3_STATUS.md) records commands and real tuning results. The latest full forward-camera replay fused only 2 visual corrections across 2,708 outputs and lost tracking; Team C Step 3 is **not signed off**. [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. The evaluation adapter and native-coordinate reconciliation already work.
+This is the shared development workspace for the three-person camera-localization team. A's geometry/input, B's vision/map components through Step 3, and C's contracts/filter/scheduler/recovery are integrated on `dev/implementation`. The raw-camera runner and validator now work; [Stage 3 integration status](task_docs/STAGE3_STATUS.md) records commands and real tuning results. The latest full forward-camera replay fused 537 visual corrections across 2,708 outputs but still had a 125.6 s full-pose gap; Team C Step 3 is **not signed off**. [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. The evaluation adapter and native-coordinate reconciliation already work.
 
 ## Set up your machine
 

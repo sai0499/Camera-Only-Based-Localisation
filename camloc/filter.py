@@ -21,6 +21,10 @@ POSE_STD = np.array([0.5, 0.5, math.radians(1)])
 BORDER_STD = POSE_STD[[0, 2]]
 _NOISE_SCALE = {c.Status.TRACKING: 1.0, c.Status.DEGRADED: 4.0,
                 c.Status.RECOVERING: 4.0, c.Status.LOST: 10.0}
+# After FULL_POSE_LOSS_NS without a full pose, rates follow a bounded OU decay (not CV).
+LOSS_TAU_S = 2.0
+LOSS_RATE_STD = INITIAL_STD[3:]
+FULL_POSE_LOSS_NS = 3 * c.NS_PER_S
 
 
 def transition(dt_ns: int, noise_scale: float = 1.0) -> tuple[np.ndarray, np.ndarray]:
@@ -37,8 +41,60 @@ def transition(dt_ns: int, noise_scale: float = 1.0) -> tuple[np.ndarray, np.nda
     return F, Q
 
 
+def loss_transition(dt_ns: int, *, tau_s: float = LOSS_TAU_S,
+                    rate_std=LOSS_RATE_STD) -> tuple[np.ndarray, np.ndarray]:
+    """Exact Ornstein-Uhlenbeck rate model per axis for prediction after the full-pose loss
+    boundary: rates decay to zero with time constant ``tau_s`` and stationary std ``rate_std``,
+    so the mean displacement over any interval is at most ``tau_s`` times the starting rate.
+    Status noise scales do not apply. With m = 1 - exp(-dt/tau) (``expm1`` for accuracy):
+    F[p,v] = tau m, F[v,v] = 1 - m, Q_vv = s^2 m (2 - m), Q_pv = s^2 tau m^2 and
+    Q_pp = s^2 tau^2 (2 dt/tau - 2m - m^2), i.e. s^2 tau (2dt - tau (3 - 4e + e^2)).
+    """
+    dt = c.as_ns(dt_ns, "prediction dt_ns") / c.NS_PER_S
+    if isinstance(tau_s, bool) or not math.isfinite(tau_s) or tau_s <= 0:
+        raise c.ContractError("tau_s must be finite and positive")
+    x = dt / tau_s
+    m = -math.expm1(-x)
+    if x < 0.1:
+        # g(x) = 2x - 3 + 4e^-x - e^-2x = sum_{n>=3} (-1)^n (4 - 2^n) x^n / n!, cancellation-free.
+        g, term = 0.0, x * x / 2
+        for n in range(3, 24):
+            term *= x / n
+            g += (-1) ** n * (4 - 2**n) * term
+    else:
+        g = 2.0 * x - 2.0 * m - m * m
+    F, Q = np.eye(6), np.zeros((6, 6))
+    for position, velocity, sigma in ((0, 3, rate_std[0]), (1, 4, rate_std[1]),
+                                      (2, 5, rate_std[2])):
+        variance = float(sigma) ** 2
+        F[position, velocity] = tau_s * m
+        F[velocity, velocity] = 1.0 - m
+        Q[velocity, velocity] = variance * m * (2.0 - m)
+        Q[position, velocity] = Q[velocity, position] = variance * tau_s * m * m
+        Q[position, position] = variance * tau_s**2 * g
+    return F, Q
+
+
 def _predict(state, covariance, dt_ns, scale):
     F, Q = transition(dt_ns, scale)
+    predicted = F @ state
+    predicted[2] = c.wrap_angle(predicted[2])
+    return predicted, F @ covariance @ F.T + Q
+
+
+def _propagate(state, covariance, from_ns, to_ns, scale, last_full_ns):
+    """CV ``_predict`` on [from, min(to, B)], then ``loss_transition`` on [max(from, B), to].
+
+    B = ``last_full_ns`` + FULL_POSE_LOSS_NS. A prediction ending at or before B is exactly
+    the original single ``_predict`` call.
+    """
+    boundary = last_full_ns + FULL_POSE_LOSS_NS
+    if to_ns <= boundary:
+        return _predict(state, covariance, to_ns - from_ns, scale)
+    if from_ns < boundary:
+        state, covariance = _predict(state, covariance, boundary - from_ns, scale)
+        from_ns = boundary
+    F, Q = loss_transition(to_ns - from_ns)
     predicted = F @ state
     predicted[2] = c.wrap_angle(predicted[2])
     return predicted, F @ covariance @ F.T + Q
@@ -118,10 +174,16 @@ class CameraFilter:
         previous = self.estimate
         if stamp < previous.t_ns:
             raise c.ContractError("snapshot cannot precede the last committed time")
-        state, P = _predict(previous.state, previous.P, stamp - previous.t_ns,
-                            _NOISE_SCALE[previous.status])
+        state, P = _propagate(previous.state, previous.P, previous.t_ns, stamp,
+                              _NOISE_SCALE[previous.status], self._last_full_ns())
         return c.SearchSnapshot(t_ns=stamp, state=state, P=P, status=previous.status,
                                 branch=previous.branch, auxiliary=previous.auxiliary)
+
+    def _last_full_ns(self) -> int:
+        """The last full pose time, or the InitialPose time if there is none."""
+        if self._last_pnp_ns is not None:
+            return self._last_pnp_ns
+        return self.initial_pose.timestamp_ns
 
     def exposure_snapshot(self, camera_id: str, exposure_ns: int) -> c.SearchSnapshot:
         camera = c.check_camera_id(camera_id)
@@ -209,7 +271,8 @@ class CameraFilter:
 
         scale = _NOISE_SCALE[old.status]
         state, P, stamp, aux = old.state.copy(), old.P.copy(), old.t_ns, old.auxiliary
-        anchors = [(stamp, state.copy(), P.copy(), aux, old.status, old.branch)]
+        full0 = self._last_full_ns()
+        anchors = [(stamp, state.copy(), P.copy(), aux, old.status, old.branch, full0)]
         kinds, support = [], []
         reason = "no_evidence"
         last_pnp, last_visual, last_border = self._last_pnp_ns, self._last_visual_ns, self._last_border_ns
@@ -220,7 +283,7 @@ class CameraFilter:
             pose = evidence.pose.pose if isinstance(evidence.pose, c.HandoffEvidence) else evidence.pose
             if self.pose_in_gate(pose):
                 stamp = pose.exposure_ns
-                state, P = _predict(state, P, stamp - old.t_ns, scale)
+                state, P = _propagate(state, P, old.t_ns, stamp, scale, full0)
                 H = np.eye(6)[:3]
                 quality = max(1.0, 40 / pose.inlier_count, 8 / pose.occupied_cells,
                               pose.median_error_px / 2, pose.p90_error_px / 4)
@@ -234,7 +297,8 @@ class CameraFilter:
                              else c.EvidenceKind.PNP)
                 support.append(stamp)
                 last_pnp = last_visual = fused_ns = stamp
-                anchors.append((stamp, state.copy(), P.copy(), aux, c.Status.TRACKING, branch))
+                anchors.append((stamp, state.copy(), P.copy(), aux, c.Status.TRACKING, branch,
+                                stamp))
                 reason = "accepted"
             else:
                 reason = "innovation_gate"
@@ -248,7 +312,8 @@ class CameraFilter:
                     kinds.append(c.EvidenceKind.GROUND_MOTION)
                     support.append(stamp)
                     last_visual = fused_ns = stamp
-                    anchors.append((stamp, state.copy(), P.copy(), aux, c.Status.DEGRADED, branch))
+                    anchors.append((stamp, state.copy(), P.copy(), aux, c.Status.DEGRADED, branch,
+                                    full0))
             if evidence.border is not None:
                 border = evidence.border
                 if last_border is not None and border.exposure_ns - last_border < c.NS_PER_S // 5:
@@ -257,7 +322,7 @@ class CameraFilter:
                     reason = "branch_mismatch"
                 else:
                     measurement_time = max(stamp, border.exposure_ns)
-                    state, P = _predict(state, P, measurement_time - stamp, scale)
+                    state, P = _propagate(state, P, stamp, measurement_time, scale, full0)
                     stamp = measurement_time
                     H = np.zeros((2, 6))
                     H[0, :2], H[1, 2] = border.normal_xy, 1
@@ -279,10 +344,12 @@ class CameraFilter:
                     last_visual = max(last_visual or 0, border.exposure_ns)
                     fused_ns = stamp
                     branch = border.branch
-                    anchors.append((stamp, state.copy(), P.copy(), aux, c.Status.DEGRADED, branch))
+                    anchors.append((stamp, state.copy(), P.copy(), aux, c.Status.DEGRADED, branch,
+                                    full0))
                     reason = "accepted"
 
-        state, P = _predict(state, P, evidence.t_ns - stamp, scale)
+        full_ns = last_pnp if last_pnp is not None else self.initial_pose.timestamp_ns
+        state, P = _propagate(state, P, stamp, evidence.t_ns, scale, full_ns)
         if evidence.auxiliary is not None and not any(k in kinds for k in (c.EvidenceKind.PNP,
                                                                          c.EvidenceKind.HANDOFF_PNP)):
             aux = evidence.auxiliary
@@ -301,9 +368,10 @@ class CameraFilter:
         cached = []
         for image in evidence.frame_set.images:
             anchor = next(a for a in reversed(anchors) if a[0] <= image.exposure_ns)
-            when, previous_state, previous_P, geometry, previous_status, previous_branch = anchor
-            cached_state, cached_P = _predict(previous_state, previous_P,
-                                               image.exposure_ns - when, scale)
+            (when, previous_state, previous_P, geometry, previous_status, previous_branch,
+             anchor_full) = anchor
+            cached_state, cached_P = _propagate(previous_state, previous_P, when,
+                                                image.exposure_ns, scale, anchor_full)
             fresh = evidence.auxiliary
             if fresh is not None and not any(k in kinds for k in (c.EvidenceKind.PNP,
                                                                   c.EvidenceKind.HANDOFF_PNP)):
@@ -334,7 +402,7 @@ class CameraFilter:
         state0 = np.r_[_pose_values(confirmation.T_WB), 0.0, 0.0, 0.0]
         P0 = np.diag(np.r_[POSE_STD, INITIAL_STD[3:]] ** 2)
         aux = _auxiliary(confirmation.T_WB, m, c.AuxSource.PNP)
-        state, P = _predict(state0, P0, now - m, scale)
+        state, P = _propagate(state0, P0, m, now, scale, m)
         status = _status(aux.valid, now - m, now - m, True, True, False)
         result = c.Estimate(
             t_ns=now, group_id=evidence.group_id, state=state, P=(P + P.T) * 0.5,
@@ -349,7 +417,7 @@ class CameraFilter:
         for image in evidence.frame_set.images:
             if image.exposure_ns < m:
                 continue
-            cached_state, cached_P = _predict(state0, P0, image.exposure_ns - m, scale)
+            cached_state, cached_P = _propagate(state0, P0, m, image.exposure_ns, scale, m)
             cached.append((image, c.SearchSnapshot(
                 t_ns=image.exposure_ns, state=cached_state, P=cached_P, status=c.Status.TRACKING,
                 branch=c.Branch.UNKNOWN, auxiliary=aux,

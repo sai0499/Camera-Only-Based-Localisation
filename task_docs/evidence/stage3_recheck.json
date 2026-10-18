@@ -1,36 +1,63 @@
 {
-  "date": "2026-10-18",
+  "date": "2026-10-19",
   "team_c_step_3_signed_off": false,
-  "scope": "Integration fixes and real full tuning replay; no holdout selection or accuracy certification",
+  "scope": "Stage 3 gate-fix recheck: filter loss bound, stranding-proof recovery search, consistent adoption; real full tuning replay with unchanged bank, gates and evaluator; no holdout selection or accuracy certification",
   "verification": {
-    "pytest_passed": 937,
+    "pytest_passed": 963,
     "pytest_skipped_or_xfailed": 0,
-    "pytest_seconds": 125.63,
-    "pytest_command": ".venv/Scripts/python.exe -B -m pytest --basetemp tmp/stage3-complete-recheck -q",
+    "pytest_seconds": 167.19,
+    "pytest_command": ".venv/Scripts/python.exe -B -m pytest --basetemp tmp/stage3-gate-fix-recheck -q",
     "ruff_command": ".venv/Scripts/ruff.exe check camloc scripts tests run.py build_map.py validate_run.py",
     "ruff_passed": true
   },
   "tuning": {
-    "directory": "results/tune-stage3-recheck-fr-final",
+    "directory": "results/tune-stage3-fix-1",
+    "bank": "artifacts/fit-b-integrated-v2",
     "map_id": "fitmap:8637237e723b6b8e",
-    "submission_sha256": "2fc93c5348c78eab516c6e71ad284c397ff1b1ab2f633f3b7f9f99a98ea062aa",
+    "submission_sha256": "96f18d1086c36542d51a964759d988538b029e1d2f74a47f46f81322f75eaea3",
     "rows": 2708,
-    "full_pose_updates": 2,
-    "prediction_only_rows": 2706,
-    "lost_rows": 2695,
-    "max_full_pose_gap_ns": 269716420731,
+    "full_pose_updates": 537,
+    "prediction_only_rows": 2171,
+    "lost_rows": 1926,
+    "max_full_pose_gap_ns": 125601626399,
+    "max_full_pose_gap_window_s": [1.1, 126.7],
+    "anchor_created": 1014,
+    "anchor_dispatched": 1014,
+    "anchor_delivered": 304,
+    "anchor_rejected": 0,
+    "anchor_failed": {"insufficient_matches": 538, "pnp_too_few_inliers": 164, "pnp_pnp_failed": 8},
+    "handoff_rejections": {"poor_image_coverage": 68, "high_median_error": 25, "too_few_correspondences": 12, "too_few_inliers": 6, "degenerate_geometry": 2, "handoff_tracking_failed": 1},
     "frontend_errors": 0,
     "backend_faults": 0,
     "csv_and_metric_validation_passed": true,
+    "exposure_sequence_matches_input": true,
+    "nominal_coverage": 1.0,
+    "metric_sections_complete": true,
     "visual_baseline_gate_passed": false,
-    "position_rmse_m": 5838.073,
-    "startup_seconds": 24.4154850999912,
-    "replay_seconds": 57.535389299999224,
-    "paced_runtime_qualified": false
+    "position_rmse_m": 323.45,
+    "updated_xy_position_rmse_m": 323.45,
+    "reconciled_supplied_map_xy_rmse_m": 323.5,
+    "reconciled_racing_line_sn_rmse_m": 673.008,
+    "startup_seconds": 20.18060379999224,
+    "replay_seconds": 160.87555109999084,
+    "paced_runtime_qualified": false,
+    "source_sha256": {
+      "camloc/filter.py": "5ad04a242014cf91d356b062eeaef03afa7a2b0dfb840bbe64c103fc8f00eb27",
+      "camloc/frontend.py": "86ee83c0be4fce11cd97e37bdb646b13a4981ba125eae9fec713d3683103eb9a",
+      "camloc/vision.py": "7dd4678b454fa5514cd0f358ef8ae0f3dca9a4786377548c2c4d95ecba243c94",
+      "run.py": "bfda12736592fe284e4c55e3e752d38b15eca5ea1fbe6c2879424bbe1bd6a5c3"
+    }
+  },
+  "previous_run": {
+    "directory": "results/tune-stage3-recheck-fr-final",
+    "full_pose_updates": 2,
+    "lost_rows": 2695,
+    "max_full_pose_gap_ns": 269716420731,
+    "position_rmse_m": 5838.073
   },
   "unchanged_assets": {
     "split_sha256": "894b41790af50e2f555a34001ef00821164ebc4f2f2589eb2e24280088c09222",
     "static_map_sha256": "648e8cf954d8cd39823ca31c0b62d89c8fd76b170df999ac2e3d4327439972ef"
   },
-  "remaining_gate": "Sustain verified current-image full poses across the complete tuning episode, then score and independently validate a fresh run"
+  "remaining_gate": "No full pose for 125.6 s after the first second (and further gaps of 22.2/14.2/12.5 s) under the unchanged 3 s continuity bound; B's far-field horizon-band map support does not pass the unchanged >=6-cell / <=2 px gates there. Requires B map/vision support, then a fresh scored and independently validated run"
 }
