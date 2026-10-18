@@ -1,7 +1,7 @@
 # TrackCode Apex: run the submitted localizer
 
 
-**Locked release:** Git tag `release-seven-camera-v1` (commit `6f0c6d7`) with bank `artifacts/fit-seven-rescue-v2`; hashes and reference runs in [release_lock.json](task_docs/evidence/release_lock.json). The later opt-in `--camera-turn-bias` flag is not part of the release.
+**Locked release:** Git tag `release-seven-camera-assisted-v1` (commit `6f0c6d7`): bank `artifacts/fit-seven-rescue-v2`, retrieval, and the permitted vehicle velocity/yaw-rate inputs (`--vehicle-motion`), as in the command below. Acceleration is not read. Hashes and reference runs: [release_lock.json](task_docs/evidence/release_lock.json). Camera-only is a fallback; `--camera-turn-bias` is not part of the release.
 
 Use Windows x64 and one CUDA GPU. Run `setup.cmd --no-pause` for the locked Python
 3.12.13 environment and declared public checkpoints. Extract the accompanying private

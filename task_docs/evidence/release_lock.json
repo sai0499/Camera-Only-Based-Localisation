@@ -1,6 +1,6 @@
 {
   "locked": "2026-10-18",
-  "release_tag": "release-seven-camera-v1",
+  "release_tag": "release-seven-camera-assisted-v1",
   "commit": "6f0c6d7",
   "commit_check": "source_sha256 of results/seven-camera-tune-v3 and seven-camera-cameraonly-tune-v1 run.json match this commit exactly; later commit c1358fe only adds the opt-in --camera-turn-bias flag (off by default, not part of the release)",
   "configuration": {
@@ -10,14 +10,17 @@
     "camera_policy": "support-v1",
     "auxiliary_pose_variance_scale": 4.0,
     "retrieval": true,
-    "default_mode": "camera-only",
+    "default_mode": "runner built-in default is still camera-only (no code change); the locked submission command passes --vehicle-motion",
     "assisted_mode": "--vehicle-motion state-fields (or validation-twist on recordings with the separate body-velocity topic)",
     "camera_turn_bias": false,
-    "gate_thresholds_changed": false
+    "gate_thresholds_changed": false,
+    "submission_mode": "assisted: camera feeds + permitted vehicle velocity and yaw rate",
+    "vehicle_motion_inputs": "timestamp, body vx, vy and yaw rate only; acceleration fields are not read; pose/orientation/status fields never decoded"
   },
   "commands": {
-    "assisted": "run.py --artifacts artifacts/fit-seven-rescue-v2 --retrieval --vehicle-motion state-fields --initial-pose <initial.json> --split <split> --output <fresh dir>",
-    "camera_only": "run.py --artifacts artifacts/fit-seven-rescue-v2 --retrieval --initial-pose <initial.json> --split <split> --output <fresh dir>"
+    "submission_state_fields": "run.py --artifacts artifacts/fit-seven-rescue-v2 --retrieval --vehicle-motion state-fields --initial-pose <initial.json> --split <split> --output <fresh dir>",
+    "submission_validation_twist": "run.py --bag <test.mcap> --input-recording --artifacts artifacts/fit-seven-rescue-v2 --retrieval --vehicle-motion validation-twist --runtime --initial-pose <initial.json> --output <fresh dir>",
+    "camera_only_fallback": "run.py --artifacts artifacts/fit-seven-rescue-v2 --retrieval --initial-pose <initial.json> --split <split> --output <fresh dir>"
   },
   "artifact_sha256": {
     "manifest.json": "d8a4ca6dbbf4478a458c327585435c04049be728eebc88955dda9bdfb958164c",
@@ -57,5 +60,7 @@
     "camera_only_tune_position_rmse_m": 2.554,
     "assisted_holdout_regression_position_rmse_m": 0.655
   },
-  "limits": "Tuning-gate sign-off only; holdout regression keeps a 9.8 s full-pose gap; camera-only lateral RMSE 1.924 m; not rate-qualified."
+  "limits": "Tuning-gate sign-off only; holdout regression keeps a 9.8 s full-pose gap; camera-only lateral RMSE 1.924 m; not rate-qualified.",
+  "superseded_tag": "release-seven-camera-v1 (same commit 6f0c6d7; declared camera-only as the submission mode)",
+  "selected_reference_run": "results/seven-camera-tune-v3 (assisted tuning, 0.535 m position RMSE, 2.7 s longest full-pose gap); holdout regression results/seven-camera-holdout-v1 0.655 m"
 }
