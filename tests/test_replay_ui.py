@@ -179,8 +179,17 @@ def test_launcher_uses_one_production_process_and_no_gt(tmp_path, monkeypatch, m
         workspace.start({})
 
 
-def test_http_session_host_and_path_boundaries(saved):
-    workspace = Workspace(saved.parents[1])
+@pytest.mark.parametrize("cached", [False, True])
+def test_http_session_host_and_path_boundaries(saved, cached):
+    root = saved.parents[1]
+    if cached:
+        target = root / "tmp/replay_ui/holdout"
+        target.parent.mkdir(parents=True)
+        saved = saved.rename(target)
+        unrelated = root / "tmp/unrelated"
+        unrelated.mkdir()
+        (unrelated / "run.json").write_text('{"groups":999}')
+    workspace = Workspace(root)
     server = make_server(0, workspace)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -189,6 +198,15 @@ def test_http_session_host_and_path_boundaries(saved):
         with urllib.request.urlopen(base + "/api/config", timeout=5) as response:
             config = json.load(response)
         assert config["runs"][0]["groups"] == 3
+        assert len(config["runs"]) == 1
+        assert config["runs"][0]["name"] == ("preview/holdout" if cached else "saved")
+        key = config["runs"][0]["id"]
+        with urllib.request.urlopen(base + f"/api/download?id={key}&file=submission.csv", timeout=5) as response:
+            assert response.read() == (saved / "submission.csv").read_bytes()
+        png = b"\x89PNG\r\n\x1a\nfixture"
+        snapshot = workspace.snapshot({"id": key, "image": "data:image/png;base64," + base64.b64encode(png).decode()})
+        with urllib.request.urlopen(base + snapshot["url"], timeout=5) as response:
+            assert response.read() == png
         request = urllib.request.Request(base + "/api/start", data=b"{}", method="POST")
         with pytest.raises(urllib.error.HTTPError) as exc:
             urllib.request.urlopen(request, timeout=5)

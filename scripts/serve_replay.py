@@ -62,8 +62,9 @@ def browse(kind, root=ROOT):
 
 
 def within(path, root):
-    path, root = Path(path).resolve(), Path(root).resolve()
-    if not path.is_relative_to(root):
+    path = Path(path).resolve()
+    roots = root if isinstance(root, tuple) else (root,)
+    if not any(path.is_relative_to(Path(item).resolve()) for item in roots):
         raise ValueError("Path is outside the selected directory")
     return path
 
@@ -72,6 +73,8 @@ class Workspace:
     def __init__(self, root=ROOT):
         self.root = Path(root).resolve()
         self.results = self.root / "results"
+        self.replay_cache = self.root / "tmp" / "replay_ui"
+        self.replay_roots = (self.results, self.replay_cache)
         self.lock = threading.RLock()
         self.replays = {}
         self.folders = {}
@@ -81,15 +84,17 @@ class Workspace:
         self.image_cache = {}
 
     def runs(self):
-        found = [*self.results.glob("*/run.json"), *self.results.glob("*/*/run.json")]
+        found = [(path, base) for base in self.replay_roots
+                 for pattern in ("*/run.json", "*/*/run.json") for path in base.glob(pattern)]
         items = []
-        for path in sorted(found, key=lambda p: p.stat().st_mtime, reverse=True):
-            folder = within(path.parent, self.results)
+        for path, base in sorted(found, key=lambda item: item[0].stat().st_mtime, reverse=True):
+            folder = within(path.parent, base)
             key = hashlib.sha256(str(folder).encode()).hexdigest()[:16]
             self.folders[key] = folder
             try:
                 meta = read_json(path)
-                items.append({"id": key, "name": str(folder.relative_to(self.results)),
+                name = str(folder.relative_to(base))
+                items.append({"id": key, "name": name if base == self.results else "preview/" + name,
                               "split": meta.get("split"), "groups": meta.get("groups"),
                               "running": key == self.active and self.process.poll() is None})
             except (ValueError, OSError):
@@ -276,7 +281,7 @@ class Workspace:
         data = base64.b64decode(request["image"][len(prefix):], validate=True)
         if not data.startswith(b"\x89PNG\r\n\x1a\n") or len(data) > 4_000_000:
             raise ValueError("Invalid or oversized PNG")
-        output = within(folder / "viewer-snapshots", self.results)
+        output = within(folder / "viewer-snapshots", self.replay_roots)
         output.mkdir(exist_ok=True)
         name = secrets.token_hex(8) + ".png"
         (output / name).write_bytes(data)
@@ -330,7 +335,7 @@ class Handler(BaseHTTPRequestHandler):
                     key, name = query["id"][0], query["file"][0]
                     if name not in ("submission.csv", "runtime.json", "run.json"):
                         raise ValueError("Unknown export")
-                    path = within(workspace.folders[key] / name, workspace.results)
+                    path = within(workspace.folders[key] / name, workspace.replay_roots)
                     return self.respond(path.read_bytes(), mime="text/plain")
                 if route.path == "/api/image":
                     return self.respond(workspace.image(query["id"][0], int(query["index"][0]),
@@ -339,7 +344,7 @@ class Handler(BaseHTTPRequestHandler):
                     key, name = query["id"][0], query["file"][0]
                     if not re.fullmatch(r"[a-f0-9]{16}\.png", name):
                         raise ValueError("Unknown snapshot")
-                    path = within(workspace.folders[key] / "viewer-snapshots" / name, workspace.results)
+                    path = within(workspace.folders[key] / "viewer-snapshots" / name, workspace.replay_roots)
                     return self.respond(path.read_bytes(), mime="image/png")
             if route.path == "/plotly.js":
                 import plotly

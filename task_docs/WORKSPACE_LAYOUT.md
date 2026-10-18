@@ -25,36 +25,44 @@ The viewer still defaults to `fit-seven-rescue-v2`.
 
 ## Retained results
 
-Only these five entries remain, plus `.gitkeep`:
+Only `results/holdout/` remains, plus `.gitkeep`:
 
-| Path under `results/` | Purpose |
+| Path under `results/holdout/` | Purpose |
 |---|---|
-| `submission-evidence-holdout-20261018-v1/` | Fresh whole-holdout replay, prediction CSV, diagnostics, scorer/validator/runtime reports, offline GT viewer and `evidence.zip` |
-| `seven-camera-tune-v3/` | One complete selected tuning replay, plots and viewer; also supplies the UI's development initial-pose defaults |
-| `seven-camera-submission-assets-v1.zip` | Unchanged deliverable frozen bank and pinned weights |
-| `seven-camera-assets-receipt.json` | Deliverable asset checksums |
-| `retained-comparisons.zip` | Compact older predictions, scores, run metadata, validation and audit receipts |
+| `submission.csv` | Exact 2,191 predicted holdout poses; required timestamp_ns,x,y,yaw columns |
+| `validation/` | Outputs of the supplied scoring tools and scorer validation record |
+| `validated.json` | Output-format, timestamp, coverage and visual-gap checks |
+| `runtime.json` | Measured processing-time and memory summary |
+| `run_metadata.json` | Source/model identities, input bounds and inference mode |
+| `trajectory_vs_ground_truth.png` | Required validation GT comparison on the track map |
+| `README.md` | Mode, hardware, metrics and remaining limits |
 
-The comparison archive includes the earlier baseline, camera-only, spatial, turn-bias,
-stress and repeatability results, with their original relative paths. Large historical
-diagnostics, runtime traces, duplicate viewers, older cleanup archives and temporary
-visualizations were removed. Frozen release receipts keep historical run paths; use
-the comparison archive for those compact files and the fresh holdout folder for current
-complete evidence. Inference has no dependency on a deleted result directory.
+The challenge PDF's expected-output list was checked directly on pages 2-3. Besides
+poses and validation scores it requires source/weights, runtime/hardware, presentation
+and a validation visualization. Source and dependencies remain in the repository; the
+three frozen banks and pinned weights remain under `artifacts/`. No map or weight was
+removed. The redundant ZIPs, old tuning replay, comparison archive and exported GT
+copies were removed. Historical receipts retain their original paths and checksums;
+the current deliverables above supersede those paths.
+
+The one current interactive replay was moved intact to `tmp/replay_ui/holdout/` so it
+remains available for UI work, including raw images and valid auxiliary 3D geometry.
+The server discovers this dedicated cache as `preview/holdout`; editable source remains
+under `replay_ui/`. This cache is temporary UI data, not a submission deliverable.
 
 The fresh holdout receipt is `task_docs/evidence/submission_holdout_20261018.json`.
 The original broad cleanup is recorded in `task_docs/evidence/workspace_cleanup.json`;
 the later results-only cleanup is in `task_docs/evidence/results_cleanup_20261018.json`.
+The final PDF-aligned trim is in `task_docs/evidence/submission_contents_20261018.json`.
 Small initial-pose JSONs and recording audit notes stay in `tmp/` for reproduction.
 
 The seven exported MP4s duplicated the original recording and were removed. Their
 provenance manifest remains in `videos/`; the UI obtains frames directly from MCAP.
 Package caches and the working `.venv`/`.setup` were preserved.
 
-The broad cleanup passed 1,133 tests, Ruff, all three map/retrieval bindings and a fresh
-localization smoke replay. The subsequent results-only cleanup passed 25 UI/setup tests
-and verified 89 retained-file hashes, including the original recording, fixed split,
-frozen banks/weights, submission ZIP and complete retained runs. The UI still lists both
-current runs, attaches holdout GT to all 2,191 poses and reads an original MCAP image.
-All 25 superseded result targets were removed; no restricted result folders remain.
-Six older access-restricted test folders under `tmp/` remain outside this cleanup's scope.
+The broad cleanup passed 1,133 tests, Ruff, map/retrieval binding checks and a localization
+smoke replay. The final trim and UI-cache support pass 1,134 tests and Ruff. Original
+recording, fixed split, challenge PDF, frozen bank/weight and pose hashes match. The
+cached replay loads all 2,191 poses with offline GT and reads an original camera image;
+cached downloads/snapshots are covered by HTTP tests. No localization algorithm or
+prediction was changed. Presentation preparation is separate from this cleanup.

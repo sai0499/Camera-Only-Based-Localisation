@@ -1,0 +1,90 @@
+{
+  "completed_at_utc": "2026-10-18T19:47:40.203204+00:00",
+  "pdf_pages_checked": [
+    2,
+    3
+  ],
+  "pdf_expected_output": [
+    "Test-run pose CSV",
+    "Source, model weights or download links and reproducible run script",
+    "Validation scoring outputs",
+    "Runtime with hardware",
+    "Presentation of at most 5 minutes and 6 slides",
+    "Validation trajectory versus GT video or plot"
+  ],
+  "results_folder": "results/holdout",
+  "results_files": {
+    "results/holdout/README.md": {
+      "bytes": 1209,
+      "sha256": "aff36f433983432dfedf495c366bb2b4c82ad85139bb4d82f380e1cd74895e4e"
+    },
+    "results/holdout/runtime.json": {
+      "bytes": 1212,
+      "sha256": "d3e12c82a8e2744245fd200aba2432cf7958d9cac79634faf734af70b6428268"
+    },
+    "results/holdout/run_metadata.json": {
+      "bytes": 5257,
+      "sha256": "a6679f598bb62520582a0e392180fe07393448547a2de11ef1945bc6c613a8f8"
+    },
+    "results/holdout/submission.csv": {
+      "bytes": 171815,
+      "sha256": "b6a7815c0683e8a062571c1821747e906260ac44969168e9f129a1a4f5b202a7"
+    },
+    "results/holdout/trajectory_vs_ground_truth.png": {
+      "bytes": 285041,
+      "sha256": "f2484dba2f906f297997f1ce2b051574bba50cdaba5cc6350b628343f9b881b9"
+    },
+    "results/holdout/validated.json": {
+      "bytes": 480,
+      "sha256": "4a52dbc97fca017517db4e03df1d50c75dbf081397c4086a79d4364af70b6594"
+    },
+    "results/holdout/validation/original_xy.txt": {
+      "bytes": 383,
+      "sha256": "658f61800fa99ec6e660042ef953d0cdc5f605314e437007361ba562b39c2530"
+    },
+    "results/holdout/validation/reconciled_supplied_map.txt": {
+      "bytes": 1123,
+      "sha256": "17e10fcf031964a7841c77a3735099c7b0629e3ca77631e49139ff8a13668e74"
+    },
+    "results/holdout/validation/scorer_validation.json": {
+      "bytes": 1335,
+      "sha256": "81a746adcff34036b45e3b587c8ed5815360bffc6caa787e7ae284430ba0e256"
+    },
+    "results/holdout/validation/updated_xy.txt": {
+      "bytes": 428,
+      "sha256": "5d88b1d68dee4fa54b40b088ddc789f363cea54662085aaf6bf82223e48c8d0e"
+    }
+  },
+  "ui_cache": "tmp/replay_ui/holdout",
+  "editable_ui_source": "replay_ui",
+  "removed_paths": [
+    "results/retained-comparisons.zip",
+    "results/seven-camera-assets-receipt.json",
+    "results/seven-camera-submission-assets-v1.zip",
+    "results/seven-camera-tune-v3",
+    "results/submission-evidence-holdout-20261018-v1",
+    "tmp/replay_ui/holdout/evaluation"
+  ],
+  "bytes_removed": 1045415985,
+  "frozen_artifacts_recording_split_pdf_hashes_unchanged": 19,
+  "pose_csv_unchanged": true,
+  "localizer_source_hashes_unchanged": true,
+  "ui_cache_files_preserved": 21,
+  "checks": {
+    "full_pytest_passed": 1134,
+    "pytest_seconds": 165.03,
+    "ruff": "passed",
+    "real_cached_replay_rows": 2191,
+    "offline_gt_matches": 2191,
+    "original_camera_image": "passed",
+    "cached_download_and_snapshot_routes": "passed",
+    "live_ui_url": "http://127.0.0.1:8765",
+    "live_http_cached_replay": "passed: 2191 poses, 2191 GT matches, exact CSV download",
+    "trajectory_plot_visual_review": "passed"
+  },
+  "limits": [
+    "Holdout was inspected previously; visual continuity gate still fails with a 9.8 s gap.",
+    "No new localization was run for cleanup.",
+    "Presentation preparation is separate from this cleanup."
+  ]
+}

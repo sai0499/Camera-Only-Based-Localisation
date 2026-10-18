@@ -9,7 +9,7 @@ Double-click `launch_ui.cmd` at the project root, or run:
 Open <http://127.0.0.1:8765>. The server binds only to loopback. All JavaScript and
 fonts are local; there is no CDN, cloud upload, npm build or analytics.
 
-The workbench opens a saved tuning run when available. Choose **New run** for a local
+The workbench opens a saved run when available. Choose **New run** for a local
 MCAP, frozen artifact directory and one initial pose. Paths can be absolute or relative
 to the repository. Keep `timestamp_ns` quoted in JSON to preserve exact nanoseconds.
 New-recording mode starts at that pose and runs to EOF, or to optional explicit bounds.
@@ -34,6 +34,12 @@ Use **Inspect camera** to choose any feed recorded in that output. A `support-v1
 selectively decodes mapped auxiliary views, records camera-priority decisions in the
 evidence log and excludes changed camera geometry individually. The default artifact
 choice is the seven-camera rescue bank when it is available locally.
+
+The retained development replay lives at `tmp/replay_ui/holdout/` and appears as
+`preview/holdout` in the run selector. The server supports downloads, camera images and
+snapshots for this cache as well as newly generated runs. `results/holdout/` contains
+only the required pose/validation/runtime files and trajectory plot. Edit UI source in
+`replay_ui/`, not the generated `viewer-with-gt/` copy inside the temporary cache.
 
 **2D / Track** shows equal-scale metre coordinates, surveyed borders, current heading
 and the trail up to the selected output. **3D / Geometry** uses a CPU orthographic renderer for real border XYZ and
