@@ -117,8 +117,8 @@ projected point with no compatible image edge is not counted as support.
   the production frontend/raw-MCAP CLI and independent run validator are assembled.
   Real tuning replay still loses mapped support. See `STAGE3_STATUS.md` for the current
   measured gate; passing synthetic lifecycle tests does not close that gate.
-- Global EigenPlaces retrieval remains B's later step. The current geometric shortlist
-  cannot recover once the prediction has drifted outside its bounded spatial search.
+- Global EigenPlaces retrieval is now implemented, integrated and exercised on tuning;
+  B's ownership review is pending. Current continuity failures are recorded in `STAGE3_STATUS.md`.
 - Frozen fitting-only body-to-road height, bodywork/traffic masks and physical-border image
   association still need fitting/review. Ground/border startup must reject missing geometry.
 - Run-level diagnostics validation is implemented; paced latency/queue qualification and
@@ -126,6 +126,9 @@ projected point with no compatible image edge is not counted as support.
   callbacks belong in the inference path. An aborted CSV alone is not a completed-run gate.
 - End-to-end tuning has been measured and fails the continuous visual-baseline gate.
   Loss/recovery quality, competition GPU runtime and native higher-rate support remain open.
+
+Real-recording Step 5 integrity/stress checks and optional runtime instrumentation are now
+tracked separately in [STAGE5_STATUS.md](STAGE5_STATUS.md).
 
 ## Verification boundary
 

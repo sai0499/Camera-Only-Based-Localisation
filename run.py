@@ -402,6 +402,9 @@ def main(argv=None):
     parser.add_argument("--initial-pose", type=Path, required=True)
     parser.add_argument("--split", choices=("tune", "holdout"), required=True)
     parser.add_argument("--output", type=Path, required=True, help="fresh result directory")
+    parser.add_argument("--runtime", action="store_true", help="record wall-time and peak-memory telemetry")
+    parser.add_argument("--transport-speed", type=float,
+                        help="pace original packet arrivals at this speed; implies --runtime; no rate qualification")
     parser.add_argument("--retrieval", action="store_true",
                         help="load <artifacts>/retrieval.{npz,json} and the pinned EigenPlaces "
                              "checkpoint for global recovery retrieval (fails if missing)")
@@ -449,6 +452,13 @@ def main(argv=None):
             retrieval_enabled=index is not None)
         source = io.open_frame_sets(args.bag, initial_pose=initial, episode=episode,
                                    calibrations=calibrations)
+        runtime = None
+        if args.runtime or args.transport_speed is not None:
+            from camloc.runtime import RuntimeSource
+
+            runtime = RuntimeSource(source, args.output / "runtime.jsonl",
+                                    transport_speed=args.transport_speed)
+            source = runtime
         metadata = {"split": args.split, "initial_pose": initial.summary(),
                     "episode": episode.summary(), "map": bank.summary(),
                     "models": list(worker.backend.model_ids),
@@ -472,6 +482,15 @@ def main(argv=None):
         metadata["replay_seconds"] = time.perf_counter() - replay_began
         metadata["total_seconds"] = time.perf_counter() - began
         metadata["outputs_per_second"] = counts["groups"] / metadata["replay_seconds"]
+        if runtime is not None:
+            import torch
+            from camloc.runtime import process_peak_memory
+
+            profile = runtime.summary(args.output / "diagnostics.jsonl")
+            profile["process_memory"] = process_peak_memory()
+            profile["cuda_memory"] = ({"peak_allocated_bytes": torch.cuda.max_memory_allocated(),
+                "peak_reserved_bytes": torch.cuda.max_memory_reserved()} if torch.cuda.is_available() else None)
+            (args.output / "runtime.json").write_text(json.dumps(profile, indent=2) + "\n", encoding="utf-8")
         (args.output / "run.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
         print(json.dumps(counts))
         return 0

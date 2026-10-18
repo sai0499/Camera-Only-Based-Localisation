@@ -1,0 +1,354 @@
+{
+  "date": "2026-10-18",
+  "implementation_base": "93e42c0b3092898836635c6d471f823af879550e",
+  "a_review": {
+    "branch": "origin/darshana",
+    "head": "18a93d3fa073993580b0fcf54433c24391abf859",
+    "already_ancestor_of_base": true,
+    "new_commits_to_integrate": 0
+  },
+  "team_c_step3_signed_off": false,
+  "team_c_step5_signed_off": false,
+  "full_episode": {
+    "directory": "results\\step5-full-integrity-v1",
+    "rows": 2708,
+    "baseline_submission_sha256": "c175017bf10f26810389aa17265b48aa03dc1ede69e80244c24c848d870944c3",
+    "matches_saved_fix7_csv": true,
+    "comparisons": {
+      "repeat": {
+        "passed": true,
+        "rows_compared": 2708,
+        "max_position_difference_m": 0.0,
+        "max_yaw_difference_rad": 0.0,
+        "same_logical_decisions": true
+      },
+      "prohibited_remove": {
+        "passed": true,
+        "rows_compared": 2708,
+        "max_position_difference_m": 0.0,
+        "max_yaw_difference_rad": 0.0,
+        "same_logical_decisions": true
+      },
+      "prohibited_poison": {
+        "passed": true,
+        "rows_compared": 2708,
+        "max_position_difference_m": 0.0,
+        "max_yaw_difference_rad": 0.0,
+        "same_logical_decisions": true
+      },
+      "future": {
+        "passed": true,
+        "rows_compared": 100,
+        "max_position_difference_m": 0.0,
+        "max_yaw_difference_rad": 0.0,
+        "same_logical_decisions": true
+      }
+    },
+    "processing_errors": {
+      "baseline": {},
+      "repeat": {},
+      "prohibited_remove": {},
+      "prohibited_poison": {},
+      "future": {}
+    },
+    "prohibited_payloads_removed": 57528,
+    "prohibited_payloads_corrupted": 57528,
+    "future_images_changed": 5214,
+    "baseline_validation": {
+      "valid": true,
+      "rows": 2708,
+      "visual_updates": 1799,
+      "full_pose_updates": 1799,
+      "lost_rows": 214,
+      "max_full_pose_gap_ns": 6200094729,
+      "visual_baseline_gate_passed": false,
+      "first_timestamp_ns": "1791918859586110105",
+      "last_timestamp_ns": "1791919130289596381",
+      "median_cadence_ns": 100000966,
+      "max_gap_ns": 104211502,
+      "nominal_coverage": 1.0,
+      "exposure_sequence_matches_input": true
+    },
+    "offline_position_rmse_m": 12.892825533152084,
+    "offline_reset_errors_over_10m": 1,
+    "map_id": "fitmap:cb52ba980ffd803e",
+    "retrieval_id": "retrieval:eff77597458adb60",
+    "source_sha256": {
+      "run.py": "57c45c67617a92dd7756a9f6ac8e3cef7ac8ab587bff42bb5712856c6333193a",
+      "camloc\\__init__.py": "ab9d35eefd1b5029a35b4dfe1510b2c9c89cf953be9d31f8211c32935036828d",
+      "camloc\\borders.py": "d6d3e9eca9f1d80bf498a93a67e8ae94c1ed10958bb75a9f36bf834f31312550",
+      "camloc\\contracts.py": "b6012b4b7a2b6cea2fb1b9a4a1f0581e12a2f35b03f38ba3031f6f90de644e74",
+      "camloc\\features.py": "129eca6957b7fc02aa73f41ec71a427f52c6cf2cf57beed2727f69c2452289f1",
+      "camloc\\filter.py": "5ad04a242014cf91d356b062eeaef03afa7a2b0dfb840bbe64c103fc8f00eb27",
+      "camloc\\frontend.py": "22320f705548e0db7d739b44bc551a598b74a573662fffc527103ac13e6d4eff",
+      "camloc\\geometry.py": "45ee53559036b28e9483fccb2da784bb6a677b7c718b2e3a5da6f6fce6a7ebf8",
+      "camloc\\ground_motion.py": "eb035a053d84567fe93b5de0816a44d05dd81c7ad7a85642aebb5af945dc42aa",
+      "camloc\\io.py": "0df2a31cc6b222931220a67dd36c216109bfcf9a2f16da21b999e385840e615f",
+      "camloc\\landmark_map.py": "f85e5989b092e751bb13ae491bca582ccee7d0cd4cd854061d8be68ab971b187",
+      "camloc\\masks.py": "ab348b12e4a5d56cef3ac83b8c9a2d2e3007dcbd3047f15aa755d6bbf1418d46",
+      "camloc\\pnp.py": "f23c31379bd7e16613d0f86425808f7e6fd88ff2c91a7afce344bc537f430093",
+      "camloc\\recovery.py": "3f2742b3813c76b474f7bd8bed42149d461faf39e203d52379dd78bb21735a4e",
+      "camloc\\retrieval.py": "50c639340238061d1e7885c28ff9b811a59213a85b0df4d7e24678c3b95f6c65",
+      "camloc\\runtime.py": "ca90d352adef1ceeb8da095b1ce3ae697fa5d36ad420af15d807aa95b2180d6d",
+      "camloc\\scheduler.py": "fdb58b0ff049c16669f4970665f655b4855e6767284110e9384eeecba4b91e75",
+      "camloc\\submission.py": "ac1f4f50d5f6b52a0a3922fbf56ba7259cdefe4f8ae9ce022587d0bccd84d8b8",
+      "camloc\\track_coords.py": "d223d706027f8da870bdddbc100da9e961fbdd31179533c4cab3e370f262fa12",
+      "camloc\\vision.py": "0a2b84a6d86da47433de5434864722c479a863edaaca08d8232cddbfe6be15f1"
+    },
+    "permitted_messages_sha256": {
+      "baseline": "362b1334bc2945c63b7a779bca8e753f18308b507c687fc016c5645ff0eb12b1",
+      "prohibited_remove": "362b1334bc2945c63b7a779bca8e753f18308b507c687fc016c5645ff0eb12b1",
+      "prohibited_poison": "362b1334bc2945c63b7a779bca8e753f18308b507c687fc016c5645ff0eb12b1"
+    }
+  },
+  "bounded_preflight": {
+    "directory": "results\\step5-preflight-v2",
+    "duration_s": 30,
+    "cases": 14,
+    "integrity_checks_passed": true,
+    "stress": {
+      "fr_drop_1": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918875509503883,
+        "lost_rows_after_start": 2,
+        "statuses_during_stress": {
+          "degraded": 9,
+          "lost": 1
+        },
+        "full_pose_updates_during_stress": 0,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.176817516,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.526152140601621,
+        "reset_errors_over_10m": 0
+      },
+      "fr_drop_3": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918877509503883,
+        "lost_rows_after_start": 25,
+        "statuses_during_stress": {
+          "degraded": 9,
+          "lost": 21
+        },
+        "full_pose_updates_during_stress": 0,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.176847742,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.729926985605007,
+        "reset_errors_over_10m": 0
+      },
+      "r_drop_1": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918875509503883,
+        "lost_rows_after_start": 2,
+        "statuses_during_stress": {
+          "tracking": 7,
+          "degraded": 3
+        },
+        "full_pose_updates_during_stress": 7,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.076816758,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.2660922687166387,
+        "reset_errors_over_10m": 0
+      },
+      "r_drop_3": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918877509503883,
+        "lost_rows_after_start": 2,
+        "statuses_during_stress": {
+          "tracking": 27,
+          "degraded": 3
+        },
+        "full_pose_updates_during_stress": 27,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.076846494,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.2660922822005374,
+        "reset_errors_over_10m": 0
+      },
+      "blackout_0.5": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918875009503883,
+        "lost_rows_after_start": 6,
+        "statuses_during_stress": {
+          "degraded": 3,
+          "recovering": 2
+        },
+        "full_pose_updates_during_stress": 0,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.676817516,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.310808397044176,
+        "reset_errors_over_10m": 0
+      },
+      "blackout_1": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918875509503883,
+        "lost_rows_after_start": 6,
+        "statuses_during_stress": {
+          "degraded": 6,
+          "recovering": 3,
+          "lost": 1
+        },
+        "full_pose_updates_during_stress": 0,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.176817516,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.310808397044176,
+        "reset_errors_over_10m": 0
+      },
+      "blur": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918875509503883,
+        "lost_rows_after_start": 3,
+        "statuses_during_stress": {
+          "tracking": 8,
+          "degraded": 2
+        },
+        "full_pose_updates_during_stress": 8,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.076816758,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.2708202363314876,
+        "reset_errors_over_10m": 0
+      },
+      "exposure": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918875509503883,
+        "lost_rows_after_start": 4,
+        "statuses_during_stress": {
+          "degraded": 1,
+          "tracking": 9
+        },
+        "full_pose_updates_during_stress": 9,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.176817516,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.2966131784118824,
+        "reset_errors_over_10m": 0
+      },
+      "glare": {
+        "stress_start_ns": 1791918874509503883,
+        "stress_end_ns": 1791918875509503883,
+        "lost_rows_after_start": 0,
+        "statuses_during_stress": {
+          "degraded": 3,
+          "tracking": 7
+        },
+        "full_pose_updates_during_stress": 7,
+        "full_pose_returned_after_stress": true,
+        "first_full_pose_delay_s": 0.176817516,
+        "recovery_reset_stamps_ns": [
+          1791918862786158168,
+          1791918863186160848
+        ],
+        "accuracy_and_false_reset_assessment": "requires separate offline scorer/GT analysis",
+        "offline_position_rmse_m": 1.2329439128138446,
+        "reset_errors_over_10m": 0
+      }
+    }
+  },
+  "paced_preflight": {
+    "directory": "results\\step5-paced-preflight-v1",
+    "duration_s": 30,
+    "transport_speed": 1,
+    "comparison_to_unpaced": {
+      "passed": true,
+      "rows_compared": 300,
+      "max_position_difference_m": 0.0,
+      "max_yaw_difference_rad": 0.0,
+      "same_logical_decisions": true
+    },
+    "runtime": {
+      "groups": 300,
+      "transport_speed": 1.0,
+      "profile": "paced original-arrival transport replay",
+      "steady_elapsed_seconds": 30.0261428,
+      "elapsed_per_output_ms": 100.08714266666667,
+      "reader": {
+        "mean_ms": 1.4141743333333334,
+        "p95_ms": 2.964995,
+        "p99_ms": 3.471625
+      },
+      "group_service": {
+        "mean_ms": 56.19874333333333,
+        "p95_ms": 164.659705,
+        "p99_ms": 183.28914399999996
+      },
+      "nonwaiting_pipeline": {
+        "mean_ms": 30.299923000000003,
+        "p95_ms": 46.61729,
+        "p99_ms": 58.702768999999996
+      },
+      "nonwaiting_pipeline_definition": "reader plus complete group service, subtracting logged worker join stalls; includes handoff",
+      "last_packet_to_completion": {
+        "mean_ms": 92.38691481000001,
+        "p95_ms": 384.78082285000005,
+        "p99_ms": 688.7948057299999
+      },
+      "timing_limit": "pacing uses constituent packet arrivals; deadline-closure wait and physical exposure latency are not instrumented",
+      "rate_qualified": false,
+      "qualification_limit": "telemetry only; five-minute rate-faithful workload and queue gates are separate",
+      "process_memory": {
+        "peak_working_set_bytes": 2555879424,
+        "peak_commit_bytes": 5952167936
+      },
+      "cuda_memory": {
+        "peak_allocated_bytes": 1217751040,
+        "peak_reserved_bytes": 1694498816
+      }
+    }
+  },
+  "remaining": [
+    "sustained Step 3 visual support and B review",
+    "full-episode stress and geometry/backend/packet fault matrix",
+    "five-minute native and rate-faithful workload qualification with complete latency and queue telemetry",
+    "configuration freeze, holdout localization run and delivery"
+  ],
+  "verification": {
+    "pytest_command": ".venv/Scripts/python.exe -B -m pytest -q --basetemp tmp/step5-full-suite-v1",
+    "ruff_command": ".venv/Scripts/ruff.exe check camloc scripts tests run.py build_map.py validate_run.py",
+    "ruff_passed": true,
+    "pytest_passed": 1021,
+    "pytest_seconds": 169.73,
+    "pytest_skipped_or_xfailed": 0
+  },
+  "protected_assets": {
+    "recording_sha256": "fe5a0b9565b1bc03dd1ad775645722645e135b2f19012cf7bc815a8bcb91d613",
+    "split_sha256": "894b41790af50e2f555a34001ef00821164ebc4f2f2589eb2e24280088c09222",
+    "static_map_sha256": "648e8cf954d8cd39823ca31c0b62d89c8fd76b170df999ac2e3d4327439972ef"
+  }
+}
