@@ -59,8 +59,7 @@ function choose(index, manual=false) {
   for (const camera of row.images || []) { const line = document.createElement('div'); line.textContent = `${camera.camera_id.toUpperCase()} / ${camera.exposure_ns} ns`; cameras.append(line); }
   if (!cameras.children.length) cameras.textContent = 'Camera timestamps unavailable';
   if (row.missing?.length) { const line = document.createElement('div'); line.textContent = `MISSING / ${row.missing.join(', ')}`; cameras.append(line); }
-  $('camera-preview').hidden = true;
-  $('load-camera').disabled = !!window.APEX_REPLAY || S.payload.state !== 'completed' || !row.images?.some(x=>x.camera_id==='fr');
+  scheduleImage();
   const reject = $('rejections'); reject.replaceChildren();
   for (const r of row.rejected || []) { const line = document.createElement('div'); line.textContent = `${r.camera_id || ''} / ${clean(r.reason)}`; reject.append(line); }
   if (!reject.children.length) reject.textContent = 'No pose rejection recorded for this output.';
@@ -134,6 +133,21 @@ async function drawChart() {
   if (!S.chartBound) { $('timeline').on('plotly_click',event=>{ const target=event.points[0].x; let nearest=0; for(let i=1;i<S.frames.length;i++) if(Math.abs(seconds(S.frames[i].t_ns)-target)<Math.abs(seconds(S.frames[nearest].t_ns)-target)) nearest=i; choose(nearest,true); }); S.chartBound=true; }
   text('chart-note',values.some(v=>v!=null)?'All outputs retained · crosses = Lost · click to seek':'This metric is unavailable without a recorded timing or attached reference');
 }
+let imageTimer=null,imageSeq=0;
+function scheduleImage(delay=S.playing?400:150){clearTimeout(imageTimer);imageTimer=setTimeout(loadImage,delay);}
+function loadImage(){
+  const row=selected(),img=$('camera-image');if(!row)return;
+  const none=message=>{img.removeAttribute('src');text('camera-caption',message);};
+  if(window.APEX_REPLAY)return none('Recorded images need the local workspace server.');
+  if(S.payload.state!=='completed')return none('Recorded image appears when the run completes, so inference is not contended.');
+  const want=$('inspect-camera').value,have=(row.images||[]).map(x=>x.camera_id);
+  const camera=have.includes(want)?want:have.includes(row.pose?.camera_id)?row.pose.camera_id:have[0];
+  if(!camera)return none('No camera image recorded at this output.');
+  const seq=++imageSeq,image=row.images.find(x=>x.camera_id===camera);
+  img.onload=()=>{if(seq===imageSeq)text('camera-caption',`${camera.toUpperCase()} · raw recorded image · exposure ${image.exposure_ns} ns${camera!==want?` · ${want.toUpperCase()} not recorded here`:''}`);};
+  img.onerror=()=>{if(seq===imageSeq)none(`${camera.toUpperCase()} image unavailable at this output.`);};
+  img.src=`/api/image?id=${S.run}&index=${S.index}&camera=${camera}`;
+}
 function events() {
   const container=$('events');container.replaceChildren();
   for(const event of S.payload.events||[]) {
@@ -145,13 +159,16 @@ function events() {
   if(!container.children.length)container.textContent='No recovery, tracker or processing-error events recorded.';
 }
 async function acceptPayload(payload, reset=false) {
+  // Ground truth attached at completion: reload once so every output carries its reference.
+  if(!reset&&payload.comparison&&!S.payload?.comparison)return loadRun(S.run);
+  if(reset&&payload.comparison&&$('metric').value==='processing_ms')$('metric').value='error_m';
   if(reset) {
     S.frames=[];S.index=0;S.plotReady=false;S.chartReady=false;
     for(const id of ['pose-x','pose-y','pose-yaw','inliers','reprojection','coverage','evidence-source','cameras','processing'])text(id,'—');
     text('group-id','GROUP —');text('tracking-state','Awaiting output');$('tracking-state').className='tracking-state';
     text('status-reason','Waiting for the first completed camera group.');text('position-error','Unavailable');
     text('selected-time','0.00');text('frame-number','OUTPUT —');text('absolute-stamp','EXPOSURE — ns');
-    $('camera-preview').hidden=true;$('load-camera').disabled=true;
+    $('camera-image').removeAttribute('src');text('camera-caption','Waiting for an output');
   }
   S.payload=payload;
   for(const row of payload.frames) S.frames[row.index]=row;
@@ -228,7 +245,13 @@ function initControls() {
   $('setup-form').onsubmit=async event=>{event.preventDefault();$('start-run').disabled=true;text('validation-message','Validating input and starting the production localizer…');try{const result=await api('/api/start',requestSettings());const option=document.createElement('option');option.value=result.id;option.textContent=result.name+' / running';$('run-select').prepend(option);$('latest').checked=true;$('setup-dialog').close();await loadRun(result.id);}catch(error){$('validation-message').classList.add('error');text('validation-message',error.message);}finally{$('start-run').disabled=false;}};
   $('compare').onclick=()=>$('gt-dialog').showModal();
   $('gt-form').onsubmit=async event=>{event.preventDefault();$('attach-gt').disabled=true;text('gt-message','Verifying and matching reference timestamps…');try{await acceptPayload(await api('/api/compare',{id:S.run,path:$('gt-path').value.trim()}),true);$('gt-dialog').close();$('metric').value='error_m';await drawMap();await drawChart();}catch(error){text('gt-message',error.message);}finally{$('attach-gt').disabled=false;}};
-  $('load-camera').onclick=async()=>{const index=S.index,camera=$('inspect-camera').value; $('load-camera').disabled=true;const img=$('camera-image');img.onload=()=>{if(index===S.index){$('camera-preview').hidden=false;text('camera-caption',`Raw ${camera.toUpperCase()} image · exact saved exposure · no feature overlay`);}$('load-camera').disabled=false;};img.onerror=()=>{notice('Selected camera image is unavailable at this output.');$('load-camera').disabled=false;};img.src=`/api/image?id=${S.run}&index=${index}&camera=${camera}`;};
+  $('inspect-camera').onchange=()=>scheduleImage(0);
+  for(const button of document.querySelectorAll('[data-browse]'))button.onclick=async()=>{
+    button.disabled=true;
+    try{const result=await api('/api/browse',{kind:button.dataset.browse});const target=$(button.dataset.target);
+      if(result.path){target.value=button.dataset.browse==='pose'?result.content:result.path;target.dispatchEvent(new Event('change'));}}
+    catch(error){notice(error.message);}finally{button.disabled=false;}
+  };
   window.addEventListener('keydown',event=>{if(/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)||document.querySelector('dialog[open]'))return;if(event.code==='Space'){event.preventDefault();togglePlay(!S.playing);}if(event.key==='ArrowLeft'){event.preventDefault();choose(S.index-1,true);}if(event.key==='ArrowRight'){event.preventDefault();choose(S.index+1,true);}});
   window.addEventListener('resize',()=>{if(S.scene3d)S.scene3d.resize();else if(S.plotReady)Plotly.Plots.resize('scene');if(S.chartReady)Plotly.Plots.resize('timeline');});
 }

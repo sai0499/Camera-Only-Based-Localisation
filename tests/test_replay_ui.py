@@ -255,3 +255,34 @@ def test_ui_keeps_duplicate_initial_fields_visible_to_contract_parser(tmp_path):
                "initial_pose": '{"timestamp_ns":"123","x":1,"x":2,"y":3,"yaw":0}'}
     with pytest.raises(c.ContractError, match="duplicate"):
         Workspace(tmp_path).validate(request)
+
+def test_browse_dialog_and_auto_gt_are_offline_only(tmp_path, monkeypatch):
+    import subprocess as sp
+    import types
+
+    import pytest
+
+    from scripts import serve_replay as sr
+
+    with pytest.raises(ValueError):
+        sr.browse("../etc")
+    pose = tmp_path / "initial.json"
+    pose.write_text('{"timestamp_ns": "1", "x": 0, "y": 0, "yaw": 0}', encoding="utf-8")
+    calls = []
+
+    def fake_run(command, **kwargs):
+        calls.append(command)
+        return types.SimpleNamespace(returncode=0, stdout='{"path": "%s"}\n' % pose.as_posix())
+    monkeypatch.setattr(sr.subprocess, "run", fake_run)
+    result = sr.browse("pose", root=tmp_path)
+    assert result == {"path": "initial.json", "content": pose.read_text(encoding="utf-8")}
+    assert calls and calls[0][1] == "-c" and sp is sr.subprocess
+    monkeypatch.setattr(sr.subprocess, "run", lambda *a, **k: types.SimpleNamespace(returncode=0, stdout='{"path": ""}'))
+    assert sr.browse("bag", root=tmp_path) == {"path": ""}
+    workspace = sr.Workspace(tmp_path)
+    replay = types.SimpleNamespace(state="running", comparison=None, meta={"split": "tune"})
+    workspace.auto_gt(replay)
+    assert not hasattr(replay, "gt_tried")  # never before completion
+    replay.state = "completed"
+    workspace.auto_gt(replay)
+    assert replay.gt_tried and replay.comparison is None  # no reference file in this root

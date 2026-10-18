@@ -19,6 +19,48 @@ sys.path.insert(0, str(ROOT))
 from scripts.replay_data import Replay, read_json, scene_geometry, wire  # noqa: E402
 
 
+DEFAULT_GT = "evaluation/reference_reconciled/gt_tf.csv"
+BROWSE_KINDS = {
+    "bag": ("file", "Select a recording", [("MCAP recording", "*.mcap"), ("All files", "*.*")], "."),
+    "map": ("dir", "Select a frozen landmark-map directory", [], "artifacts"),
+    "pose": ("file", "Select an initial-pose JSON", [("Initial pose JSON", "*.json"), ("All files", "*.*")], "."),
+    "gt": ("file", "Select a ground-truth CSV", [("Ground-truth CSV", "*.csv"), ("All files", "*.*")],
+           "evaluation/reference_reconciled"),
+}
+_DIALOG = (
+    "import json,sys,tkinter as tk\nfrom tkinter import filedialog\n"
+    "a=json.loads(sys.argv[1]);r=tk.Tk();r.withdraw();r.attributes('-topmost',True)\n"
+    "p=(filedialog.askdirectory(parent=r,initialdir=a['dir'],title=a['title'],mustexist=True)"
+    " if a['mode']=='dir' else filedialog.askopenfilename(parent=r,initialdir=a['dir'],"
+    "title=a['title'],filetypes=[tuple(t) for t in a['types']]))\n"
+    "print(json.dumps({'path':p or ''}))")
+
+
+def browse(kind, root=ROOT):
+    """Open a native local file dialog in a child process (the server is localhost-only)."""
+    if kind not in BROWSE_KINDS:
+        raise ValueError("Unknown browse target")
+    mode, title, types, start = BROWSE_KINDS[kind]
+    folder = Path(root) / start
+    args = json.dumps({"mode": mode, "title": title, "types": types,
+                       "dir": str(folder if folder.is_dir() else root)})
+    done = subprocess.run([sys.executable, "-c", _DIALOG, args], capture_output=True, text=True,
+                          timeout=900, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+    if done.returncode != 0 or not done.stdout.strip():
+        raise ValueError("The file dialog could not be opened")
+    chosen = json.loads(done.stdout.strip().splitlines()[-1])["path"]
+    if not chosen:
+        return {"path": ""}
+    path = Path(chosen).resolve()
+    shown = str(path.relative_to(Path(root).resolve())) if path.is_relative_to(Path(root).resolve()) else str(path)
+    result = {"path": shown}
+    if kind == "pose":
+        if path.stat().st_size > 16_384:
+            raise ValueError("Initial-pose JSON is too large")
+        result["content"] = path.read_text(encoding="utf-8-sig")
+    return result
+
+
 def within(path, root):
     path, root = Path(path).resolve(), Path(root).resolve()
     if not path.is_relative_to(root):
@@ -65,7 +107,21 @@ class Workspace:
             code = self.process.poll()
             state = "running" if code is None else "completed" if code == 0 else "failed"
         replay.refresh(state)
+        self.auto_gt(replay)
         return replay
+
+    def auto_gt(self, replay):
+        """Development splits have reference GT: attach it offline once the run completes."""
+        if (replay.state != "completed" or replay.comparison is not None or getattr(replay, "gt_tried", False)
+                or replay.meta.get("split") not in ("tune", "holdout")):
+            return
+        replay.gt_tried = True
+        path = self.root / DEFAULT_GT
+        if path.is_file():
+            try:
+                replay.attach_gt(path)
+            except (ValueError, OSError):
+                replay.comparison = None
 
     def config(self):
         runs = self.runs()
@@ -75,7 +131,7 @@ class Workspace:
                  if (p.parent / "map.npz").exists()]
         return {"runs": runs, "bags": [p.name for p in self.root.glob("*.mcap")],
                 "artifacts": sorted(banks), "initial_pose": completed.get("initial_pose", {}),
-                "default_gt": "evaluation/reference_reconciled/gt_tf.csv",
+                "default_gt": DEFAULT_GT,
                 "default_artifacts": ("artifacts/fit-seven-rescue-v2"
                     if (self.root / "artifacts/fit-seven-rescue-v2/manifest.json").exists()
                     else "artifacts/fit-stage3-multilap-v5-rigproof-v2"
@@ -309,6 +365,8 @@ class Handler(BaseHTTPRequestHandler):
             if not 0 < length <= limit:
                 raise ValueError("Invalid request size")
             request = json.loads(self.rfile.read(length))
+            if self.path == "/api/browse":  # a modal dialog must not hold the workspace lock
+                return self.respond(browse(request.get("kind")))
             with self.server.workspace.lock:
                 workspace = self.server.workspace
                 if self.path == "/api/validate":

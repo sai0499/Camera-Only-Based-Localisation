@@ -67,3 +67,9 @@ new GT and fetching raw camera images require the local server.
 Design: warm paper/graphite with signal red, flat grid rules, no shadows or gradients.
 Headings use Barlow Condensed 600/700; body/controls use IBM Plex Sans 400/500/600.
 The bundled fonts have SIL OFL notices and source hashes in `fonts/`.
+
+## Input browsing, ground truth and camera images
+
+- **Browse...** buttons open a native local file dialog (localhost server only) for the recording, frozen map directory, initial-pose JSON and ground-truth CSV.
+- Completed tuning/holdout runs attach the development reference `evaluation/reference_reconciled/gt_tf.csv` automatically (offline, after completion; never passed to inference). Other recordings attach a GT CSV with **Attach offline ground truth**.
+- The recorded image of the chosen camera is always shown for the selected output (falls back to the pose camera or `fr` when that camera is missing). Images load only for completed runs so inference is not contended.
