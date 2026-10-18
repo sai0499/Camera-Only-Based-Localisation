@@ -10,9 +10,75 @@ anchor correspondence worker and ground motion. Its base was the current A+C com
 B's PR also explicitly disclosed this gate as unmet. Do not advertise the prediction-only
 tuning CSV as camera localization or proceed to holdout/optional demo work on that basis.
 
-## Round 2: global retrieval + joint handoff (not signed off)
+## Round 3: multi-lap fitting bank (not signed off)
 
-Receipt: [stage3_recheck.json](evidence/stage3_recheck.json). Same bank
+Receipt: [stage3_recheck.json](evidence/stage3_recheck.json). **No source code changed.** Same
+runtime, split, evaluator, validator, gates, thresholds and contracts as round 2; only the
+frozen fitting bank and its retrieval index changed. Each run is a fresh process over the full
+unchanged tuning interval. Suite: **986 passed**; Ruff passed.
+
+Bank builds (unchanged `build_map.py`, fitting-interval windows and fitting GT only; retrieval
+index from `scripts/build_retrieval_index.py --artifacts <bank>`):
+
+| Bank | Build | Refs / landmarks / median err | Weak (< 30 lm) / build time | Map / retrieval |
+|---|---|---|---|---|
+| `fit-stage3-dual-v1` (fix-4) | round-2 windows, `fr` + `r` | 1,486 / 64,791 | — | `fitmap:41f4f38f269fa64f` / `retrieval:d10c40cdb6185006` (680 `fr` + 702 `r`) |
+| `fit-stage3-multilap-v1` (B1, fix-5) | `--window 0 90 --window 321 700.39`, `fr`, 4 m / 5° | 1,807 / 84,691 / 1.48 px | 73 / 360.2 s | `fitmap:634545ba3c704d5b` / `retrieval:acaaf3f6edd7174e` (1,734) |
+| `fit-stage3-multilap-v4` (B4, fix-6) | `--window 0 700.39 --travel-m 5.7`, `fr` | 1,909 / 86,251 / 1.49 px | 91 / 381.9 s | `fitmap:618ee99e157e2291` / `retrieval:c1996fe897e054d0` (1,818) |
+
+B4 covers the whole fitting interval [0, 700.39) s at the smallest 0.1 m travel step that stays
+under the builder's 2,000-reference cap. Four passes per place at 4 m spacing would need about
+2,458 references.
+
+| Measured value | fix-3 (round 2) | fix-4 (dual) | **fix-5 (B1, best)** | fix-6 (B4) |
+|---|---|---|---|---|
+| Full-pose updates / lost rows | 1,378 / 602 | 1,221 / 721 | **1,755 / 239** | 1,762 / 244 |
+| Longest full-pose gap / gaps > 3 s | 11.80 s / 10 | 13.70 s / 9 | **5.40 s / 4** | 7.60 s / 3 |
+| Original = updated x/y RMSE | 27.961 m | 37.157 m | **9.665 m** | 9.561 m |
+| Reconciled map x/y / racing-line s/n RMSE | 27.967 / 27.878 m | 37.164 / 37.310 m | **9.667 / 9.025 m** | 9.562 / 8.860 m |
+| Wrong-lock rows > 10 m | 5 | 10 (9 `r`) | **2** (10.3, 10.4 m) | 3 (10.7–12.4 m) |
+| Anchors dispatched / delivered | 910 / 817 | 962 / 860 | 864 / 824 | 854 / 817 |
+| Frontend errors / backend faults | 0 / 0 | 0 / 0 | 0 / 0 | 0 / 0 |
+| CSV, exposure sequence, coverage 1.0, metrics | pass | pass | pass | pass |
+| Visual-baseline gate | fail | fail | **fail** | fail |
+
+fix-5 gaps over 3 s (t, s): 104.98–109.68, 142.28–146.48, 232.38–237.78, 258.98–261.98.
+fix-6: 59.18–63.08, 139.08–146.68, 232.88–237.58. Submission SHA-256: fix-5 `d6055bea…17c3bc`,
+fix-6 `df461848…694b65`, fix-4 `3c36db48…1de5eb`; full hashes in the receipt.
+
+- **fix-4 rejected.** The dual bank kept one pass per place. Recovery alternates cameras as
+  designed, so rear jobs took up to 85 % of recovery slots in some gaps, and 9 of its 10 wrong
+  locks came from `r`. Front full poses fell by 335.
+- **Per-place passes.** The round-2 windows gave each recurring gap place (A–D) exactly one
+  fitting pass. B1 adds the 321-, 483- and 605-s laps, giving three passes per place and
+  multi-lap support in the former holes at 28–34 s and 180–183 s.
+- **fix-5 diagnosis.** Retrieval is correct: 79 of 83 recovery jobs had both references within
+  15 m of GT. Map support is the limit: near-GT references hold only 31–60 landmarks at place B,
+  and 32 of 83 worker jobs failed `pnp_too_few_inliers`/`insufficient_matches`. Of 51 delivered
+  handoffs, 11 were accepted, 19 failed `too_few_correspondences` (the worker delivered 30–56
+  points but LK carry dropped below 30), 11 failed `poor_image_coverage` at 4 cells (pose error
+  0.1–2 m) and 5 were degenerate. No C/B code defect and no slot starvation was found.
+- **Selection caveat.** Window selection used tuning-interval diagnostics and fitting-interval
+  GT only. These are tuning results, not a holdout result.
+
+Current recommended configuration: bank `artifacts/fit-stage3-multilap-v1` with
+`retrieval:acaaf3f6edd7174e`; best run `results/tune-stage3-fix-5` (shortest longest gap; fix-6
+has one fewer gap over 3 s but a longer 7.60 s gap). Four of the five validator checks pass;
+the continuity gate fails.
+
+Remaining limitation: four gaps of 3.0–5.4 s remain at places B and C, so the unchanged 3 s
+gate fails; 9.7 m RMSE is not a certified localizer. A full pass is unlikely from bank windows
+alone under the 2,000-reference cap. Concrete next options:
+
+1. Raise the 2,000-reference build cap, with B's agreement, so four passes fit at 4 m spacing.
+2. Reduce handoff LK-carry point loss, so delivered 30–56-point worker results keep ≥ 30.
+3. Densify the map per place (more retained landmarks at B and C).
+
+Any option needs a fresh replay, fresh evaluator reports and the unchanged validator.
+
+## Superseded: Round 2: global retrieval + joint handoff (not signed off)
+
+Receipt (now replaced by round 3): [stage3_recheck.json](evidence/stage3_recheck.json). Same bank
 (`artifacts/fit-b-integrated-v2`), split, evaluator, validator, gates, thresholds and shared
 contracts; fresh process, full unchanged tuning interval. Suite: **986 passed**; Ruff passed.
 Retrieval artifact `retrieval:294a97a90ef0922c` (680 `fr` references; offline recall@10
