@@ -83,6 +83,7 @@ PROHIBITED_TOPICS = frozenset({"/tf", "/constructor0/state_estimation"})
 
 _BODY_FRAME = "constructor0/base_link"
 _CAMERA_CHILD_PREFIX = "constructor0/camera_"
+PREPROCESSING_RECIPE = "canonical-remap-v2-full-bilinear-mask"
 
 # Cadence (plan section 1): T is the median of the last 16 available valid primary-camera
 # exposure intervals, initially 100 ms. Exposure tolerance min(5 ms, 0.2 T); arrival
@@ -243,7 +244,7 @@ def read_calibrations(
     if missing_tf:
         raise contracts.ContractError(f"tf_static camera transform missing for {missing_tf}")
 
-    info_digest = hashlib.sha256(b"camloc:canonical-remap-v2-full-bilinear-mask")
+    info_digest = hashlib.sha256(("camloc:" + PREPROCESSING_RECIPE).encode())
     for camera in CAMERA_IDS:
         info = raw[camera]
         info_digest.update(f"{camera}:{info.frame_id}:{info.raw_width}:{info.raw_height}".encode())

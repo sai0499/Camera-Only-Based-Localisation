@@ -51,6 +51,7 @@
     <label>Initial pose JSON <textarea id="initial-pose" rows="4" spellcheck="false" required></textarea></label><p class="small-note">timestamp_ns, x [m], y [m], yaw [rad]. Exactly one pose; never the vehicle-state stream.</p>
     <details><summary>Explicit recording bounds</summary><div class="form-grid"><label>Start ns (optional)<input id="start-ns" inputmode="numeric"></label><label>End ns (exclusive, optional)<input id="end-ns" inputmode="numeric"></label></div></details>
     <label class="check-label"><input type="checkbox" id="retrieval" checked> Use the frozen retrieval index</label>
+    <label>Motion input <select id="vehicle-motion"><option value="">Camera only</option><option value="validation-twist">Motion-assisted · validation velocity topic</option><option value="state-fields">Motion-assisted · whitelisted training state velocities</option></select></label><p class="small-note">Motion assistance uses body velocity and yaw rate. Absolute pose, orientation and track-state fields remain excluded.</p>
     <div id="validation-message" role="status" class="validation-message">Compatibility and asset hashes are checked again by the production runner.</div>
     <div class="dialog-actions"><button type="button" id="validate-run">Check inputs</button><button type="submit" id="start-run" class="primary">Start localisation ↗</button></div>
   </form>

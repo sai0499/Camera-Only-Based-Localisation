@@ -1,5 +1,12 @@
 # Start here: TrackCode Apex
 
+**18 October deadline update:** the owner authorized B's accuracy work and the challenge
+PDF's permitted vehicle-motion inputs. Optional motion propagation plus robust visual
+fusion improves full tuning position RMSE from 12.893 m to 0.530 m (lateral 0.262 m,
+yaw 0.195 degrees, 92.3% within 1 m). Camera-only stays the default. See
+[the mode, safety boundary, commands and independent evidence](task_docs/DEADLINE_ACCURACY.md).
+These scores do not clear the unchanged camera-only visual continuity gate below.
+
 This is the shared development workspace for the three-person camera-localization team. A's geometry/input, B's vision/map components through Step 3, and C's contracts/filter/scheduler/recovery are integrated on `dev/implementation`. The raw-camera runner and validator now work; [Stage 3 integration status](task_docs/STAGE3_STATUS.md) records commands and real tuning results. The best full forward-camera replay (multi-lap fitting bank, `tune-stage3-fix-5`) fused 1,755 visual corrections across 2,708 outputs but still had a 5.4 s full-pose gap and four gaps over the 3 s bound (x/y RMSE 9.67 m); Team C Step 3 is **not signed off**. [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. [Step 5](task_docs/STAGE5_STATUS.md) now tracks real-recording integrity/stress checks and runtime telemetry; it is not signed off. The evaluation adapter and native-coordinate reconciliation already work.
 
 B's [PR #2](https://github.com/sai0499/Camera-Only-Based-Localisation/pull/2) verification and

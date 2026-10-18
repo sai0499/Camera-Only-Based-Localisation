@@ -155,10 +155,12 @@ def test_preset_cannot_override_frozen_bounds():
         resolve_episode(argparse.Namespace(split="tune", start_ns="1", end_ns=None), initial)
 
 
-def test_launcher_uses_one_production_process_and_no_gt(tmp_path, monkeypatch):
+@pytest.mark.parametrize("motion", [None, "state-fields", "validation-twist"])
+def test_launcher_uses_one_production_process_and_no_gt(tmp_path, monkeypatch, motion):
     workspace = Workspace(tmp_path)
     settings = {"bag": "input.mcap", "artifacts": "bank", "mode": "input", "retrieval": True,
-                "initial_pose": {"timestamp_ns": str(EPOCH), "x": 1, "y": 2, "yaw": 0}}
+                "initial_pose": {"timestamp_ns": str(EPOCH), "x": 1, "y": 2, "yaw": 0},
+                "vehicle_motion": motion}
     monkeypatch.setattr(workspace, "validate", lambda _: settings)
     child = Mock()
     child.poll.return_value = None
@@ -167,6 +169,9 @@ def test_launcher_uses_one_production_process_and_no_gt(tmp_path, monkeypatch):
     result = workspace.start({})
     command = popen.call_args.args[0]
     assert "--input-recording" in command and "--split" not in command
+    assert ("--vehicle-motion" in command) == (motion is not None)
+    if motion:
+        assert command[command.index("--vehicle-motion") + 1] == motion
     assert not any("gt" in item.lower() for item in command)
     assert Path(command[command.index("--initial-pose") + 1]).exists()
     assert result["id"] in workspace.folders

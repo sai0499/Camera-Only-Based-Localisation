@@ -44,6 +44,36 @@ K_TOLERANCE_PX = 0.05
 T_BC_TOLERANCE = 1e-6
 
 
+def raw_calibration_geometry(calibration):
+    """Exact inputs of the per-camera canonical remap, excluding unrelated sensor mounts."""
+    return {"frame_id": calibration.frame_id, "raw_width": calibration.raw_width,
+            "raw_height": calibration.raw_height, "K_raw": calibration.K_raw.tolist(),
+            "D_raw": calibration.D_raw.tolist(), "K": calibration.K.tolist(),
+            "T_BC": calibration.T_BC.tolist()}
+
+
+def bind_calibrations(calibrations, manifest):
+    """Bind a matching mapped camera to its frozen remap ID using hash-bound raw proof.
+
+    Legacy banks without raw proof retain their original strict identity check. A change
+    to another camera cannot invalidate an exactly identical mapped camera's pixels.
+    """
+    from camloc.io import PREPROCESSING_RECIPE
+
+    result = dict(calibrations)
+    for camera in manifest["cameras"]:
+        calibration = calibrations[camera]
+        if calibration.preprocessing_id == manifest["preprocessing_id"]:
+            continue
+        if (manifest.get("preprocessing_recipe") != PREPROCESSING_RECIPE
+                or manifest.get("raw_camera_geometry", {}).get(camera) != raw_calibration_geometry(calibration)
+                or not np.array_equal(calibration.K, manifest["canonical_K"][camera])
+                or not np.array_equal(calibration.T_BC, manifest["T_BC"][camera])):
+            raise c.ContractError(f"camera {camera} lacks matching frozen raw preprocessing geometry")
+        result[camera] = dataclasses.replace(calibration, preprocessing_id=manifest["preprocessing_id"])
+    return result
+
+
 def _sha256(path: Path) -> str:
     with path.open("rb") as handle:
         return hashlib.file_digest(handle, "sha256").hexdigest()

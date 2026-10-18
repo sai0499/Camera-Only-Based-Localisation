@@ -5,6 +5,7 @@ Read [FINAL_BUILD_PLAN.md](FINAL_BUILD_PLAN.md) to build. It is the authoritativ
 | Location | Purpose |
 |---|---|
 | `FINAL_BUILD_PLAN.md` | Current system, records, ownership, thresholds, failure actions and acceptance gates |
+| `DEADLINE_ACCURACY.md` | Owner-authorized optional velocity/yaw-rate assistance, frozen selection, independent evaluation, runtime and submission commands |
 | `STAGE2_STATUS.md` | Implemented C-only filter/streaming API, synthetic checks and pending A/B integration |
 | `STAGE3_STATUS.md` | Integrated B PR, raw-camera runner/validator, fitting builds, real tuning failures and remaining visual-baseline gate |
 | `STAGE4_STATUS.md` | Implemented C anchor scheduler, recovery manager, status machine, synthetic checks and resolved lifecycle decisions |

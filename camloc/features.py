@@ -110,15 +110,23 @@ def model_identities(weights: dict[str, dict[str, Any]]) -> tuple[str, ...]:
     )
 
 
-def backend_identity() -> dict[str, Any]:
+def backend_identity(selection="score") -> dict[str, Any]:
     """Configuration recorded in map manifests and compared at load time."""
-    return {"extractor": dict(EXTRACTOR_CONFIG), "matcher": dict(MATCHER_CONFIG)}
+    extractor = dict(EXTRACTOR_CONFIG)
+    if selection == "grid-reserve-32":
+        extractor["keypoint_selection"] = selection
+    elif selection not in ("score", "grid-reserve-32"):
+        raise c.ContractError("unknown keypoint selection")
+    return {"extractor": extractor, "matcher": dict(MATCHER_CONFIG)}
 
 
 class FeatureBackend:
     """DISK extraction and LightGlue matching on one torch device (CUDA when available)."""
 
-    def __init__(self, device: str | None = None, manifest_path: Path = MODEL_MANIFEST) -> None:
+    def __init__(self, device: str | None = None, manifest_path: Path = MODEL_MANIFEST,
+                 *, selection="score") -> None:
+        self.selection = selection
+        backend_identity(selection)  # reject unsupported feature/map configurations
         self.weights = verified_weights(manifest_path)
         os.environ["TORCH_HOME"] = self.weights["torch_home"]
         import torch
@@ -159,7 +167,7 @@ class FeatureBackend:
         keypoints = out["keypoints"][0].float().cpu().numpy()
         scores = out["keypoint_scores"][0].float().cpu().numpy()
         descriptors = out["descriptors"][0].float().cpu().numpy()
-        return select_keypoints(keypoints, scores, descriptors, mask)
+        return select_keypoints(keypoints, scores, descriptors, mask, selection=self.selection)
 
     def match(self, first: Features, second: Features) -> tuple[np.ndarray, np.ndarray]:
         """LightGlue matches between two canonical feature sets.
@@ -193,7 +201,8 @@ class FeatureBackend:
 
 
 def select_keypoints(
-    keypoints: np.ndarray, scores: np.ndarray, descriptors: np.ndarray, mask: np.ndarray
+    keypoints: np.ndarray, scores: np.ndarray, descriptors: np.ndarray, mask: np.ndarray,
+    *, selection="score",
 ) -> Features:
     """Keep detections on usable pixels, then the MAX_KEYPOINTS best by score (stable order)."""
     keypoints = np.asarray(keypoints, np.float32).reshape(-1, 2)
@@ -205,7 +214,21 @@ def select_keypoints(
     usable = np.zeros(len(keypoints), bool)
     usable[inside] = mask[v[inside], u[inside]]
     index = np.flatnonzero(usable)
-    order = index[np.argsort(-scores[index], kind="stable")][: c.MAX_KEYPOINTS]
+    ranked = index[np.argsort(-scores[index], kind="stable")]
+    order = ranked[: c.MAX_KEYPOINTS]
+    if selection == "grid-reserve-32" and len(ranked):
+        rows, cols = np.where(mask)
+        cell_u = np.clip((keypoints[ranked, 0] - cols.min() + .5) * 4 /
+                         (cols.max() - cols.min() + 1), 0, 3).astype(int)
+        cell_v = np.clip((keypoints[ranked, 1] - rows.min() + .5) * 4 /
+                         (rows.max() - rows.min() + 1), 0, 3).astype(int)
+        cells = 4 * cell_v + cell_u
+        reserved = np.concatenate([ranked[cells == cell][:32] for cell in range(16)])
+        fill = ranked[~np.isin(ranked, reserved)][: c.MAX_KEYPOINTS - len(reserved)]
+        chosen = np.concatenate([reserved, fill])
+        order = chosen[np.argsort(-scores[chosen], kind="stable")]
+    elif selection not in ("score", "grid-reserve-32"):
+        raise c.ContractError("unknown keypoint selection")
     return Features(
         keypoints=np.ascontiguousarray(keypoints[order]),
         scores=np.ascontiguousarray(scores[order]),

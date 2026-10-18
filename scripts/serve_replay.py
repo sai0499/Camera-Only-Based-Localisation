@@ -76,7 +76,9 @@ class Workspace:
         return {"runs": runs, "bags": [p.name for p in self.root.glob("*.mcap")],
                 "artifacts": sorted(banks), "initial_pose": completed.get("initial_pose", {}),
                 "default_gt": "evaluation/reference_reconciled/gt_tf.csv",
-                "default_artifacts": "artifacts/fit-stage3-multilap-v5"}
+                "default_artifacts": ("artifacts/fit-stage3-multilap-v5-rigproof-v2"
+                    if (self.root / "artifacts/fit-stage3-multilap-v5-rigproof-v2/manifest.json").exists()
+                    else "artifacts/fit-stage3-multilap-v5")}
 
     def validate(self, request):
         from camloc import contracts as c
@@ -95,6 +97,9 @@ class Workspace:
         mode = request.get("mode", "input")
         if mode not in ("input", "tune", "holdout"):
             raise ValueError("Unknown run mode")
+        vehicle_motion = request.get("vehicle_motion") or None
+        if vehicle_motion not in (None, "state-fields", "validation-twist"):
+            raise ValueError("Unknown vehicle motion source")
         args = argparse.Namespace(split=None if mode == "input" else mode,
                                   start_ns=request.get("start_ns") or None,
                                   end_ns=request.get("end_ns") or None)
@@ -114,7 +119,9 @@ class Workspace:
         from camloc.io import read_calibrations
         import numpy as np
 
-        calibrations = read_calibrations(bag)
+        from camloc.landmark_map import bind_calibrations
+
+        calibrations = bind_calibrations(read_calibrations(bag), manifest)
         for camera in manifest["cameras"]:
             cal = calibrations[camera]
             if not np.allclose(cal.K, manifest["canonical_K"][camera], atol=1e-8, rtol=0) or not np.allclose(
@@ -124,6 +131,7 @@ class Workspace:
                 "initial_pose": {"timestamp_ns": str(initial.timestamp_ns), "x": initial.x,
                                  "y": initial.y, "yaw": initial.yaw},
                 "episode": wire(episode.summary()), "retrieval": bool(request.get("retrieval", True)),
+                "vehicle_motion": vehicle_motion,
                 "map_id": manifest["map_id"], "cameras": manifest["cameras"]}
 
     def start(self, request):
@@ -148,6 +156,8 @@ class Workspace:
             command += ["--split", settings["mode"]]
         if settings["retrieval"]:
             command.append("--retrieval")
+        if settings.get("vehicle_motion"):
+            command += ["--vehicle-motion", settings["vehicle_motion"]]
         log = inputs / (slug + ".log")
         with log.open("wb") as handle:
             self.process = subprocess.Popen(command, cwd=self.root, stdout=handle, stderr=subprocess.STDOUT,

@@ -1,5 +1,13 @@
 # Team C Step 3: B integration and the real baseline gate
 
+**18 October deadline update:** optional vehicle-motion assistance reaches 0.530 m
+whole-tuning position RMSE, 0.262 m lateral RMSE and 0.195-degree yaw RMSE with 100%
+output coverage. See [DEADLINE_ACCURACY.md](DEADLINE_ACCURACY.md) for the owner-authorized
+input amendment and frozen selection. Its 4.800 s full-visual-pose gap still fails this
+stage's unchanged continuity gate. **Camera-only Step 3 remains open.** The deadline
+amendment authorizes independent evaluation of this separate mode; the earlier results
+and sequencing guidance below describe the original camera-only build.
+
 B's [PR #1](https://github.com/sai0499/Camera-Only-Based-Localisation/pull/1), head
 `b1202d8a27b7581fc6dac153215f10a822238963`, is integrated into `dev/implementation`.
 It adds DISK/LightGlue, the fixed-pose fitting builder, frozen map loader, LK/PnP tracker,

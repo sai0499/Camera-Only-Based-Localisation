@@ -1,0 +1,69 @@
+{
+  "frozen_at_utc": "2026-10-18T16:40:08.139267+00:00",
+  "base_commit": "bae3aa26425207d5ad1d715b2a01d67f377a8834",
+  "selection_basis": "Lowest full tuning position RMSE before any new holdout accuracy run.",
+  "configuration": {
+    "artifacts": "artifacts\\fit-stage3-multilap-v5-rigproof-v2",
+    "retrieval": true,
+    "vehicle_motion": "state-fields",
+    "visual_weighting": "student_t_5dof",
+    "camera_only_default_preserved": true,
+    "gates_changed": false
+  },
+  "candidates": {
+    "camera_only_v5": {
+      "run": "results/b-pr2-after-v5",
+      "position_rmse_m": 12.892825533
+    },
+    "motion_v1": {
+      "run": "results/motion-assist-tune-v1",
+      "position_rmse_m": 1.4094480467
+    },
+    "selected_motion_robust_v2": {
+      "run": "results/motion-assist-tune-v2",
+      "position_rmse_m_rounded": 0.53,
+      "lateral_rmse_m_rounded": 0.262,
+      "yaw_rmse_deg_rounded": 0.195,
+      "within_1m_pct_rounded": 92.3
+    },
+    "spatial_map_motion": {
+      "run": "results/motion-spatial-tune-v1",
+      "position_rmse_m_rounded": 0.538,
+      "lateral_rmse_m_rounded": 0.219,
+      "yaw_rmse_deg_rounded": 0.216,
+      "within_1m_pct_rounded": 93.3,
+      "selected": false
+    }
+  },
+  "source_sha256": {
+    "run.py": "413267e76a61eabaf7fd9f7f58a14074cc90de0b082980efbe2be39396f25602",
+    "camloc/__init__.py": "ab9d35eefd1b5029a35b4dfe1510b2c9c89cf953be9d31f8211c32935036828d",
+    "camloc/borders.py": "d6d3e9eca9f1d80bf498a93a67e8ae94c1ed10958bb75a9f36bf834f31312550",
+    "camloc/contracts.py": "b6012b4b7a2b6cea2fb1b9a4a1f0581e12a2f35b03f38ba3031f6f90de644e74",
+    "camloc/features.py": "a17e2f7237e38ee4aaf6741f00c1fb584d0192fd3a51223ae7d5705c1693ba0b",
+    "camloc/filter.py": "86ce00e822e2672507f9958284db2d75ec7b3cf324525e6a7a020290b1772b7c",
+    "camloc/frontend.py": "22320f705548e0db7d739b44bc551a598b74a573662fffc527103ac13e6d4eff",
+    "camloc/geometry.py": "45ee53559036b28e9483fccb2da784bb6a677b7c718b2e3a5da6f6fce6a7ebf8",
+    "camloc/ground_motion.py": "eb035a053d84567fe93b5de0816a44d05dd81c7ad7a85642aebb5af945dc42aa",
+    "camloc/io.py": "fc791eaaffa2aaac57543c332262a2727e14d4f3902c7fa095c0719907c9baf1",
+    "camloc/landmark_map.py": "104f605a26fa27fca4342ef5a9059c307b1db4d124a1cfdf50ec76a0339975cf",
+    "camloc/masks.py": "ab348b12e4a5d56cef3ac83b8c9a2d2e3007dcbd3047f15aa755d6bbf1418d46",
+    "camloc/pnp.py": "3248b053c658709a79bfafb96c939bbbdbc38e06911f14f917bb1d69f9c56132",
+    "camloc/recovery.py": "3f2742b3813c76b474f7bd8bed42149d461faf39e203d52379dd78bb21735a4e",
+    "camloc/retrieval.py": "50c639340238061d1e7885c28ff9b811a59213a85b0df4d7e24678c3b95f6c65",
+    "camloc/runtime.py": "ca90d352adef1ceeb8da095b1ce3ae697fa5d36ad420af15d807aa95b2180d6d",
+    "camloc/scheduler.py": "fdb58b0ff049c16669f4970665f655b4855e6767284110e9384eeecba4b91e75",
+    "camloc/submission.py": "ac1f4f50d5f6b52a0a3922fbf56ba7259cdefe4f8ae9ce022587d0bccd84d8b8",
+    "camloc/track_coords.py": "d223d706027f8da870bdddbc100da9e961fbdd31179533c4cab3e370f262fa12",
+    "camloc/vehicle_motion.py": "59cfbacccb37019fc7b93191379f0a616600299ff3fc51e28260a15e7c2569f3",
+    "camloc/vision.py": "bb1656c8b772db8b67f3322f3e92d700f69a5ffe27b167411fc426b56f9f437c"
+  },
+  "artifact_sha256": {
+    "manifest.json": "196f4c064548d12c4a4759057aa1079e8bcd3dcfa1a3fbca49302d155b84dc32",
+    "retrieval.json": "812f428fdd80c94fa4cecec4f6dffd886bfb5f4bb5502cd6ae74307f42811a17"
+  },
+  "map_id": "fitmap:a664c4c69eb41d99",
+  "retrieval_id": "retrieval:64c9b83aa4211389",
+  "holdout_policy": "Run the frozen configuration once; report unchanged without selecting on holdout.",
+  "lighting_speed_recording": "Unscored stress test, no absolute GT or organizer initial pose."
+}

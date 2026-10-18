@@ -85,8 +85,8 @@ def stats_ms(values: list[float]) -> dict:
 class Fp16Backend(features.FeatureBackend):
     """Candidate variant: DISK forward under fp16 autocast, LightGlue mixed precision."""
 
-    def __init__(self, device: str | None = None) -> None:
-        super().__init__(device=device)
+    def __init__(self, device: str | None = None, *, selection="score") -> None:
+        super().__init__(device=device, selection=selection)
         self._matcher.conf.mp = True
 
     def extract(self, image: np.ndarray, mask: np.ndarray) -> features.Features:
@@ -107,6 +107,7 @@ class TimedBackend:
     def __init__(self, backend) -> None:
         self.inner = backend
         self.model_ids = backend.model_ids
+        self.selection = backend.selection
         self.extract_ms: list[float] = []
         self.match_ms: list[float] = []
 
@@ -305,7 +306,8 @@ def main() -> None:
     bank = lm.load_landmark_map(args.artifacts)
     startup["map_load_s"] = time.perf_counter() - tic
     tic = time.perf_counter()
-    backend = features.FeatureBackend()
+    selection = bank.manifest.get("feature_backend", {}).get("extractor", {}).get("keypoint_selection", "score")
+    backend = features.FeatureBackend(selection=selection)
     startup["disk_lightglue_init_s"] = time.perf_counter() - tic
     tic = time.perf_counter()
     model = rt.load_pinned_eigenplaces()
@@ -342,7 +344,7 @@ def main() -> None:
     if args.fp16:
         if not torch.cuda.is_available():
             raise SystemExit("--fp16 needs CUDA")
-        fast = TimedBackend(Fp16Backend())
+        fast = TimedBackend(Fp16Backend(selection=selection))
         fast_worker = vision.DiskAnchorWorker(bank, fast, retrieval=index)
         fast_worker.run(request(10**6, images[0], bank.map_id))
         fast.extract_ms.clear()

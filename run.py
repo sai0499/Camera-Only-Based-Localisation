@@ -136,6 +136,9 @@ def _run_basic(
                 expected = calibration.setdefault(image.camera_id, image.calibration_id)
                 if expected != image.calibration_id:
                     raise c.ContractError("camera calibration changed during a run")
+            estimator.prepare_group(frame_set)
+            if estimator.vehicle_motion is not None:
+                record(estimator.vehicle_motion.diagnostic(frame_set))
             prior = estimator.snapshot(frame_set.t_ns)
             try:
                 evidence = build_evidence(frame_set, prior)
@@ -156,6 +159,8 @@ def _run_basic(
                 raise
             writer.write(estimate)
             record(estimate.summary())
+            for event in estimator.drain_diagnostics():
+                record(event)
             counts["groups"] += 1
             counts["prediction_only"] += estimate.evidence_kinds == (c.EvidenceKind.PREDICTION_ONLY,)
         if isinstance(source, c.FrameSetSource):
@@ -260,6 +265,9 @@ def _run_stage4(
                                             initial_ns=initial_ns, episode=episode, record=record)
                 group_id = frame_set.group_id
                 # 1-2. Prior, then the scheduler's delivery for this group.
+                estimator.prepare_group(frame_set)
+                if estimator.vehicle_motion is not None:
+                    record(estimator.vehicle_motion.diagnostic(frame_set))
                 prior = estimator.snapshot(frame_set.t_ns)
                 context = (None if scheduler is None
                            else scheduler.begin_group(frame_set, prior, estimator.estimate.status))
@@ -314,6 +322,8 @@ def _run_stage4(
                 writer.write(estimate)
                 writer.flush()
                 record(estimate.summary())
+                for event in estimator.drain_diagnostics():
+                    record(event)
                 counts["groups"] += 1
                 counts["prediction_only"] += (
                     estimate.evidence_kinds == (c.EvidenceKind.PREDICTION_ONLY,))
@@ -428,6 +438,8 @@ def main(argv=None):
     parser.add_argument("--retrieval", action="store_true",
                         help="load <artifacts>/retrieval.{npz,json} and the pinned EigenPlaces "
                              "checkpoint for global recovery retrieval (fails if missing)")
+    parser.add_argument("--vehicle-motion", choices=("state-fields", "validation-twist"),
+                        help="explicit PDF-permitted motion assistance: body vx/vy/yaw rate only; no pose fields")
     args = parser.parse_args(argv)
     initial = c.read_initial_pose(args.initial_pose)
     episode = resolve_episode(args, initial)
@@ -439,15 +451,17 @@ def main(argv=None):
 
         bank = landmark_map.load_landmark_map(args.artifacts)
         manifest = bank.manifest
+        feature_selection = manifest.get("feature_backend", {}).get("extractor", {}).get(
+            "keypoint_selection", "score")
         fit = c.load_split()["fit"]
         if (manifest.get("split_sha256") != c.BUILD_SPLIT_SHA256
                 or manifest.get("supplied_map_sha256") != c.SUPPLIED_MAP_SHA256
-                or manifest.get("feature_backend") != features.backend_identity()
+                or manifest.get("feature_backend") != features.backend_identity(feature_selection)
                 or manifest.get("fitting_interval_ns") != [str(fit.start_ns), str(fit.end_ns)]
                 or bool(((bank.keyframe_exposure_ns < fit.start_ns)
                          | (bank.keyframe_exposure_ns >= fit.end_ns)).any())):
             raise c.ContractError("map fitting provenance or feature configuration is incompatible")
-        calibrations = io.read_calibrations(args.bag)
+        calibrations = landmark_map.bind_calibrations(io.read_calibrations(args.bag), manifest)
         tracker = vision.load_tracker(bank, calibrations)
         if any(reason != "valid" for reason in tracker.calibration_compatibility.values()):
             raise c.ContractError(f"incompatible map/rig: {tracker.calibration_compatibility}")
@@ -465,7 +479,12 @@ def main(argv=None):
             raise c.ContractError("map checkpoints differ from the installed pinned backend")
         supplied_map = c.PROJECT_ROOT / "23-00-38_cut_120m_update" / "map.mcap"
         road = geometry.load_road_geometry(supplied_map)
-        estimator = CameraFilter(initial)
+        controls = None
+        if args.vehicle_motion:
+            from camloc.vehicle_motion import VehicleMotion
+
+            controls = VehicleMotion.load(args.bag, args.vehicle_motion, initial.timestamp_ns, episode.end_ns)
+        estimator = CameraFilter(initial, vehicle_motion=controls)
         frontend = VisualFrontend(geometry.make_canonicalizer(calibrations), tracker, estimator,
             road=road, borders=borders.make_border_source(road), motion=vision.make_ground_motion(),
             retrieval_enabled=index is not None)
@@ -479,6 +498,9 @@ def main(argv=None):
                                     transport_speed=args.transport_speed)
             source = runtime
         metadata = {"split": args.split or "input", "initial_pose": initial.summary(),
+                    "inference_mode": "vehicle_motion_assisted" if controls else "camera_only",
+                    "vehicle_motion": None if controls is None else controls.summary(),
+                    "motion_visual_weighting": "student_t_5dof" if controls else None,
                     "episode": episode.summary(), "map": bank.summary(),
                     "models": list(worker.backend.model_ids),
                     "query_bag": args.bag.name,

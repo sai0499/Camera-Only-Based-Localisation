@@ -16,6 +16,15 @@ New-recording mode starts at that pose and runs to EOF, or to optional explicit 
 Tuning/holdout presets retain their frozen intervals. Production verifies all artifact
 hashes during startup; a different rig/calibration is rejected rather than adapted.
 
+**Motion input** defaults to camera-only. Choose **Training state velocity whitelist**
+for the original development recording, or **Validation velocity topic** when the input
+contains `/constructor0/validation/twist`. This explicit mode uses only timestamp and
+body vx/vy/yaw rate, never recorded pose, orientation, status or track coordinates.
+The real hidden test still uses the judges' one initial pose. The supplied camera lap
+is an unscored lighting/speed stress test with an experimental image-derived initial
+pose. Geometry-bound banks accept an unchanged selected camera even if an unused
+camera's mount differs; they require exact raw calibration and preprocessing proof.
+
 During a run, **Follow latest** follows newly written outputs. Pausing/stepping/scrubbing
 changes the viewer only; closing the browser does not stop inference. Only one owned
 inference job may run at a time. The UI does not currently offer forced cancellation.

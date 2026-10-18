@@ -149,10 +149,12 @@ class CameraFilter:
     own full geometry. Neither mechanism injects z/roll/pitch into the six-state covariance.
     """
 
-    def __init__(self, initial_pose: c.InitialPose) -> None:
+    def __init__(self, initial_pose: c.InitialPose, *, vehicle_motion=None) -> None:
         if not isinstance(initial_pose, c.InitialPose):
             raise c.ContractError("CameraFilter requires one InitialPose")
         self.initial_pose = initial_pose
+        self.vehicle_motion = vehicle_motion
+        self._diagnostics = []
         self.estimate = c.Estimate(
             t_ns=initial_pose.timestamp_ns, group_id=None,
             state=[initial_pose.x, initial_pose.y, initial_pose.yaw, 0, 0, 0],
@@ -174,10 +176,41 @@ class CameraFilter:
         previous = self.estimate
         if stamp < previous.t_ns:
             raise c.ContractError("snapshot cannot precede the last committed time")
-        state, P = _propagate(previous.state, previous.P, previous.t_ns, stamp,
+        state, P = self._propagate(previous.state, previous.P, previous.t_ns, stamp,
                               _NOISE_SCALE[previous.status], self._last_full_ns())
         return c.SearchSnapshot(t_ns=stamp, state=state, P=P, status=previous.status,
                                 branch=previous.branch, auxiliary=previous.auxiliary)
+
+    def prepare_group(self, frame):
+        if self.vehicle_motion is not None:
+            self.vehicle_motion.prepare(frame)
+
+    def drain_diagnostics(self):
+        records, self._diagnostics = self._diagnostics, []
+        return records
+
+    def _motion_pose_update(self, state, P, value, R, stamp, *, recovery=False):
+        """Student-t innovation weighting for visual corrections with fresh motion controls.
+
+        A visual hypothesis does not erase an independently propagated motion prior. Existing
+        PnP/innovation/recovery gates are unchanged; this only weights an accepted correction.
+        """
+        if self.vehicle_motion is not None and self.vehicle_motion.fresh_at(stamp):
+            residual = value - state[:3]
+            residual[2] = c.wrap_angle(residual[2])
+            nis = float(residual @ np.linalg.solve(P[:3, :3] + R, residual))
+            weight = min(1., 8. / (5. + nis))  # Student-t, 5 degrees of freedom, 3 pose axes
+            R = R / weight
+            self._diagnostics.append({"record": "VisualInnovation", "t_ns": stamp,
+                "normalized_squared_innovation": nis, "weight": weight,
+                "recovery": recovery, "reason": "motion_prior_robust_weight"})
+        return _update(state, P, value, np.eye(6)[:3], R)
+
+    def _propagate(self, state, covariance, from_ns, to_ns, scale, last_full_ns):
+        if self.vehicle_motion is None:
+            return _propagate(state, covariance, from_ns, to_ns, scale, last_full_ns)
+        return self.vehicle_motion.propagate(state, covariance, from_ns, to_ns, scale,
+                                             last_full_ns, _propagate)
 
     def _last_full_ns(self) -> int:
         """The last full pose time, or the InitialPose time if there is none."""
@@ -283,7 +316,7 @@ class CameraFilter:
             pose = evidence.pose.pose if isinstance(evidence.pose, c.HandoffEvidence) else evidence.pose
             if self.pose_in_gate(pose):
                 stamp = pose.exposure_ns
-                state, P = _propagate(state, P, old.t_ns, stamp, scale, full0)
+                state, P = self._propagate(state, P, old.t_ns, stamp, scale, full0)
                 H = np.eye(6)[:3]
                 quality = max(1.0, 40 / pose.inlier_count, 8 / pose.occupied_cells,
                               pose.median_error_px / 2, pose.p90_error_px / 4)
@@ -291,7 +324,7 @@ class CameraFilter:
                 if interval <= 0:
                     raise c.ContractError("PnP measurement times must increase")
                 R = np.diag(POSE_STD**2) * quality * max(1.0, 0.1 / interval)
-                state, P = _update(state, P, _pose_values(pose.T_WB), H, R)
+                state, P = self._motion_pose_update(state, P, _pose_values(pose.T_WB), R, stamp)
                 aux = _auxiliary(pose.T_WB, stamp, c.AuxSource.PNP)
                 kinds.append(c.EvidenceKind.HANDOFF_PNP if isinstance(evidence.pose, c.HandoffEvidence)
                              else c.EvidenceKind.PNP)
@@ -322,7 +355,7 @@ class CameraFilter:
                     reason = "branch_mismatch"
                 else:
                     measurement_time = max(stamp, border.exposure_ns)
-                    state, P = _propagate(state, P, stamp, measurement_time, scale, full0)
+                    state, P = self._propagate(state, P, stamp, measurement_time, scale, full0)
                     stamp = measurement_time
                     H = np.zeros((2, 6))
                     H[0, :2], H[1, 2] = border.normal_xy, 1
@@ -349,7 +382,7 @@ class CameraFilter:
                     reason = "accepted"
 
         full_ns = last_pnp if last_pnp is not None else self.initial_pose.timestamp_ns
-        state, P = _propagate(state, P, stamp, evidence.t_ns, scale, full_ns)
+        state, P = self._propagate(state, P, stamp, evidence.t_ns, scale, full_ns)
         if evidence.auxiliary is not None and not any(k in kinds for k in (c.EvidenceKind.PNP,
                                                                          c.EvidenceKind.HANDOFF_PNP)):
             aux = evidence.auxiliary
@@ -370,7 +403,7 @@ class CameraFilter:
             anchor = next(a for a in reversed(anchors) if a[0] <= image.exposure_ns)
             (when, previous_state, previous_P, geometry, previous_status, previous_branch,
              anchor_full) = anchor
-            cached_state, cached_P = _propagate(previous_state, previous_P, when,
+            cached_state, cached_P = self._propagate(previous_state, previous_P, when,
                                                 image.exposure_ns, scale, anchor_full)
             fresh = evidence.auxiliary
             if fresh is not None and not any(k in kinds for k in (c.EvidenceKind.PNP,
@@ -401,8 +434,14 @@ class CameraFilter:
         scale = _NOISE_SCALE[old.status]
         state0 = np.r_[_pose_values(confirmation.T_WB), 0.0, 0.0, 0.0]
         P0 = np.diag(np.r_[POSE_STD, INITIAL_STD[3:]] ** 2)
+        if self.vehicle_motion is not None and self.vehicle_motion.fresh_at(m):
+            predicted, predicted_P = self._propagate(old.state, old.P, old.t_ns, m,
+                                                    scale, self._last_full_ns())
+            quality = max(1., 40 / confirmation.inlier_count, 8 / confirmation.occupied_cells)
+            state0, P0 = self._motion_pose_update(predicted, predicted_P,
+                _pose_values(confirmation.T_WB), np.diag(POSE_STD**2) * quality, m, recovery=True)
         aux = _auxiliary(confirmation.T_WB, m, c.AuxSource.PNP)
-        state, P = _propagate(state0, P0, m, now, scale, m)
+        state, P = self._propagate(state0, P0, m, now, scale, m)
         status = _status(aux.valid, now - m, now - m, True, True, False)
         result = c.Estimate(
             t_ns=now, group_id=evidence.group_id, state=state, P=(P + P.T) * 0.5,
@@ -417,7 +456,7 @@ class CameraFilter:
         for image in evidence.frame_set.images:
             if image.exposure_ns < m:
                 continue
-            cached_state, cached_P = _propagate(state0, P0, m, image.exposure_ns, scale, m)
+            cached_state, cached_P = self._propagate(state0, P0, m, image.exposure_ns, scale, m)
             cached.append((image, c.SearchSnapshot(
                 t_ns=image.exposure_ns, state=cached_state, P=cached_P, status=c.Status.TRACKING,
                 branch=c.Branch.UNKNOWN, auxiliary=aux,

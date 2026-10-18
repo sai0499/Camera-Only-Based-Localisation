@@ -1,0 +1,349 @@
+{
+  "scope": "Owner-authorized deadline mode; frozen tuning selection followed by one reserved holdout run.",
+  "base_commit": "bae3aa26425207d5ad1d715b2a01d67f377a8834",
+  "selection_frozen_at_utc": "2026-10-18T16:40:08.139267+00:00",
+  "map_id": "fitmap:a664c4c69eb41d99",
+  "retrieval_id": "retrieval:64c9b83aa4211389",
+  "map_arrays_and_retrieval_descriptors_unchanged": true,
+  "protected_assets_and_locks_unchanged": true,
+  "software_checks": {
+    "full_pytest_passed": 1115,
+    "pytest_seconds": 178.71,
+    "ruff": "passed",
+    "javascript_syntax": "passed",
+    "ui_geometry": "passed"
+  },
+  "integrity": {
+    "scope": "fixed 30 s tuning integrity audit; no accuracy scoring or GT decoding",
+    "episode": {
+      "start_ns": "1791918859509503883",
+      "end_ns": "1791918889509503883"
+    },
+    "cases": {
+      "baseline": {
+        "messages": {
+          "changed": 0,
+          "/tf_static": 120,
+          "/constructor0/sensor/camera_fl/camera_info": 1195,
+          "/constructor0/sensor/camera_fr/camera_info": 1195,
+          "/constructor0/sensor/camera_cl/camera_info": 1195,
+          "/constructor0/sensor/camera_cr/camera_info": 1195,
+          "/constructor0/sensor/camera_r/camera_info": 1195,
+          "/constructor0/sensor/camera_rl/camera_info": 1195,
+          "/constructor0/sensor/camera_rr/camera_info": 1195,
+          "/constructor0/state_estimation": 3341,
+          "/tf": 3341,
+          "/constructor0/sensor/camera_r/compressed_image": 315,
+          "/constructor0/sensor/camera_rr/compressed_image": 315,
+          "/constructor0/sensor/camera_rl/compressed_image": 315,
+          "/constructor0/sensor/camera_cr/compressed_image": 315,
+          "/constructor0/sensor/camera_fr/compressed_image": 315,
+          "/constructor0/sensor/camera_fl/compressed_image": 315,
+          "/constructor0/sensor/camera_cl/compressed_image": 315,
+          "/constructor0/track_bounds": 3
+        },
+        "permitted_messages_sha256": "f5418aab7e716c7427b81e4dcbfe8d69f9933332cc3af110385e89107c24bbcd",
+        "mcap_sha256": "5e686d1b380fe9d514a526883d38d515511d2b5af8ea9c5e9054e81e902b3aaf",
+        "allowed_motion_sha256": "672c6b72bc815d4b5fea0479fdae441e072e6babfc6e021b79b540a944459541"
+      },
+      "pose_poison": {
+        "messages": {
+          "changed": 6682,
+          "/tf_static": 120,
+          "/constructor0/sensor/camera_fl/camera_info": 1195,
+          "/constructor0/sensor/camera_fr/camera_info": 1195,
+          "/constructor0/sensor/camera_cl/camera_info": 1195,
+          "/constructor0/sensor/camera_cr/camera_info": 1195,
+          "/constructor0/sensor/camera_r/camera_info": 1195,
+          "/constructor0/sensor/camera_rl/camera_info": 1195,
+          "/constructor0/sensor/camera_rr/camera_info": 1195,
+          "/constructor0/state_estimation": 3341,
+          "/tf": 3341,
+          "/constructor0/sensor/camera_r/compressed_image": 315,
+          "/constructor0/sensor/camera_rr/compressed_image": 315,
+          "/constructor0/sensor/camera_rl/compressed_image": 315,
+          "/constructor0/sensor/camera_cr/compressed_image": 315,
+          "/constructor0/sensor/camera_fr/compressed_image": 315,
+          "/constructor0/sensor/camera_fl/compressed_image": 315,
+          "/constructor0/sensor/camera_cl/compressed_image": 315,
+          "/constructor0/track_bounds": 3
+        },
+        "permitted_messages_sha256": "f5418aab7e716c7427b81e4dcbfe8d69f9933332cc3af110385e89107c24bbcd",
+        "mcap_sha256": "010d695752ea638e44e116a56d5f2108e9f28f08558ff7a1a4d8b8e89ae52d7b",
+        "allowed_motion_sha256": "672c6b72bc815d4b5fea0479fdae441e072e6babfc6e021b79b540a944459541"
+      },
+      "future_motion": {
+        "messages": {
+          "changed": 2174,
+          "/tf_static": 120,
+          "/constructor0/sensor/camera_fl/camera_info": 1195,
+          "/constructor0/sensor/camera_fr/camera_info": 1195,
+          "/constructor0/sensor/camera_cl/camera_info": 1195,
+          "/constructor0/sensor/camera_cr/camera_info": 1195,
+          "/constructor0/sensor/camera_r/camera_info": 1195,
+          "/constructor0/sensor/camera_rl/camera_info": 1195,
+          "/constructor0/sensor/camera_rr/camera_info": 1195,
+          "/constructor0/state_estimation": 3341,
+          "/tf": 3341,
+          "/constructor0/sensor/camera_r/compressed_image": 315,
+          "/constructor0/sensor/camera_rr/compressed_image": 315,
+          "/constructor0/sensor/camera_rl/compressed_image": 315,
+          "/constructor0/sensor/camera_cr/compressed_image": 315,
+          "/constructor0/sensor/camera_fr/compressed_image": 315,
+          "/constructor0/sensor/camera_fl/compressed_image": 315,
+          "/constructor0/sensor/camera_cl/compressed_image": 315,
+          "/constructor0/track_bounds": 3
+        },
+        "permitted_messages_sha256": "f5418aab7e716c7427b81e4dcbfe8d69f9933332cc3af110385e89107c24bbcd",
+        "mcap_sha256": "90499e00deb9a628717ef29bca926a3e33933ea226d36ef2d8f3908248c7c5bd",
+        "allowed_motion_sha256": "0b019ca01c75f0663dcd30df62ab0a003461fc893b8a1248cce53af6a7c6a329"
+      }
+    },
+    "pose_isolation": {
+      "passed": true,
+      "rows_compared": 300,
+      "max_position_difference_m": 0.0,
+      "max_yaw_difference_rad": 0.0,
+      "same_logical_decisions": true
+    },
+    "future_motion_prefix": {
+      "passed": true,
+      "rows_compared": 100,
+      "max_position_difference_m": 0.0,
+      "max_yaw_difference_rad": 0.0,
+      "same_logical_decisions": true
+    },
+    "passed": true
+  },
+  "repeatability": {
+    "passed": true,
+    "rows_compared": 2708,
+    "max_position_difference_m": 0.0,
+    "max_yaw_difference_rad": 0.0,
+    "same_logical_decisions": true
+  },
+  "hardware": {
+    "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+    "vram_mib": 8188,
+    "driver": "617.42",
+    "torch_cuda": "12.8",
+    "python": "3.12.13",
+    "os": "Windows 11",
+    "cpu_identifier": "AMD64 Family 25 Model 117 Stepping 2, AuthenticAMD"
+  },
+  "runs": {
+    "deadline-final-tune-v1": {
+      "mode": "vehicle_motion_assisted",
+      "rows": 2708,
+      "source_matches_frozen_selection": true,
+      "control_causality_records_checked": 2708,
+      "processing_errors": {},
+      "submission_sha256": "7f42161a749e75775255407a235ec9be0d0b1c077c430b5ce3980da504adcd91",
+      "validation": {
+        "valid": true,
+        "rows": 2708,
+        "visual_updates": 1814,
+        "full_pose_updates": 1814,
+        "lost_rows": 221,
+        "max_full_pose_gap_ns": 4800085683,
+        "visual_baseline_gate_passed": false,
+        "first_timestamp_ns": "1791918859586110105",
+        "last_timestamp_ns": "1791919130289596381",
+        "median_cadence_ns": 100000966,
+        "max_gap_ns": 104211502,
+        "nominal_coverage": 1.0,
+        "exposure_sequence_matches_input": true,
+        "metric_sections_complete": true
+      },
+      "runtime": {
+        "groups": 2708,
+        "transport_speed": null,
+        "profile": "unpaced file replay",
+        "steady_elapsed_seconds": 179.6047054,
+        "elapsed_per_output_ms": 66.32374645494829,
+        "reader": {
+          "mean_ms": 3.407533382570162,
+          "p95_ms": 10.207390000000006,
+          "p99_ms": 13.992703999999987
+        },
+        "group_service": {
+          "mean_ms": 62.04600136632201,
+          "p95_ms": 161.017705,
+          "p99_ms": 186.67776399999985
+        },
+        "nonwaiting_pipeline": {
+          "mean_ms": 30.017391949778435,
+          "p95_ms": 46.48869500000001,
+          "p99_ms": 58.24735399999999
+        },
+        "nonwaiting_pipeline_definition": "reader plus complete group service, subtracting logged worker join stalls; includes handoff",
+        "last_packet_to_completion": null,
+        "timing_limit": "pacing uses constituent packet arrivals; deadline-closure wait and physical exposure latency are not instrumented",
+        "rate_qualified": false,
+        "qualification_limit": "telemetry only; five-minute rate-faithful workload and queue gates are separate",
+        "process_memory": {
+          "peak_working_set_bytes": 2622218240,
+          "peak_commit_bytes": 6012567552
+        },
+        "cuda_memory": {
+          "peak_allocated_bytes": 1217751040,
+          "peak_reserved_bytes": 1694498816
+        }
+      },
+      "official_rounded_metrics": {
+        "position_rmse_m": 0.53,
+        "lateral_rmse_m": 0.262,
+        "longitudinal_rmse_m": 0.461,
+        "yaw_rmse_deg": 0.195,
+        "within_1m_pct": 92.3,
+        "one_second_coverage_pct": 100.0
+      }
+    },
+    "deadline-holdout-v1": {
+      "mode": "vehicle_motion_assisted",
+      "rows": 2191,
+      "source_matches_frozen_selection": true,
+      "control_causality_records_checked": 2191,
+      "processing_errors": {},
+      "submission_sha256": "4a36ce7990b600935b2771cb6e181700f871c787e75b525241e0b9e07eb9a547",
+      "validation": {
+        "valid": true,
+        "rows": 2191,
+        "visual_updates": 1283,
+        "full_pose_updates": 1283,
+        "lost_rows": 282,
+        "max_full_pose_gap_ns": 7200101286,
+        "visual_baseline_gate_passed": false,
+        "first_timestamp_ns": "1791919132389622550",
+        "last_timestamp_ns": "1791919351392425523",
+        "median_cadence_ns": 100001125,
+        "max_gap_ns": 100028516,
+        "nominal_coverage": 0.9995354344273153,
+        "exposure_sequence_matches_input": true,
+        "metric_sections_complete": true
+      },
+      "runtime": {
+        "groups": 2191,
+        "transport_speed": null,
+        "profile": "unpaced file replay",
+        "steady_elapsed_seconds": 167.74793,
+        "elapsed_per_output_ms": 76.56226837060703,
+        "reader": {
+          "mean_ms": 5.799652076677317,
+          "p95_ms": 10.387699999999999,
+          "p99_ms": 14.727549999999981
+        },
+        "group_service": {
+          "mean_ms": 70.74958361478777,
+          "p95_ms": 184.49175000000002,
+          "p99_ms": 206.05966999999993
+        },
+        "nonwaiting_pipeline": {
+          "mean_ms": 34.79000063897763,
+          "p95_ms": 51.04375,
+          "p99_ms": 64.05738
+        },
+        "nonwaiting_pipeline_definition": "reader plus complete group service, subtracting logged worker join stalls; includes handoff",
+        "last_packet_to_completion": null,
+        "timing_limit": "pacing uses constituent packet arrivals; deadline-closure wait and physical exposure latency are not instrumented",
+        "rate_qualified": false,
+        "qualification_limit": "telemetry only; five-minute rate-faithful workload and queue gates are separate",
+        "process_memory": {
+          "peak_working_set_bytes": 2620616704,
+          "peak_commit_bytes": 6012260352
+        },
+        "cuda_memory": {
+          "peak_allocated_bytes": 1217751040,
+          "peak_reserved_bytes": 1694498816
+        }
+      },
+      "official_rounded_metrics": {
+        "position_rmse_m": 0.635,
+        "lateral_rmse_m": 0.3,
+        "longitudinal_rmse_m": 0.559,
+        "yaw_rmse_deg": 0.3,
+        "within_1m_pct": 90.6,
+        "one_second_coverage_pct": 100.0
+      }
+    },
+    "daylight-motion-stress-v1": {
+      "mode": "vehicle_motion_assisted",
+      "rows": 644,
+      "source_matches_frozen_selection": true,
+      "control_causality_records_checked": 644,
+      "processing_errors": {},
+      "submission_sha256": "6e349692922fc83638b0ce64b746967a2e7fbc835a911c190381f01deeddea6f",
+      "validation": {
+        "valid": true,
+        "rows": 644,
+        "visual_updates": 172,
+        "full_pose_updates": 172,
+        "lost_rows": 291,
+        "max_full_pose_gap_ns": 9400106983,
+        "visual_baseline_gate_passed": false,
+        "first_timestamp_ns": "1791894452091758514",
+        "last_timestamp_ns": "1791894516392622810",
+        "median_cadence_ns": 100001068,
+        "max_gap_ns": 100033123,
+        "nominal_coverage": 0.9999970969959534,
+        "exposure_sequence_matches_input": true,
+        "scope": "Post-initialization output/schema/exposure/support checks only; no GT accuracy score",
+        "coverage_interval_definition": "From experimental initial pose to last camera exposure plus median cadence",
+        "experimental": true,
+        "ground_truth_available": false,
+        "initialization": "Image PnP from prior experimental run, absolute error unknown",
+        "original_front_frames": 739,
+        "unlocalized_prefix_frames": 95,
+        "original_frame_output_fraction": 0.871447902571042,
+        "full_recording_qualified": false,
+        "processing_errors": {}
+      },
+      "runtime": {
+        "groups": 644,
+        "transport_speed": null,
+        "profile": "unpaced file replay",
+        "steady_elapsed_seconds": 55.7890464,
+        "elapsed_per_output_ms": 86.62895403726708,
+        "reader": {
+          "mean_ms": 1.650473757763975,
+          "p95_ms": 14.484450000000011,
+          "p99_ms": 20.841368000000035
+        },
+        "group_service": {
+          "mean_ms": 84.96202857142858,
+          "p95_ms": 211.51449,
+          "p99_ms": 234.242559
+        },
+        "nonwaiting_pipeline": {
+          "mean_ms": 32.49021925465839,
+          "p95_ms": 60.65482,
+          "p99_ms": 77.0887860000003
+        },
+        "nonwaiting_pipeline_definition": "reader plus complete group service, subtracting logged worker join stalls; includes handoff",
+        "last_packet_to_completion": null,
+        "timing_limit": "pacing uses constituent packet arrivals; deadline-closure wait and physical exposure latency are not instrumented",
+        "rate_qualified": false,
+        "qualification_limit": "telemetry only; five-minute rate-faithful workload and queue gates are separate",
+        "process_memory": {
+          "peak_working_set_bytes": 2612879360,
+          "peak_commit_bytes": 6005817344
+        },
+        "cuda_memory": {
+          "peak_allocated_bytes": 1217751040,
+          "peak_reserved_bytes": 1694498816
+        }
+      }
+    }
+  },
+  "private_assets": {
+    "path": "results\\deadline-submission-assets-v1.zip",
+    "bytes": 802798853,
+    "sha256": "3e9d58e102b402d99b7ec5ed56ee9e578c511f71cde8c10d302fd9bbfb21703f"
+  },
+  "limits": [
+    "Camera-only visual continuity gate remains failed.",
+    "No actual hidden test was available; the lighting/speed lap has no GT and an unlocalized prefix.",
+    "File-replay timing is not a bounded-latency or native high-frequency qualification.",
+    "Motion noise is not calibrated and correct visual recovery can be downweighted by a wrong motion prior."
+  ]
+}

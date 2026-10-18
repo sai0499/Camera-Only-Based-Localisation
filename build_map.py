@@ -73,6 +73,7 @@ class BuildConfig:
     max_median_error_px: float = 2.0
     min_angle_deg: float = 1.0
     min_landmarks_per_keyframe_warn: int = 30
+    pair_target_baseline_m: float = 0.0
 
 
 # ---------------------------------------------------------------------------------------
@@ -209,11 +210,20 @@ def select_pairs(cameras: list[str], T_WC: np.ndarray, config: BuildConfig) -> l
             candidates[min(i, int(j)), max(i, int(j))] = float(distance[j])
     pairs = []
     degree = np.zeros(len(T_WC), int)
-    for (i, j), _ in sorted(candidates.items(), key=lambda item: (item[1], item[0])):
-        if degree[i] < config.neighbors and degree[j] < config.neighbors:
-            pairs.append((i, j))
-            degree[i] += 1
-            degree[j] += 1
+    nearest = sorted(candidates.items(), key=lambda item: (item[1], item[0]))
+    passes = [(nearest, config.neighbors)]
+    if config.pair_target_baseline_m > 0:
+        wider = sorted(candidates.items(), key=lambda item:
+                       (abs(item[1] - config.pair_target_baseline_m), item[0]))
+        passes = [(nearest, config.neighbors // 2), (wider, config.neighbors)]
+    chosen = set()
+    for ranked, limit in passes:
+        for (i, j), _ in ranked:
+            if (i, j) not in chosen and degree[i] < limit and degree[j] < limit:
+                pairs.append((i, j))
+                chosen.add((i, j))
+                degree[i] += 1
+                degree[j] += 1
     return sorted(pairs)
 
 
@@ -392,7 +402,10 @@ def _versions() -> dict[str, str]:
 def build(args: argparse.Namespace) -> dict:
     started = time.perf_counter()
     config = BuildConfig(travel_m=args.travel_m, heading_deg=args.heading_deg,
-                         neighbors=args.neighbors)
+                         neighbors=args.neighbors,
+                         pair_target_baseline_m=getattr(args, "pair_target_baseline_m", 0.0))
+    if not math.isfinite(config.pair_target_baseline_m) or not 0 <= config.pair_target_baseline_m <= config.pair_max_distance_m:
+        raise SystemExit("target pair baseline must lie between 0 and the maximum pair distance")
     output: Path = args.output.resolve()
     work = output.with_name(output.name + ".work")
     if output.exists() or work.exists():
@@ -421,7 +434,8 @@ def build(args: argparse.Namespace) -> dict:
 
     from camloc.features import FeatureBackend, backend_identity
 
-    backend = FeatureBackend(device=args.device)
+    selection = "grid-reserve-32" if getattr(args, "spatial_features", False) else "score"
+    backend = FeatureBackend(device=args.device, selection=selection)
     cameras, exposures, poses_WB, keypoints, descriptors, scores = [], [], [], [], [], []
     usable_masks: dict[str, np.ndarray] = {}
     skipped = {"no_gt_support": 0, "decode_failure": 0}
@@ -527,6 +541,8 @@ def build(args: argparse.Namespace) -> dict:
         "cameras": list(args.cameras),
         "calibration_id": any_cal.calibration_id,
         "preprocessing_id": any_cal.preprocessing_id,
+        "preprocessing_recipe": cio.PREPROCESSING_RECIPE,
+        "raw_camera_geometry": {cam: lm.raw_calibration_geometry(calibrations[cam]) for cam in args.cameras},
         "canonical_K": {cam: calibrations[cam].K.tolist() for cam in args.cameras},
         "T_BC": {cam: calibrations[cam].T_BC.tolist() for cam in args.cameras},
         "mask_id": masks.MASK_ID,
@@ -538,7 +554,7 @@ def build(args: argparse.Namespace) -> dict:
         "supplied_map_sha256": map_sha,
         "gt_source": "/tf map->constructor0/base_link inside the fitting interval, linear "
                      "position and slerp rotation at each keyframe exposure (gap <= 50 ms)",
-        "feature_backend": backend_identity(),
+        "feature_backend": backend_identity(selection),
         "model_ids": list(backend.model_ids),
         "model_sha256": {k: v["sha256"] for k, v in weights.items() if k != "torch_home"},
         "libraries": _versions(),
@@ -598,6 +614,10 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--travel-m", type=float, default=4.0)
     parser.add_argument("--heading-deg", type=float, default=5.0)
     parser.add_argument("--neighbors", type=int, default=8)
+    parser.add_argument("--spatial-features", action="store_true",
+                        help="reserve up to 32 DISK detections per usable-image grid cell, still <=1024 total")
+    parser.add_argument("--pair-target-baseline-m", type=float, default=0.0,
+                        help="reserve half the existing pair budget for wider baselines near this distance")
     parser.add_argument("--device", default=None)
     parser.add_argument("--keep-work", action="store_true")
     parser.add_argument("--skip-bag-hash", action="store_true")

@@ -639,7 +639,8 @@ class DiskAnchorWorker:
         from camloc.features import backend_identity
 
         if ("feature_backend" in landmark_map.manifest
-                and landmark_map.manifest["feature_backend"] != backend_identity()):
+                and landmark_map.manifest["feature_backend"] != backend_identity(
+                    getattr(backend, "selection", "score"))):
             raise c.ContractError("map feature configuration differs from this backend")
         if ("model_ids" in landmark_map.manifest
                 and tuple(landmark_map.manifest["model_ids"]) != tuple(backend.model_ids)):
@@ -785,7 +786,9 @@ def load_anchor_worker(artifacts: str | Path | lm.LandmarkMap, *,
 
     landmark_map = artifacts if isinstance(artifacts, lm.LandmarkMap) else \
         lm.load_landmark_map(artifacts)
-    return DiskAnchorWorker(landmark_map, FeatureBackend(device=device), retrieval=retrieval)
+    selection = landmark_map.manifest.get("feature_backend", {}).get("extractor", {}).get(
+        "keypoint_selection", "score")
+    return DiskAnchorWorker(landmark_map, FeatureBackend(device=device, selection=selection), retrieval=retrieval)
 
 
 def make_ground_motion():

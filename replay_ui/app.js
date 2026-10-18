@@ -169,7 +169,8 @@ async function acceptPayload(payload, reset=false) {
   $('gt-legend').hidden=!comparison||S.view==='3d';
   $('compare').disabled=!!window.APEX_REPLAY||payload.state!=='completed';
   $('new-run').disabled=!!window.APEX_REPLAY||payload.state==='running';
-  text('mode-note',payload.state==='running'?'PASSIVE RUN MONITOR':'SAVED OUTPUT REVIEW');
+  const mode=payload.meta.inference_mode==='vehicle_motion_assisted'?'MOTION-ASSISTED':'CAMERA ONLY';
+  text('mode-note',`${mode} / ${payload.state==='running'?'PASSIVE RUN MONITOR':'SAVED OUTPUT REVIEW'}`);
   $('scrubber').max=Math.max(0,S.frames.length-1);
   $('download-csv').href=window.APEX_REPLAY?'submission.csv':`/api/download?id=${S.run}&file=submission.csv`;
   if(payload.failure)notice(`${payload.failure.exception}: ${payload.failure.detail}`);
@@ -192,7 +193,7 @@ async function poll() {
 function requestSettings() {
   const initial=JSON.parse($('initial-pose').value);
   if(typeof initial.timestamp_ns==='number'&&!Number.isSafeInteger(initial.timestamp_ns))throw new Error('Put timestamp_ns in double quotes to preserve exact nanoseconds.');
-  return {bag:$('bag').value.trim(),artifacts:$('artifacts').value.trim(),mode:$('run-mode').value,initial_pose:$('initial-pose').value.trim(),retrieval:$('retrieval').checked,start_ns:$('start-ns').value.trim(),end_ns:$('end-ns').value.trim()};
+  return {bag:$('bag').value.trim(),artifacts:$('artifacts').value.trim(),mode:$('run-mode').value,initial_pose:$('initial-pose').value.trim(),retrieval:$('retrieval').checked,vehicle_motion:$('vehicle-motion').value,start_ns:$('start-ns').value.trim(),end_ns:$('end-ns').value.trim()};
 }
 function initControls() {
   $('run-select').onchange=()=>loadRun($('run-select').value).catch(error=>notice(error.message));

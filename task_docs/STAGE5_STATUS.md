@@ -1,5 +1,12 @@
 # Team C Step 5: real-recording verification and runtime instrumentation
 
+18 October: [DEADLINE_ACCURACY.md](DEADLINE_ACCURACY.md) adds owner-authorized optional
+velocity/yaw-rate controls. The dedicated motion audit passes 300-output pose-field
+isolation and a 100-output future-motion prefix check with exact predictions/decisions.
+Camera-only checks below retain their original meaning; do not claim their whole-topic
+exclusion in the explicit motion-assisted mode. The unchanged visual continuity gate
+and rate qualification remain separate.
+
 Step 5 verification has started. **Step 3 and Step 5 are not signed off.** The existing
 full-tuning continuity failure remains recorded in [STAGE3_STATUS.md](STAGE3_STATUS.md).
 Passing these software/integrity checks does not certify localization accuracy or a rate.

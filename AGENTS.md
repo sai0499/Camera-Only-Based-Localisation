@@ -35,7 +35,7 @@ Read `START_HERE.md` and `task_docs/FINAL_BUILD_PLAN.md` before changing code. T
 ## Estimation boundaries
 
 - Inference accepts allowlisted images/calibration/static geometry, declared frozen fitting artifacts and exactly one initial x/y/yaw pose.
-- Never decode dynamic `/tf`, live `/constructor0/state_estimation` or GT CSVs in the localizer. Training/evaluation tools remain separate.
+- Never decode dynamic `/tf`, pose/orientation/track/status fields or GT CSVs in the localizer. Camera-only mode excludes the entire live state topic. The owner's 18 October deadline amendment permits opt-in `--vehicle-motion state-fields` to read only timestamp/body vx/vy/yaw rate through the raw whitelist parser, or `validation-twist` for a separate body-motion topic. See `task_docs/DEADLINE_ACCURACY.md`; training/evaluation remain separate.
 - Use integer nanoseconds, exposure stamps, consistent transforms and canonical pixels. No future image evidence, timestamp lookup, GT alignment or offline smoothing in ranked predictions.
 - Keep camera-rate LK/current PnP separate from bounded anchor jobs. Never fuse a stale worker pose. Preserve unique landmark/observation identities and explicit loss/recovery behavior.
 - Record all weak/rejected/prediction-only outputs. Component FPS or synthetic replay is not native high-frequency localization accuracy.
