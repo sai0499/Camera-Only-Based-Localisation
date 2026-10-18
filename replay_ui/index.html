@@ -27,9 +27,11 @@
     <div class="scene-foot"><span id="geometry-note">Trajectory values are recorded outputs. No alignment or smoothing.</span><button id="save-image">Save scene PNG ↓</button></div>
   </section>
   <aside class="inspector" aria-label="Selected output inspector">
+    <div class="selected-output">
     <div class="inspector-heading"><span class="label">SELECTED OUTPUT</span><span id="group-id">GROUP —</span></div>
     <div class="tracking-state" id="tracking-state">Awaiting output</div><p id="status-reason" class="status-reason">Select a saved run or start a new recording.</p>
     <dl class="pose-values"><div><dt>X / m</dt><dd id="pose-x">—</dd></div><div><dt>Y / m</dt><dd id="pose-y">—</dd></div><div><dt>YAW / deg</dt><dd id="pose-yaw">—</dd></div></dl>
+    </div>
     <div class="inspector-block"><h2>Camera exposures</h2><div id="cameras" class="camera-lines">—</div><label>Camera <select id="inspect-camera"><option value="fr">FR</option><option value="fl">FL</option><option value="cl">CL</option><option value="cr">CR</option><option value="r">R</option><option value="rl">RL</option><option value="rr">RR</option></select></label><div id="camera-preview"><img id="camera-image" alt="Recorded camera image at the selected exposure"><span id="camera-caption">Select an output</span></div></div>
     <div class="inspector-block"><h2>Evidence</h2><div id="evidence-source" class="evidence-source">—</div><dl class="detail-values"><div><dt>Inliers</dt><dd id="inliers">—</dd></div><div><dt>Median / p90</dt><dd id="reprojection">—</dd></div><div><dt>Grid coverage</dt><dd id="coverage">—</dd></div><div><dt>Position error</dt><dd id="position-error">Unavailable</dd></div></dl></div>
     <div class="inspector-bottom"><a id="download-csv" href="#" download="submission.csv">Export prediction CSV ↓</a><a id="download-score" href="#" download="validation.txt" hidden>Download validation results ↓</a></div>
