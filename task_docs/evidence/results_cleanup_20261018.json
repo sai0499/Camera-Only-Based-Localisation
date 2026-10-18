@@ -1,0 +1,159 @@
+{
+  "completed_at_utc": "2026-10-18T19:36:19.797241+00:00",
+  "scope": "Generated results only; no source, recording, split, artifacts, evaluation reference or environment deletion.",
+  "base_commit": "8414123e7e00b8f89a12063241ba9f568dfd9603",
+  "protected_file_hashes_unchanged": 89,
+  "removed_targets": [
+    {
+      "path": "results/daylight-motion-stress-v1",
+      "bytes": 12567495,
+      "files": 20
+    },
+    {
+      "path": "results/deadline-assets-receipt.json",
+      "bytes": 1644,
+      "files": 1
+    },
+    {
+      "path": "results/deadline-delivery.json",
+      "bytes": 549,
+      "files": 1
+    },
+    {
+      "path": "results/deadline-final-tune-v1",
+      "bytes": 45987930,
+      "files": 31
+    },
+    {
+      "path": "results/deadline-holdout-v1",
+      "bytes": 42009382,
+      "files": 30
+    },
+    {
+      "path": "results/deadline-motion-integrity-v1",
+      "bytes": 6318229,
+      "files": 13
+    },
+    {
+      "path": "results/seven-camera-cameraonly-tune-v1",
+      "bytes": 58594044,
+      "files": 15
+    },
+    {
+      "path": "results/seven-camera-daylight-stress-v1",
+      "bytes": 6211730,
+      "files": 7
+    },
+    {
+      "path": "results/seven-camera-final-tune-v1",
+      "bytes": 60344898,
+      "files": 15
+    },
+    {
+      "path": "results/seven-camera-holdout-v1",
+      "bytes": 58651358,
+      "files": 15
+    },
+    {
+      "path": "results/seven-camera-integrity-v1",
+      "bytes": 12321822,
+      "files": 17
+    },
+    {
+      "path": "results/seven-camera-spatial-cameraonly-tune-v1",
+      "bytes": 58306149,
+      "files": 15
+    },
+    {
+      "path": "results/seven-camera-spatial-tune-v1",
+      "bytes": 60038784,
+      "files": 15
+    },
+    {
+      "path": "results/temporary-visualisation-tune-20261018-v1",
+      "bytes": 61007873,
+      "files": 45
+    },
+    {
+      "path": "results/workspace-cleanup",
+      "bytes": 44533389,
+      "files": 18
+    },
+    {
+      "path": "results/tune-stage3-fix-1",
+      "bytes": 33505209,
+      "files": 12
+    },
+    {
+      "path": "results/tune-stage3-fix-2",
+      "bytes": 33861598,
+      "files": 12
+    },
+    {
+      "path": "results/tune-stage3-fix-3",
+      "bytes": 33836592,
+      "files": 12
+    },
+    {
+      "path": "results/tune-stage3-fix-4",
+      "bytes": 34579222,
+      "files": 12
+    },
+    {
+      "path": "results/tune-stage3-fix-5",
+      "bytes": 32959427,
+      "files": 12
+    },
+    {
+      "path": "results/tune-stage3-fix-6",
+      "bytes": 32807594,
+      "files": 12
+    },
+    {
+      "path": "results/tune-stage3-fix-7",
+      "bytes": 32841856,
+      "files": 12
+    },
+    {
+      "path": "results/turnbias-assisted-holdout-v1",
+      "bytes": 58262697,
+      "files": 12
+    },
+    {
+      "path": "results/turnbias-assisted-tune-v1",
+      "bytes": 59873391,
+      "files": 12
+    },
+    {
+      "path": "results/turnbias-cameraonly-tune-v1",
+      "bytes": 58090407,
+      "files": 12
+    }
+  ],
+  "inventoried_bytes_removed": 937513269,
+  "comparison_archive": {
+    "path": "results/retained-comparisons.zip",
+    "bytes": 10814371,
+    "sha256": "ce179f6e93b3475b2aa8764734da6d0aeacb01cb16667923edf4e6e827cbfcb0"
+  },
+  "archived_comparison_files": 237,
+  "net_bytes_reclaimed": 926698898,
+  "results_remaining": [
+    "retained-comparisons.zip",
+    "seven-camera-assets-receipt.json",
+    "seven-camera-submission-assets-v1.zip",
+    "seven-camera-tune-v3",
+    "submission-evidence-holdout-20261018-v1"
+  ],
+  "failed_or_skipped_result_folders": [],
+  "checks": {
+    "frozen_assets_dataset_split_and_retained_results_hashes": "unchanged",
+    "fresh_evidence_viewer_rows": 2191,
+    "offline_gt_matched": 2191,
+    "original_mcap_camera_frame": "passed",
+    "ui_default_bank": "unchanged",
+    "ui_listed_runs": 2,
+    "targeted_pytest_passed": 25,
+    "pytest_seconds": 1.48
+  }
+}
