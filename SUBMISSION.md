@@ -11,7 +11,7 @@ training recording using `start_project.cmd`. That launcher runs locked setup an
 `scripts/build_submission_assets.py`, using only the fixed fitting windows. The training
 recording is transferred separately and must be placed at the project root; the map
 and recording are not in Git. Existing complete banks are verified and reused. Full
-instructions and rebuild limits: [submission README](README_SUBMISSION.md). Public
+instructions and rebuild limits: [submission README](README.md). Public
 checkpoint download links/checksums are in `config/pretrained_models.json`; setup
 prepares them automatically. Evaluation-reference folders are not required by the UI
 or map builder. Do not include GT caches or `.venv` in a source handoff.

@@ -26,7 +26,7 @@ Read `START_HERE.md` and `task_docs/FINAL_BUILD_PLAN.md` before changing code. T
 
 ## Preserve these assets
 
-- Do not modify/move/delete the root recording, `metadata.yaml`, original `README.md`, challenge PDF, `tools/`, or `23-00-38_cut_120m_update/`.
+- Do not modify/move/delete the root recording, `metadata.yaml`, original dataset README archived at `task_docs/DATASET_README.md`, challenge PDF, `tools/`, or `23-00-38_cut_120m_update/`.
 - Keep `task_docs/build_split.json` byte-for-byte unchanged. It and evaluation source/assets are hash-bound; old descriptive profile text is superseded by the active reconciled manifest and evaluation guide.
 - Preserve `evaluation/reference/` and `evaluation/reference_reconciled/` locally. They are generated GT/cache and must remain excluded from inference and Git. Rebuild only into a fresh output when deliberately required.
 - Write fitted assets/weights under `artifacts/`, predictions/reports under `results/`, temporary work under `tmp/`. Keep large/generated/private inputs out of Git. Do not upload project data to external services.

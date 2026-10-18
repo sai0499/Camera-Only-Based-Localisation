@@ -1,6 +1,6 @@
 # Project documents
 
-Read [FINAL_BUILD_PLAN.md](FINAL_BUILD_PLAN.md) to build. It is the authoritative architecture and three-person schedule. The original [challenge brief](Constructor%20Labs%20-%20Camera-based%20localization%20on%20a%20race%20track.pdf) and [dataset README](../README.md) remain unchanged.
+Read [FINAL_BUILD_PLAN.md](FINAL_BUILD_PLAN.md) to build. It is the authoritative architecture and three-person schedule. The original [challenge brief](Constructor%20Labs%20-%20Camera-based%20localization%20on%20a%20race%20track.pdf) and [dataset README](DATASET_README.md) remain unchanged.
 
 | Location | Purpose |
 |---|---|

@@ -1,6 +1,6 @@
 # Start here: TrackCode Apex
 
-For the submission workflow, see [README_SUBMISSION.md](README_SUBMISSION.md).
+For the submission workflow, see [README.md](README.md).
 Double-click `start_project.cmd` to set up, build missing frozen assets from the
 original recording using the fixed fitting recipe, and launch the automatic UI.
 
@@ -45,7 +45,7 @@ From a terminal, use `setup.cmd --no-pause` or `powershell -NoProfile -Execution
 
 - [AGENTS.md](AGENTS.md): common instructions for every coding agent.
 - [Final build plan](task_docs/FINAL_BUILD_PLAN.md): authoritative architecture, interfaces, owners, schedule and acceptance gates.
-- [Original dataset README](README.md) and [challenge brief](task_docs/Constructor%20Labs%20-%20Camera-based%20localization%20on%20a%20race%20track.pdf): organizer requirements, preserved unchanged.
+- [Original dataset README](task_docs/DATASET_README.md) and [challenge brief](task_docs/Constructor%20Labs%20-%20Camera-based%20localization%20on%20a%20race%20track.pdf): organizer requirements, preserved unchanged.
 - [Evaluation guide](evaluation/README.md): working commands and the reconciled use of the new map.
 - [Documentation index](task_docs/README.md): research, audits and retained evidence.
 
@@ -85,7 +85,7 @@ videos/                         export provenance; UI reads camera frames from M
 .setup/                         local Python/bootstrap/cache/report; ignored by Git
 ```
 
-The original driving MCAP, `metadata.yaml`, `README.md` and challenge PDF keep their paths. Avoid moving hash-bound assets or changing organizer tools to make a test pass.
+The original driving MCAP, `metadata.yaml` and challenge PDF keep their paths. The original dataset README is preserved byte-for-byte at `task_docs/DATASET_README.md`; root `README.md` is the submission guide. Avoid moving hash-bound assets or changing organizer tools to make a test pass.
 
 ## Data and Git
 

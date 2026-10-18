@@ -8,7 +8,7 @@
 *.mp4 binary
 *.npz binary
 # Preserve byte identities used by the evaluation manifests.
-/README.md -text
+/task_docs/DATASET_README.md -text
 /metadata.yaml -text
 /tools/** -text
 /23-00-38_cut_120m_update/** -text

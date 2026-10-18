@@ -9,7 +9,7 @@ if errorlevel 1 (
 )
 ".venv\Scripts\python.exe" -u -B scripts\build_submission_assets.py
 if errorlevel 1 (
-  echo Map preparation failed. Read the error above and README_SUBMISSION.md.
+  echo Map preparation failed. Read the error above and README.md.
   pause
   exit /b 1
 )
