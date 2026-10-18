@@ -7,6 +7,7 @@ Read [FINAL_BUILD_PLAN.md](FINAL_BUILD_PLAN.md) to build. It is the authoritativ
 | `FINAL_BUILD_PLAN.md` | Current system, records, ownership, thresholds, failure actions and acceptance gates |
 | `DEADLINE_ACCURACY.md` | Owner-authorized optional velocity/yaw-rate assistance, frozen selection, independent evaluation, runtime and submission commands |
 | `MULTICAMERA_IMPROVEMENTS.md` | All-seven-camera audit, targeted fitting rescue bank, bounded camera selection, camera-only ablation and scoped continuity validation |
+| `WORKSPACE_LAYOUT.md` | Retained best banks, fixed dataset split, current runs and cleanup archive |
 | `STAGE2_STATUS.md` | Implemented C-only filter/streaming API, synthetic checks and pending A/B integration |
 | `STAGE3_STATUS.md` | Integrated B PR, raw-camera runner/validator, fitting builds, real tuning failures and remaining visual-baseline gate |
 | `STAGE4_STATUS.md` | Implemented C anchor scheduler, recovery manager, status machine, synthetic checks and resolved lifecycle decisions |

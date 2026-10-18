@@ -1,5 +1,9 @@
 # Start here: TrackCode Apex
 
+**Workspace cleanup:** current assets, retained comparisons and archived historical
+evidence are listed in [WORKSPACE_LAYOUT.md](task_docs/WORKSPACE_LAYOUT.md). The
+original recording and fixed split manifest remain the dataset.
+
 **Seven-camera rescue update:** the new fitting-only bank maps all seven feeds and
 selects auxiliary work by spatial support and recent failures. Camera-only tuning
 position RMSE improves from 12.893 m to 2.554 m, and its full-visual-pose gate now passes
@@ -72,7 +76,7 @@ tools/                          original organizer tools; preserve unchanged
 23-00-38_cut_120m_update/         supplied static map and new tools; preserve unchanged
 artifacts/                      local weights and future fitted maps; ignored by Git
 results/                        generated predictions/reports; ignored by Git
-videos/                         seven exported videos; local and ignored by Git
+videos/                         export provenance; UI reads camera frames from MCAP
 .venv/                          recreated development environment; ignored by Git
 .setup/                         local Python/bootstrap/cache/report; ignored by Git
 ```
