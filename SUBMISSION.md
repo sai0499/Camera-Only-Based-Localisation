@@ -1,5 +1,8 @@
 # TrackCode Apex: run the submitted localizer
 
+
+**Locked release:** Git tag `release-seven-camera-v1` (commit `6f0c6d7`) with bank `artifacts/fit-seven-rescue-v2`; hashes and reference runs in [release_lock.json](task_docs/evidence/release_lock.json). The later opt-in `--camera-turn-bias` flag is not part of the release.
+
 Use Windows x64 and one CUDA GPU. Run `setup.cmd --no-pause` for the locked Python
 3.12.13 environment and declared public checkpoints. Extract the accompanying private
 `seven-camera-submission-assets-v1.zip` at the repository root; it preserves `artifacts/`

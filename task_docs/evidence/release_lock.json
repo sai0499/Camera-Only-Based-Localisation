@@ -1,0 +1,61 @@
+{
+  "locked": "2026-10-18",
+  "release_tag": "release-seven-camera-v1",
+  "commit": "6f0c6d7",
+  "commit_check": "source_sha256 of results/seven-camera-tune-v3 and seven-camera-cameraonly-tune-v1 run.json match this commit exactly; later commit c1358fe only adds the opt-in --camera-turn-bias flag (off by default, not part of the release)",
+  "configuration": {
+    "bank": "artifacts/fit-seven-rescue-v2",
+    "map_id": "fitmap:1135ae388a5d0ee3",
+    "retrieval_id": "retrieval:b932d15a32aee922",
+    "camera_policy": "support-v1",
+    "auxiliary_pose_variance_scale": 4.0,
+    "retrieval": true,
+    "default_mode": "camera-only",
+    "assisted_mode": "--vehicle-motion state-fields (or validation-twist on recordings with the separate body-velocity topic)",
+    "camera_turn_bias": false,
+    "gate_thresholds_changed": false
+  },
+  "commands": {
+    "assisted": "run.py --artifacts artifacts/fit-seven-rescue-v2 --retrieval --vehicle-motion state-fields --initial-pose <initial.json> --split <split> --output <fresh dir>",
+    "camera_only": "run.py --artifacts artifacts/fit-seven-rescue-v2 --retrieval --initial-pose <initial.json> --split <split> --output <fresh dir>"
+  },
+  "artifact_sha256": {
+    "manifest.json": "d8a4ca6dbbf4478a458c327585435c04049be728eebc88955dda9bdfb958164c",
+    "map.npz": "fb87b47548b15da3885faf384bf1e25d505fc9e097b5ad0bcbce8d7218480f3d",
+    "retrieval.json": "141d5f034a77e50c0d5a14df618fb8116f2814bf9ef7648f1d55646071efe148",
+    "retrieval.npz": "5ca0ba6d3c0354eede1e88616fe47fe39e1cfc83b5fd4442dc187f1a75491cca"
+  },
+  "private_assets_archive": {
+    "path": "results/seven-camera-submission-assets-v1.zip",
+    "sha256": "dd7ef88267721c3a787699614c46bffc436788ff0ee23f1f344221b58bad0b06"
+  },
+  "reference_runs": {
+    "seven-camera-tune-v3": {
+      "mode": "assisted",
+      "submission_sha256": "ace8ac94b2f8415cd409dd3bf2b62a29e31b925128427d97c650da7b244d6c95",
+      "visual_baseline_gate_passed": true,
+      "max_full_pose_gap_ns": 2700033529,
+      "full_pose_updates": 1974
+    },
+    "seven-camera-cameraonly-tune-v1": {
+      "mode": "camera-only",
+      "submission_sha256": "04d3f8ccc65bcde8109bf789ff3705e9118e98c7785def6b6185cc0b9296daa0",
+      "visual_baseline_gate_passed": true,
+      "max_full_pose_gap_ns": 2300035570,
+      "full_pose_updates": 1956
+    },
+    "seven-camera-holdout-v1": {
+      "mode": "assisted holdout regression",
+      "submission_sha256": "b6a7815c0683e8a062571c1821747e906260ac44969168e9f129a1a4f5b202a7",
+      "visual_baseline_gate_passed": false,
+      "max_full_pose_gap_ns": 9800117788,
+      "full_pose_updates": 1404
+    }
+  },
+  "results_summary": {
+    "assisted_tune_position_rmse_m": 0.535,
+    "camera_only_tune_position_rmse_m": 2.554,
+    "assisted_holdout_regression_position_rmse_m": 0.655
+  },
+  "limits": "Tuning-gate sign-off only; holdout regression keeps a 9.8 s full-pose gap; camera-only lateral RMSE 1.924 m; not rate-qualified."
+}
