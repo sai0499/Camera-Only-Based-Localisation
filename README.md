@@ -52,7 +52,7 @@ minutes. The environment and caches remain inside this project.
 
 ## One-click setup and launch
 
-1. Clone/download the submitted **`dev/implementation`** branch and extract it into a
+1. Clone/download the submitted **`main`** branch and extract it into a
    normal local folder. Place the original training MCAP at the project root, or
    supply the complete prebuilt bank under `artifacts/fit-seven-rescue-v2/`.
 2. Double-click **`start_project.cmd`**. It runs `setup.cmd`, verifies dependencies,
