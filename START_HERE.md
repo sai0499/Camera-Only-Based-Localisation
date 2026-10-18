@@ -1,6 +1,6 @@
 # Start here: TrackCode Apex
 
-This is the shared development workspace for the three-person camera-localization team. A's input/geometry/borders/route modules and C's contracts/filter/scheduler/recovery/runner are integrated on `dev/implementation`; [A+C integration status](task_docs/A_C_INTEGRATION_STATUS.md) records the fixes, checks and remaining B boundary. [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. The evaluation adapter and native-coordinate reconciliation already work. Raw-camera localization accuracy and runtime remain unestablished.
+This is the shared development workspace for the three-person camera-localization team. A's geometry/input, B's vision/map components through Step 3, and C's contracts/filter/scheduler/recovery are integrated on `dev/implementation`. The raw-camera runner and validator now work; [Stage 3 integration status](task_docs/STAGE3_STATUS.md) records commands and real tuning results. The first complete tuning replays fused no visual corrections, so the visual-baseline gate remains open. [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. The evaluation adapter and native-coordinate reconciliation already work.
 
 ## Set up your machine
 
@@ -91,4 +91,4 @@ Use `uv sync --locked` through setup rather than unpinned `pip install`. `requir
 
 The complete pre-organization project is backed up on the original workstation's Desktop as `TrackCode-Apex-backup-20261017-135029.zip`, with a `.sha256` sidecar. It contains all 1,011 original files (13,663,778,923 source bytes), including the recording, all videos, the old environment and reference bundles. Every archived file and the Desktop ZIP copy were verified. [Backup receipt](task_docs/evidence/project_backup.json).
 
-Environment checks prove component installation, not localization accuracy. The small fixed-pose mapping example, causal runner, tuning/holdout performance and high-frequency workload gates remain development tasks in the build plan.
+Environment checks prove component installation, not localization accuracy. Small/full fixed-pose builds and complete causal tuning replays have now run; the visual-baseline gate failed. Holdout performance and native/high-frequency workload qualification remain open. See the Stage 3 status before treating any CSV or component FPS as a working localizer.

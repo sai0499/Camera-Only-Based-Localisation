@@ -1,4 +1,4 @@
-"""Stage 2 streaming core plus optional Stage 4 wiring. Raw-MCAP frontend wiring waits for A/B.
+"""Causal raw-camera localizer and streaming API over the shared A/B/C components.
 
 ``build_evidence(frame_set, prior)`` is C's main-thread frontend assembly function. It
 calls A/B through their contracts and returns the selected GroupEvidence for that exact
@@ -8,7 +8,10 @@ live only under tests; this module supplies no invented visual poses.
 """
 
 import dataclasses
+import argparse
+import hashlib
 import json
+import time
 from collections.abc import Callable, Iterable
 from contextlib import ExitStack
 from pathlib import Path
@@ -362,6 +365,10 @@ def _run_stage4(
                         record(event)
                 if scheduler is not None and scheduler.faulted:
                     record(_disabled_event(group_id))
+                drain = getattr(build_evidence, "drain_diagnostics", None)
+                if drain is not None:
+                    for event in drain():
+                        record(event)
             if isinstance(source, c.FrameSetSource):
                 for event in source.trailing_events():
                     record(event.summary())
@@ -382,8 +389,77 @@ def _run_stage4(
             scheduler.close()
 
 
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--bag", type=Path, default=c.PROJECT_ROOT /
+                        "c0_2026-10-13_22-53-42_camloc_0.mcap")
+    parser.add_argument("--artifacts", type=Path, required=True)
+    parser.add_argument("--initial-pose", type=Path, required=True)
+    parser.add_argument("--split", choices=("tune", "holdout"), required=True)
+    parser.add_argument("--output", type=Path, required=True, help="fresh result directory")
+    args = parser.parse_args(argv)
+    initial = c.read_initial_pose(args.initial_pose)
+    episode = c.load_split()[args.split]
+    episode.check_initial_pose(initial)
+    args.output.mkdir(parents=True, exist_ok=False)
+    began = time.perf_counter()
+    try:
+        from camloc import borders, features, geometry, io, landmark_map, track_coords, vision
+        from camloc.frontend import VisualFrontend
+
+        bank = landmark_map.load_landmark_map(args.artifacts)
+        manifest = bank.manifest
+        fit = c.load_split()["fit"]
+        if (manifest.get("split_sha256") != c.BUILD_SPLIT_SHA256
+                or manifest.get("supplied_map_sha256") != c.SUPPLIED_MAP_SHA256
+                or manifest.get("feature_backend") != features.backend_identity()
+                or manifest.get("fitting_interval_ns") != [str(fit.start_ns), str(fit.end_ns)]
+                or bool(((bank.keyframe_exposure_ns < fit.start_ns)
+                         | (bank.keyframe_exposure_ns >= fit.end_ns)).any())):
+            raise c.ContractError("map fitting provenance or feature configuration is incompatible")
+        calibrations = io.read_calibrations(args.bag)
+        tracker = vision.load_tracker(bank, calibrations)
+        if any(reason != "valid" for reason in tracker.calibration_compatibility.values()):
+            raise c.ContractError(f"incompatible map/rig: {tracker.calibration_compatibility}")
+        worker = vision.load_anchor_worker(bank)
+        if tuple(manifest.get("model_ids", ())) != worker.backend.model_ids:
+            raise c.ContractError("map checkpoints differ from the installed pinned backend")
+        supplied_map = c.PROJECT_ROOT / "23-00-38_cut_120m_update" / "map.mcap"
+        road = geometry.load_road_geometry(supplied_map)
+        estimator = CameraFilter(initial)
+        frontend = VisualFrontend(geometry.make_canonicalizer(calibrations), tracker, estimator,
+            road=road, borders=borders.make_border_source(road), motion=vision.make_ground_motion())
+        source = io.open_frame_sets(args.bag, initial_pose=initial, episode=episode,
+                                   calibrations=calibrations)
+        metadata = {"split": args.split, "initial_pose": initial.summary(),
+                    "episode": episode.summary(), "map": bank.summary(),
+                    "models": list(worker.backend.model_ids),
+                    "query_bag": args.bag.name,
+                    "calibration_compatibility": tracker.calibration_compatibility,
+                    "source_sha256": {str(path.relative_to(c.PROJECT_ROOT)): hashlib.sha256(
+                        path.read_bytes()).hexdigest() for path in [
+                            c.PROJECT_ROOT / "run.py", *sorted((c.PROJECT_ROOT / "camloc").glob("*.py"))]},
+                    "border_corrections": False, "ground_motion_corrections": False,
+                    "global_retrieval": False, "startup_seconds": time.perf_counter() - began}
+        (args.output / "run.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        replay_began = time.perf_counter()
+        counts = run_stream(source, estimator, frontend, output=args.output / "submission.csv",
+            diagnostics=args.output / "diagnostics.jsonl", episode=episode,
+            scheduler=AnchorScheduler(worker, map_id=bank.map_id, threaded=True),
+            recovery=RecoveryManager(), tracker=tracker,
+            projector=track_coords.load_track_projector(supplied_map))
+        metadata.update(counts)
+        metadata["replay_seconds"] = time.perf_counter() - replay_began
+        metadata["total_seconds"] = time.perf_counter() - began
+        metadata["outputs_per_second"] = counts["groups"] / metadata["replay_seconds"]
+        (args.output / "run.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
+        print(json.dumps(counts))
+        return 0
+    except Exception as exc:
+        (args.output / "failure.json").write_text(json.dumps({"exception": type(exc).__name__,
+            "detail": str(exc), "elapsed_seconds": time.perf_counter() - began}) + "\n", encoding="utf-8")
+        raise
+
+
 if __name__ == "__main__":
-    raise SystemExit(
-        "run_stream is the tested Stage 2 API. Raw-MCAP CLI wiring requires A/B's "
-        "reader and visual frontend at Stage 3; no localization run was started."
-    )
+    raise SystemExit(main())

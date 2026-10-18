@@ -4,9 +4,11 @@ This builds on [STAGE2_STATUS.md](STAGE2_STATUS.md). The source of implementatio
 requirements remains `FINAL_BUILD_PLAN.md`. This file records what is implemented and the
 integration boundary; it is not a localization result. Everything A/B provide is reached
 only through the `AnchorWorker`, `MappedTracker` and `TrackProjector` Protocols, exercised
-with test-only fakes in `tests/stage4_fakes.py` until B's modules arrive. A's real input,
-geometry and route adapter are integrated. Visual evidence must come from the declared
-frontend; no fabricated pose provider is supplied.
+with test-only fakes in `tests/stage4_fakes.py` and B's real tracker/worker in
+`tests/test_b_c_integration.py`. A's input/geometry/route adapter and B's Step 1-3 vision
+components are integrated. [STAGE3_STATUS.md](STAGE3_STATUS.md) records the raw-camera
+runner, real fitting bank and failed tuning baseline gate. Visual evidence must come from
+the declared frontend; no fabricated pose provider is supplied.
 
 Implemented:
 

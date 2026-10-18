@@ -129,10 +129,11 @@ def test_trailing_events_do_not_invent_output_groups(tmp_path):
     assert any(item.get("kind") == "end_of_input" for item in records)
 
 
-def test_raw_recording_cli_fails_clearly_until_frontend_integration(tmp_path):
+def test_raw_recording_cli_requires_explicit_inputs_without_creating_outputs(tmp_path):
     script = Path(__file__).resolve().parents[1] / "run.py"
     result = subprocess.run([sys.executable, "-B", str(script)], cwd=tmp_path,
                             text=True, capture_output=True, check=False, timeout=30)
-    assert result.returncode != 0
-    assert "requires A/B" in result.stderr
+    assert result.returncode == 2
+    assert all(option in result.stderr for option in
+               ("--artifacts", "--initial-pose", "--split", "--output"))
     assert list(tmp_path.iterdir()) == []
