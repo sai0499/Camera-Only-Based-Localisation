@@ -50,7 +50,7 @@ Launch `launch_ui.cmd`, then open <http://127.0.0.1:8765>. Full usage:
   offline GT comparison, 2D/3D switching, 3D drag, saved 2D/3D PNGs, an API-free
   offline bundle, and the 390 px layout without horizontal overflow.
 - Final Python regression suite: **1036 passed**, no skips/xfails, in 179.32 s.
-  Command: `.venv/Scripts/python.exe -B -m pytest -q --basetemp tmp/ui-code-freeze-suite`.
+  Command: `.venv/Scripts/python.exe -B -m pytest -q --basetemp tmp/ui-ledger-final-suite`.
   Shareable receipt: [ui_verification.json](evidence/ui_verification.json).
 - `node tests/check_ui_geometry.cjs`: known XYZ fixture verifies metre scale, axis signs
   and broken paths through unavailable height. Both frontend scripts pass syntax checks.

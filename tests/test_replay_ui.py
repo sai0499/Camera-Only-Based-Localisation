@@ -126,6 +126,15 @@ def test_late_diagnostics_patch_an_older_output(saved):
     assert patches[0]["status"] == "recovering"
 
 
+def test_tracker_ledger_uses_actual_enclosing_group_and_event_name(saved):
+    with (saved / "diagnostics.jsonl").open("a") as handle:
+        handle.write(json.dumps({"record": "TrackerEvent", "event": "candidate_held", "camera_id": "fr"}) + "\n")
+    replay = Replay(saved)
+    replay.refresh()
+    assert replay.events[-1]["group_id"] == 3
+    assert replay.events[-1]["kind"] == "candidate_held"
+
+
 def test_input_recording_uses_own_epoch_and_eof_without_gt(monkeypatch):
     initial = c.InitialPose(timestamp_ns=1234567890123456789, x=1, y=2, yaw=0)
     monkeypatch.setattr(c, "load_split", Mock(side_effect=AssertionError("input mode read split")))

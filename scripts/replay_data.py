@@ -68,6 +68,7 @@ class Replay:
         self.indices = {}
         self.group_stamps = {}
         self.updated = set()
+        self.current_group = None
 
     def refresh(self, state=None):
         self.updated = set()
@@ -83,11 +84,14 @@ class Replay:
             if not isinstance(r, dict) or not isinstance(r.get("record"), str):
                 raise ValueError("Invalid diagnostic record")
             kind, gid = r["record"], r.get("group_id")
-            if kind == "Estimate" and gid is not None:
+            if kind == "FrameSet":
+                self.current_group = gid
+            elif kind == "Estimate" and gid is not None:
                 self.estimates[int(r["t_ns"])] = r
                 self.updated.add(int(r["t_ns"]))
             elif kind == "GroupEvidence":
                 fs = r["frame_set"]
+                self.current_group = fs["group_id"]
                 self.group_stamps[fs["group_id"]] = int(fs["t_ns"])
                 self.updated.add(int(fs["t_ns"]))
                 self.groups[int(fs["t_ns"])] = {
@@ -100,7 +104,8 @@ class Replay:
                                  if x.get("record") in ("PoseEvidence", "HandoffEvidence")],
                 }
             elif kind in ("RecoveryEvent", "TrackerEvent") or kind.endswith("Error"):
-                self.events.append({"group_id": gid, "kind": r.get("kind", kind),
+                event_group = self.current_group if kind == "TrackerEvent" and gid is None else gid
+                self.events.append({"group_id": event_group, "kind": r.get("kind", r.get("event", kind)),
                                     "reason": r.get("reason", r.get("detail", ""))})
         for line in self.readers["runtime.jsonl"].read(finished):
             r = json.loads(line)

@@ -138,6 +138,7 @@ function events() {
   const container=$('events');container.replaceChildren();
   for(const event of S.payload.events||[]) {
     const button=document.createElement('button');button.className='event-row';
+    button.disabled=event.group_id==null;
     for(const value of [`G ${event.group_id??'—'}`,clean(event.kind),clean(event.reason)]) {const span=document.createElement('span');span.textContent=value;button.append(span);}
     button.onclick=()=>{const i=S.frames.findIndex(r=>r.group_id===event.group_id);if(i>=0)choose(i,true);};container.append(button);
   }
@@ -197,6 +198,7 @@ function initControls() {
   $('run-select').onchange=()=>loadRun($('run-select').value).catch(error=>notice(error.message));
   for(const button of document.querySelectorAll('[data-view]')) button.onclick=async()=>{
     S.view=button.dataset.view;S.plotReady=false;
+    for(const selector of ['.scene-legend','.scene-foot','.scene-actions'])document.querySelector(selector).hidden=S.view==='diagnostics';
     $('follow').disabled=S.view!=='2d';
     $('gt-legend').hidden=!S.payload?.comparison||S.view==='3d';
     for(const tab of document.querySelectorAll('[data-view]')){tab.classList.toggle('active',tab===button);tab.setAttribute('aria-pressed',String(tab===button));}
