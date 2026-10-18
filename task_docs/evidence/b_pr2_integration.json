@@ -1,0 +1,264 @@
+{
+  "schema_version": 1,
+  "scope": "B PR2 integration; paired unchanged-bank tuning replay and experimental camera-lap replay",
+  "tested_base_commit": "e984109",
+  "pr": {
+    "number": 2,
+    "head_commit": "5e1644f70b7afcff1c19c5ebe2c32c1cefc0c624",
+    "url": "https://github.com/sai0499/Camera-Only-Based-Localisation/pull/2",
+    "base": "dev/implementation"
+  },
+  "source_sha256": {
+    "camloc/pnp.py": "3248b053c658709a79bfafb96c939bbbdbc38e06911f14f917bb1d69f9c56132",
+    "scripts/b_grid_check.py": "50a6ac9da114c85a1d87a47ae9521fc472384221fcdd48a6e647a9dd3d68ce6f",
+    "scripts/b_handoff_probe.py": "bf4dd871187d76af4fb99f1d5307d93030bccb795b25855c5372917ba61a30de",
+    "scripts/b_profile_vision.py": "6ea10f752863702dcc2edb875b08422024142ee7fadf592620087c9a34e46cee",
+    "tests/test_b_diagnostic_integrity.py": "bd983d627d060b6b74ce82d4560e4105839e6cd7d0356f663c1e3efbc331dc39",
+    "tests/test_offline_startup.py": "0bebfd5bc5f92a70c45d942db43ce2e78cbbe31d7a9a505380d5bb3f8c61e074"
+  },
+  "review_fixes": [
+    "Reject fp16 adoption without paired accepted poses or identical query image sets",
+    "Validate all diagnostic stretches against the selected fit/tune interval before recording/GT reads",
+    "Keep offline GT loading out of decode/canonicalization timing",
+    "Require offline startup test to reach actual reference matching"
+  ],
+  "checks": {
+    "pytest": {
+      "passed": 1085,
+      "skipped": 0,
+      "xfailed": 0,
+      "seconds": 196.93,
+      "command": ".venv/Scripts/python.exe -B -m pytest -q --basetemp tmp/b-pr2-full-tests"
+    },
+    "ruff_passed": true,
+    "production_gate_defaults_unchanged": true,
+    "new_coverage_rule_enabled": false,
+    "fitting_artifacts_rebuilt": false,
+    "holdout_scored": false,
+    "main_modified": false
+  },
+  "tuning": {
+    "before": {
+      "directory": "results/b-pr2-before-v5",
+      "submission_sha256": "c175017bf10f26810389aa17265b48aa03dc1ede69e80244c24c848d870944c3",
+      "map_id": "fitmap:cb52ba980ffd803e",
+      "retrieval_id": "retrieval:eff77597458adb60",
+      "groups": 2708,
+      "prediction_only": 909,
+      "frontend_errors": 0,
+      "anchor_faulted": 0,
+      "validation": {
+        "valid": true,
+        "rows": 2708,
+        "visual_updates": 1799,
+        "full_pose_updates": 1799,
+        "lost_rows": 214,
+        "max_full_pose_gap_ns": 6200094729,
+        "visual_baseline_gate_passed": false,
+        "first_timestamp_ns": "1791918859586110105",
+        "last_timestamp_ns": "1791919130289596381",
+        "median_cadence_ns": 100000966,
+        "max_gap_ns": 104211502,
+        "nominal_coverage": 1.0,
+        "exposure_sequence_matches_input": true,
+        "metric_sections_complete": true
+      },
+      "runtime": {
+        "profile": "unpaced file replay",
+        "elapsed_per_output_ms": 70.2064243353028,
+        "reader": {
+          "mean_ms": 3.8576800221565732,
+          "p95_ms": 11.342525000000002,
+          "p99_ms": 15.28490799999998
+        },
+        "group_service": {
+          "mean_ms": 65.47317839734121,
+          "p95_ms": 181.615765,
+          "p99_ms": 205.83373799999995
+        },
+        "nonwaiting_pipeline": {
+          "mean_ms": 29.912911779911372,
+          "p95_ms": 48.322535,
+          "p99_ms": 58.660119999999885
+        }
+      },
+      "reported_position_rmse_m": 12.893
+    },
+    "after": {
+      "directory": "results/b-pr2-after-v5",
+      "submission_sha256": "c175017bf10f26810389aa17265b48aa03dc1ede69e80244c24c848d870944c3",
+      "map_id": "fitmap:cb52ba980ffd803e",
+      "retrieval_id": "retrieval:eff77597458adb60",
+      "groups": 2708,
+      "prediction_only": 909,
+      "frontend_errors": 0,
+      "anchor_faulted": 0,
+      "validation": {
+        "valid": true,
+        "rows": 2708,
+        "visual_updates": 1799,
+        "full_pose_updates": 1799,
+        "lost_rows": 214,
+        "max_full_pose_gap_ns": 6200094729,
+        "visual_baseline_gate_passed": false,
+        "first_timestamp_ns": "1791918859586110105",
+        "last_timestamp_ns": "1791919130289596381",
+        "median_cadence_ns": 100000966,
+        "max_gap_ns": 104211502,
+        "nominal_coverage": 1.0,
+        "exposure_sequence_matches_input": true,
+        "metric_sections_complete": true
+      },
+      "runtime": {
+        "profile": "unpaced file replay",
+        "elapsed_per_output_ms": 64.7172906942393,
+        "reader": {
+          "mean_ms": 3.3362179837518458,
+          "p95_ms": 10.026295,
+          "p99_ms": 13.28878399999998
+        },
+        "group_service": {
+          "mean_ms": 60.662296713441656,
+          "p95_ms": 160.91665999999998,
+          "p99_ms": 183.2500729999999
+        },
+        "nonwaiting_pipeline": {
+          "mean_ms": 27.784012924667646,
+          "p95_ms": 44.07703,
+          "p99_ms": 56.07068899999998
+        }
+      },
+      "reported_position_rmse_m": 12.893
+    },
+    "comparison": {
+      "passed": true,
+      "rows_compared": 2708,
+      "max_position_difference_m": 0.0,
+      "max_yaw_difference_rad": 0.0,
+      "same_logical_decisions": true
+    },
+    "prediction_csvs_identical": true
+  },
+  "camera_lap": {
+    "scope": "Experimental post-start segment; same image-derived initial pose at 9.5 s; exact front calibration adapter; no GT",
+    "unlocalized_prefix_frames": 95,
+    "original_front_frames": 739,
+    "before": {
+      "directory": "results/hidden-lap-experimental-v1",
+      "submission_sha256": "bfd0c462396ddb7dcc69d10d9346f8e21cca5f3d7ae3d1cf02bd46e31e002138",
+      "map_id": "fitmap:cb52ba980ffd803e",
+      "retrieval_id": "retrieval:eff77597458adb60",
+      "groups": 644,
+      "prediction_only": 481,
+      "frontend_errors": 0,
+      "anchor_faulted": 0,
+      "validation": {
+        "valid": true,
+        "rows": 644,
+        "visual_updates": 163,
+        "full_pose_updates": 163,
+        "lost_rows": 310,
+        "max_full_pose_gap_ns": 9200104794,
+        "visual_baseline_gate_passed": false,
+        "first_timestamp_ns": "1791894452091758514",
+        "last_timestamp_ns": "1791894516392622810",
+        "median_cadence_ns": 100001068,
+        "max_gap_ns": 100033123,
+        "nominal_coverage": 0.9999286854440956,
+        "exposure_sequence_matches_input": true,
+        "scope": "Output/schema/causality checks only on the post-initialization segment; no GT accuracy score",
+        "experimental": true,
+        "original_front_frames": 739,
+        "unlocalized_prefix_frames": 95,
+        "original_frame_output_fraction": 0.871447902571042,
+        "full_recording_qualified": false,
+        "ground_truth_available": false
+      },
+      "runtime": {
+        "profile": "unpaced file replay",
+        "elapsed_per_output_ms": 66.95924332298137,
+        "reader": {
+          "mean_ms": 1.2784579192546583,
+          "p95_ms": 12.132130000000004,
+          "p99_ms": 16.684317000000014
+        },
+        "group_service": {
+          "mean_ms": 65.66836630434781,
+          "p95_ms": 165.50069000000002,
+          "p99_ms": 188.38174700000002
+        },
+        "nonwaiting_pipeline": {
+          "mean_ms": 23.49747888198758,
+          "p95_ms": 47.103570000000005,
+          "p99_ms": 62.39397200000012
+        }
+      }
+    },
+    "after": {
+      "directory": "results/b-pr2-hidden-after-v5",
+      "submission_sha256": "bfd0c462396ddb7dcc69d10d9346f8e21cca5f3d7ae3d1cf02bd46e31e002138",
+      "map_id": "fitmap:cb52ba980ffd803e",
+      "retrieval_id": "retrieval:eff77597458adb60",
+      "groups": 644,
+      "prediction_only": 481,
+      "frontend_errors": 0,
+      "anchor_faulted": 0,
+      "validation": {
+        "valid": true,
+        "rows": 644,
+        "visual_updates": 163,
+        "full_pose_updates": 163,
+        "lost_rows": 310,
+        "max_full_pose_gap_ns": 9200104794,
+        "visual_baseline_gate_passed": false,
+        "first_timestamp_ns": "1791894452091758514",
+        "last_timestamp_ns": "1791894516392622810",
+        "median_cadence_ns": 100001068,
+        "max_gap_ns": 100033123,
+        "nominal_coverage": 0.9999286854440956,
+        "exposure_sequence_matches_input": true,
+        "scope": "Output/schema/causality checks only on the post-initialization segment; no GT accuracy score",
+        "experimental": true,
+        "original_front_frames": 739,
+        "unlocalized_prefix_frames": 95,
+        "original_frame_output_fraction": 0.871447902571042,
+        "full_recording_qualified": false,
+        "ground_truth_available": false
+      },
+      "runtime": {
+        "profile": "unpaced file replay",
+        "elapsed_per_output_ms": 70.08330077639751,
+        "reader": {
+          "mean_ms": 1.4720669254658385,
+          "p95_ms": 13.398440000000017,
+          "p99_ms": 18.239992
+        },
+        "group_service": {
+          "mean_ms": 68.59840496894411,
+          "p95_ms": 169.915865,
+          "p99_ms": 195.104198
+        },
+        "nonwaiting_pipeline": {
+          "mean_ms": 24.905095186335405,
+          "p95_ms": 51.00201000000001,
+          "p99_ms": 64.0804930000003
+        }
+      }
+    },
+    "comparison": {
+      "passed": true,
+      "rows_compared": 644,
+      "max_position_difference_m": 0.0,
+      "max_yaw_difference_rad": 0.0,
+      "same_logical_decisions": true
+    },
+    "prediction_csvs_identical": true
+  },
+  "conclusion": "No localization improvement attributable to this PR; both paired prediction CSVs are identical and continuity gates still fail.",
+  "limits": [
+    "No new dense-map implementation or fitted artifacts in the PR",
+    "Camera-lap absolute position/yaw accuracy cannot be evaluated without GT",
+    "File-replay timings do not qualify live or native higher-rate performance",
+    "B's GTX 1650 measurements in B_STATUS.md are separate from these local paired tests"
+  ]
+}

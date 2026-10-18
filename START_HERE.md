@@ -2,6 +2,11 @@
 
 This is the shared development workspace for the three-person camera-localization team. A's geometry/input, B's vision/map components through Step 3, and C's contracts/filter/scheduler/recovery are integrated on `dev/implementation`. The raw-camera runner and validator now work; [Stage 3 integration status](task_docs/STAGE3_STATUS.md) records commands and real tuning results. The best full forward-camera replay (multi-lap fitting bank, `tune-stage3-fix-5`) fused 1,755 visual corrections across 2,708 outputs but still had a 5.4 s full-pose gap and four gaps over the 3 s bound (x/y RMSE 9.67 m); Team C Step 3 is **not signed off**. [Stage 2](task_docs/STAGE2_STATUS.md) and [Stage 4](task_docs/STAGE4_STATUS.md) describe C's APIs. [Step 5](task_docs/STAGE5_STATUS.md) now tracks real-recording integrity/stress checks and runtime telemetry; it is not signed off. The evaluation adapter and native-coordinate reconciliation already work.
 
+B's [PR #2](https://github.com/sai0499/Camera-Only-Based-Localisation/pull/2) verification and
+profiling tools are integrated; [the paired integration report](task_docs/B_PR2_INTEGRATION.md)
+records 1,085 passing tests and identical before/after predictions on full tuning and the
+experimental camera lap. It adds no denser map or localization improvement. Step 3 remains open.
+
 ## Set up your machine
 
 1. Clone the team's repository into a normal local folder. Use Windows x64; the shared lock targets this platform.

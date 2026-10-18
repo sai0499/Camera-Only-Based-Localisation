@@ -10,6 +10,28 @@ anchor correspondence worker and ground motion. Its base was the current A+C com
 B's PR also explicitly disclosed this gate as unmet. Do not advertise the prediction-only
 tuning CSV as camera localization or proceed to holdout/optional demo work on that basis.
 
+## Round 5: B PR #2 verification/tools integration (no accuracy improvement)
+
+[PR #2](https://github.com/sai0499/Camera-Only-Based-Localisation/pull/2), head `5e1644f`,
+is integrated on `dev/implementation` with C's newer runtime/UI work preserved. B accepted
+C's retrieval, joint handoff, seeded carry and 3,000-reference cap. The PR adds delayed-handoff,
+offline-startup, coverage and profiling checks; it does not change map building/retention or
+deliver the requested denser fitting bank. Its stricter coverage experiment remains off.
+
+[Integration report](B_PR2_INTEGRATION.md), [receipt](evidence/b_pr2_integration.json).
+C fixed diagnostic split-window validation, unsupported FP16 adoption, timing contamination
+from GT loading and a weak offline-startup assertion. Full suite: **1,085 passed**, no
+skips/xfails; Ruff passes. No production threshold, scheduler cap, shared contract or dependency
+was changed; no fitting artifacts were rebuilt.
+
+Fresh paired v5 tuning runs emitted identical CSVs and all 2,708 logical decisions matched:
+**12.893 m RMSE, 1,799 full-pose updates, 214 Lost outputs, 6.200 s longest full-pose gap**.
+Both pass the other four validator checks and fail the visual-baseline gate. The separate
+camera-lap experiment also reproduces all 644 post-start outputs exactly (163 full-pose updates,
+310 Lost, 9.200 s longest gap); its initial 95 frames remain unlocalized and it has no GT score.
+This demonstrates no regression and no localization improvement from B's PR. The map-support
+work at the recurring places remains outstanding; **Team C Step 3 is not signed off**.
+
 ## Round 4: 3,000-reference bound and seeded handoff carry (not signed off)
 
 Receipt: [stage3_recheck.json](evidence/stage3_recheck.json). **Gate still open:** on the fresh
