@@ -25,6 +25,14 @@ def test_slerp_and_gt_interpolation_respect_support():
     assert track.pose(-1) is None and track.pose(200_000_000) is None
 
 
+def test_reference_count_bound_rejects_rather_than_truncates():
+    assert bm.MAX_REFERENCES >= 2458  # four fitting laps at 4 m / 5 deg
+    bm.check_reference_count(2458)
+    bm.check_reference_count(bm.MAX_REFERENCES)
+    with pytest.raises(SystemExit, match=r"3001 references exceed the 3000-reference bound"):
+        bm.check_reference_count(3001)
+
+
 def test_keyframe_selection_and_pairs():
     config = bm.BuildConfig()
     a = g.rigid_from_rotation_translation(np.eye(3), [0.0, 0.0, 0.0])

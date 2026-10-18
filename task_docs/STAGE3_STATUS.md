@@ -10,7 +10,53 @@ anchor correspondence worker and ground motion. Its base was the current A+C com
 B's PR also explicitly disclosed this gate as unmet. Do not advertise the prediction-only
 tuning CSV as camera localization or proceed to holdout/optional demo work on that basis.
 
-## Round 3: multi-lap fitting bank (not signed off)
+## Round 4: 3,000-reference bound and seeded handoff carry (not signed off)
+
+Receipt: [stage3_recheck.json](evidence/stage3_recheck.json). **Gate still open:** on the fresh
+fix-7 replay, unchanged `validate_run.py` passes 4 of 5 checks (valid, exposure sequence,
+coverage 1.0, metric sections); the visual-baseline gate fails (longest full-pose gap 6.20 s,
+4 gaps > 3 s). Suite: **994 passed** (986 existing + 8 new); Ruff passed.
+
+B-owned code changes (no contract, gate, threshold, cap, evaluator, validator or dependency change):
+
+- `build_map.py`: named `MAX_REFERENCES = 3000` and `check_reference_count(n)` replace the
+  inline 2,000-reference abort; still reject-not-truncate, not written to the manifest.
+- `camloc/vision.py`: bounded per-camera `_prior_log` (≤ `HISTORY_MAX_FRAMES`, written by
+  `_remember_prior`, cleared on calibration change); `_motion_guess` extracted from `_guess`
+  (identical math); each handoff carry transition whose two exposures both have a logged causal
+  prior is LK-seeded with the projected motion, else unseeded. `_carry` already retries seeded
+  failures unseeded. Tests: `tests/test_map_build.py`, new `tests/test_stage3_handoff_seed.py`.
+
+Bank `artifacts/fit-stage3-multilap-v5` (`build_map.py --window 0 700.39`, defaults, `fr`):
+2,456 refs / 114,855 landmarks / median error 1.48 px, 71 weak (< 30 landmarks), 481.7 s,
+`fitmap:cb52ba980ffd803e`; index `retrieval:eff77597458adb60` (2,385 keyframes).
+
+| Measured value | fix-5 (round 3) | **fix-7 (v5 + seeded carry)** |
+|---|---|---|
+| Full-pose updates (tracking / handoff / resets) / lost rows | 1,755 (1,231 / 512 / 12) / 239 | **1,799 (1,294 / 494 / 11) / 214** |
+| Longest full-pose gap / gaps > 3 s | 5.40 s / 4 | **6.20 s / 4** |
+| Original = updated x/y RMSE | 9.665 m | **12.893 m** |
+| Reconciled map x/y / racing-line s/n RMSE | 9.667 / 9.025 m | **12.895 / 11.905 m** |
+| Full-pose error median / p90 | 0.31 / 1.21 m | 0.33 / 1.38 m |
+| Wrong-lock rows > 10 m | 2 | **1** (185.48 s reset, 10.1 m) |
+| Anchors dispatched / delivered; worker failures | 864 / 824; 40 | 855 / 829; 26 |
+| Handoffs accepted / recovery `too_few_correspondences` (whole run) | 624 / 38 | 623 / 35 |
+| CSV, exposure sequence, coverage 1.0, metrics / visual gate | pass / fail | pass / **fail** |
+
+fix-7 gaps over 3 s (t, s): 104.28–109.78, 138.88–142.08, 142.38–146.58, 231.88–238.08;
+submission SHA-256 `c175017b…0944c3`. Diagnosis (GT used only in a deleted `tmp/` script):
+the gaps stay at the recurring places near 104–110 s, 139–147 s and 232–238 s; fix-5's
+259–262 s gap closed. The denser bank cut worker failures (40 → 26) and lost rows, but the
+seeded carry did not measurably reduce `too_few_correspondences` (38 → 35 over the run; inside
+the gaps 17 of 38 handoffs for fix-5 vs 23 of 57 for fix-7, recounted with one script, so
+round 3's 19-of-51 tally is not directly comparable). RMSE regressed although wrong locks fell;
+neither change is isolated as the cause, so the optional revert replay (fix-8) was not run.
+
+Next options: attribute the seed effect (v1 bank with the new code, or v5 unseeded), per-place
+densification at the three recurring places, and handoff image coverage (`poor_image_coverage`
+remains the largest recovery-handoff rejection). Each needs a fresh scored, validated run.
+
+## Round 3: multi-lap fitting bank (superseded by Round 4; not signed off)
 
 Receipt: [stage3_recheck.json](evidence/stage3_recheck.json). **No source code changed.** Same
 runtime, split, evaluator, validator, gates, thresholds and contracts as round 2; only the

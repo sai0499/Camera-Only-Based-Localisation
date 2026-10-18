@@ -48,6 +48,16 @@ from camloc import masks
 GT_TOPIC = "/tf"
 GT_PARENT, GT_CHILD = "map", "constructor0/base_link"
 MAX_GT_GAP_NS = 50_000_000
+# Resource bound on selected references (reject, never truncate): four laps at 4 m / 5 deg
+# select ~2,458 fr keyframes; ~20 % margin. Not a gate and not written to the manifest.
+MAX_REFERENCES = 3000
+
+
+def check_reference_count(count: int) -> None:
+    """Abort the build when more than ``MAX_REFERENCES`` references were selected."""
+    if count > MAX_REFERENCES:
+        raise SystemExit(f"{count} references exceed the {MAX_REFERENCES}-reference bound; "
+                         "inspect fitting coverage and select windows")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -449,8 +459,7 @@ def build(args: argparse.Namespace) -> dict:
                 descriptors.append(features.descriptors)
                 scores.append(features.scores)
                 count += 1
-                if len(cameras) > 2000:
-                    raise SystemExit("more than 2000 references; inspect fitting coverage and select windows")
+                check_reference_count(len(cameras))
                 if args.max_keyframes and count >= args.max_keyframes:
                     break
         print(f"  {count} {camera_id} keyframes", flush=True)

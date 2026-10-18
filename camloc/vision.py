@@ -201,6 +201,9 @@ class VisionTracker:
         self._candidate: _TrackSet | None = None
         self._pending: dict[int, tuple[c.HandoffEvidence, _TrackSet | None]] = {}
         self._priors: dict[str, tuple[int, np.ndarray]] = {}
+        # camera -> bounded causal priors (exposure_ns, T_WB) at already-observed exposures,
+        # used to seed handoff carry transitions.
+        self._prior_log: dict[str, collections.deque[tuple[int, np.ndarray]]] = {}
         # camera -> (exposure_ns, accepted) of the newest solved ``track`` call.
         self._tracked: dict[str, tuple[int, bool]] = {}
         self._next_track_id = 0
@@ -274,9 +277,15 @@ class VisionTracker:
         previous = self._priors.get(observation.camera_id)
         if previous is None or previous[0] != tracks.exposure_ns or current_pose is None:
             return None
+        return self._motion_guess(tracks, previous[1], current_pose, observation)
+
+    def _motion_guess(self, tracks: _TrackSet, pose_before: np.ndarray, pose_after: np.ndarray,
+                      observation: c.Observation) -> np.ndarray:
+        """``tracks.pixels`` moved by the projected motion from ``pose_before`` to
+        ``pose_after``; non-finite or behind-camera rows keep their previous pixel."""
         points = self.map.points(tracks.landmark_ids)
-        before, depth_before = project(points, previous[1], observation.T_BC, observation.K)
-        after, depth_after = project(points, current_pose, observation.T_BC, observation.K)
+        before, depth_before = project(points, pose_before, observation.T_BC, observation.K)
+        after, depth_after = project(points, pose_after, observation.T_BC, observation.K)
         guess = tracks.pixels + (after - before)
         bad = ~(np.isfinite(guess).all(axis=1) & (depth_before > 0) & (depth_after > 0))
         guess[bad] = tracks.pixels[bad]
@@ -298,6 +307,7 @@ class VisionTracker:
             history.clear()
             self._active.pop(camera_id, None)
             self._priors.pop(camera_id, None)
+            self._prior_log.pop(camera_id, None)
             if self._candidate is not None and self._candidate.camera_id == camera_id:
                 self.drop_candidate("calibration_changed")
             self.events.append({"event": "calibration_changed", "camera_id": camera_id})
@@ -354,6 +364,18 @@ class VisionTracker:
             self._priors.pop(camera_id, None)
         else:
             self._priors[camera_id] = (exposure_ns, pose)
+            log = self._prior_log.setdefault(
+                camera_id, collections.deque(maxlen=c.HISTORY_MAX_FRAMES))
+            if log and log[-1][0] == exposure_ns:
+                log[-1] = (exposure_ns, pose)  # an accepted pose replaces the snapshot prior
+            else:
+                log.append((exposure_ns, pose))
+
+    def _logged_prior(self, camera_id: str, exposure_ns: int) -> np.ndarray | None:
+        for logged_ns, pose in reversed(self._prior_log.get(camera_id, ())):
+            if logged_ns == exposure_ns:
+                return pose
+        return None
 
     def _joint_tracks(self, tracks: _TrackSet, current: c.Observation) -> _TrackSet | None:
         """F2 point set: the carried handoff tracks plus the current active LK tracks of other
@@ -431,7 +453,11 @@ class VisionTracker:
         known = np.isin(tracks.landmark_ids, self.map.landmark_ids)
         tracks = tracks.subset(np.flatnonzero(known))
         for previous, following in zip(history[:-1], history[1:], strict=True):
-            tracks = self._carry(tracks, previous, following)
+            before = self._logged_prior(current.camera_id, previous.exposure_ns)
+            after = self._logged_prior(current.camera_id, following.exposure_ns)
+            guess = (None if before is None or after is None or not len(tracks)
+                     else self._motion_guess(tracks, before, after, current))
+            tracks = self._carry(tracks, previous, following, guess)
             if len(tracks) == 0:
                 break
         carried = c.Correspondences(
