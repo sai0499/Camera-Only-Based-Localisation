@@ -89,6 +89,7 @@ async function drawMap() {
   S.trace.connector = data.length;
   data.push({type:'scatter',mode:'lines',x:[],y:[],line:{color:ink,width:1,dash:'dot'},hoverinfo:'skip'});
   const layout = baseLayout();
+  layout.dragmode='pan';
   layout.xaxis=axis('Map x [m]');layout.yaxis={...axis('Map y [m]'),scaleanchor:'x',scaleratio:1};
   text('scene-caption','MAP FRAME · METRES · EQUAL SCALE');
   text('geometry-note','Recorded outputs only. No alignment or smoothing.');
@@ -233,6 +234,7 @@ function initControls() {
   $('next-loss').onclick=()=>{const next=S.frames.findIndex((r,i)=>i>S.index&&r.status==='lost'&&S.frames[i-1]?.status!=='lost');if(next>=0)choose(next,true);else notice('No later loss onset in this run.');};
   $('fit-map').onclick=()=>{$('follow').checked=false;Plotly.relayout('scene',{'xaxis.autorange':true,'yaxis.autorange':true}).catch(error=>notice(error.message));};
   $('follow').onchange=()=>updateMap();
+  for(const event of ['pointerdown','wheel'])$('scene').addEventListener(event,()=>{$('follow').checked=false;},{passive:true});
   $('save-image').onclick=async()=>{
     const button=$('save-image');button.disabled=true;
     try{
