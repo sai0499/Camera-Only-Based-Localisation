@@ -60,10 +60,6 @@ function choose(index, manual=false) {
   if (!cameras.children.length) cameras.textContent = 'Camera timestamps unavailable';
   if (row.missing?.length) { const line = document.createElement('div'); line.textContent = `MISSING / ${row.missing.join(', ')}`; cameras.append(line); }
   scheduleImage();
-  const reject = $('rejections'); reject.replaceChildren();
-  for (const r of row.rejected || []) { const line = document.createElement('div'); line.textContent = `${r.camera_id || ''} / ${clean(r.reason)}`; reject.append(line); }
-  if (!reject.children.length) reject.textContent = 'No pose rejection recorded for this output.';
-  text('height-detail', row.z == null ? 'Auxiliary height unavailable at this output.' : `Height ${fmt(row.z)} m · ${clean(row.height_source)} · age ${row.height_source_ns ? fmt((Number(BigInt(row.t_ns) - BigInt(row.height_source_ns))) / 1e9, 2) + ' s' : 'unavailable'}`);
   updateMap();
   if (S.chartReady) Plotly.relayout('timeline', {'shapes[0].x0': seconds(row.t_ns), 'shapes[0].x1': seconds(row.t_ns)}).catch(error => notice(error.message));
 }
@@ -73,14 +69,6 @@ function baseLayout() { return {paper_bgcolor: paper, plot_bgcolor: paper, font:
 function arrays(rows, key) { return rows.map(r => r[key] ?? null); }
 async function drawMap() {
   if (S.view === 'diagnostics') return;
-  if(S.scene3d){S.scene3d.destroy();S.scene3d=null;}
-  if(S.view==='3d'){
-    Plotly.purge('scene');S.plotReady=false;
-    S.scene3d=new ApexScene3D($('scene'),S.geometry);S.scene3d.update(S.frames,S.index);
-    text('scene-caption','REAL XYZ · ORTHOGRAPHIC · 1× VERTICAL SCALE');
-    text('geometry-note','Drag to orbit. Height gaps remain gaps; no measured GT height is available.');
-    return;
-  }
   const rows = S.frames, data = [];
   for (const border of S.geometry) {
     const coords = border.xyz;
@@ -109,7 +97,6 @@ async function drawMap() {
 }
 function updateMap() {
   if(S.view==='diagnostics')return;
-  if(S.scene3d){S.scene3d.update(S.frames,S.index);return;}
   if (!S.plotReady || S.view==='diagnostics' || !selected()) return;
   const r=selected(),trail=S.frames.slice(0,S.index+1);
   const lost=trail.filter(row=>row.status==='lost');
@@ -134,7 +121,11 @@ async function drawChart() {
   text('chart-note',values.some(v=>v!=null)?'All outputs retained · crosses = Lost · click to seek':'This metric is unavailable without a recorded timing or attached reference');
 }
 let imageTimer=null,imageSeq=0;
-function scheduleImage(delay=S.playing?400:150){clearTimeout(imageTimer);imageTimer=setTimeout(loadImage,delay);}
+function scheduleImage(delay=S.playing?150:0){
+  // Throttle during playback: restarting this timer on every frame starves previews.
+  if(imageTimer!==null){if(delay>0)return;clearTimeout(imageTimer);}
+  imageTimer=setTimeout(()=>{imageTimer=null;loadImage();},delay);
+}
 function loadImage(){
   const row=selected(),img=$('camera-image');if(!row)return;
   const none=message=>{img.removeAttribute('src');text('camera-caption',message);};
@@ -183,12 +174,11 @@ async function acceptPayload(payload, reset=false) {
   const comparison=payload.comparison;
   text('rmse',comparison?`${fmt(comparison.rmse_m)} m`:'Not evaluated');
   text('reference-state',comparison?`Offline / ${comparison.matched.toLocaleString()} matched outputs`:'No ground truth attached');
-  $('gt-legend').hidden=!comparison||S.view==='3d';
+  $('gt-legend').hidden=!comparison;
   const evaluation=payload.evaluation;
   if(evaluation&&!comparison)text('reference-state',['pending','evaluating'].includes(evaluation.state)?(payload.state==='running'?'Ground truth will be compared when localization finishes.':'Comparing embedded ground truth…'):evaluation.reason||'Reference unavailable');
   $('download-score').hidden=evaluation?.state!=='completed';
   $('download-score').href=`/api/download?id=${S.run}&file=validation/score.txt`;
-  $('compare').disabled=!!window.APEX_REPLAY||payload.state!=='completed'||!!evaluation;
   $('new-run').disabled=!!window.APEX_REPLAY||payload.state==='running';
   const mode=!payload.meta.inference_mode?'INITIALIZING':payload.meta.inference_mode==='vehicle_motion_assisted'?'MOTION-ASSISTED':'CAMERA ONLY';
   text('mode-note',`${mode} / ${payload.state==='running'?'PASSIVE RUN MONITOR':'SAVED OUTPUT REVIEW'}`);
@@ -211,11 +201,6 @@ async function poll() {
   }
   setTimeout(poll,1000);
 }
-function requestSettings() {
-  const initial=JSON.parse($('initial-pose').value);
-  if(typeof initial.timestamp_ns==='number'&&!Number.isSafeInteger(initial.timestamp_ns))throw new Error('Put timestamp_ns in double quotes to preserve exact nanoseconds.');
-  return {bag:$('bag').value.trim(),artifacts:$('artifacts').value.trim(),mode:$('run-mode').value,initial_pose:$('initial-pose').value.trim(),retrieval:$('retrieval').checked,vehicle_motion:$('vehicle-motion').value,start_ns:$('start-ns').value.trim(),end_ns:$('end-ns').value.trim()};
-}
 function uploadRecording(file) {
   return new Promise((resolve,reject)=>{
     const xhr=new XMLHttpRequest();xhr.open('POST','/api/upload');
@@ -235,7 +220,7 @@ function initControls() {
     S.view=button.dataset.view;S.plotReady=false;
     for(const selector of ['.scene-legend','.scene-foot','.scene-actions'])document.querySelector(selector).hidden=S.view==='diagnostics';
     $('follow').disabled=S.view!=='2d';
-    $('gt-legend').hidden=!S.payload?.comparison||S.view==='3d';
+    $('gt-legend').hidden=!S.payload?.comparison;
     for(const tab of document.querySelectorAll('[data-view]')){tab.classList.toggle('active',tab===button);tab.setAttribute('aria-pressed',String(tab===button));}
     $('scene').hidden=S.view==='diagnostics';$('evidence-log').hidden=S.view!=='diagnostics';
     if(S.view!=='diagnostics')await drawMap();
@@ -246,46 +231,33 @@ function initControls() {
   $('metric').onchange=()=>drawChart().catch(error=>notice(error.message));
   $('latest').onchange=()=>{if($('latest').checked){togglePlay(false);choose(S.frames.length-1);}};
   $('next-loss').onclick=()=>{const next=S.frames.findIndex((r,i)=>i>S.index&&r.status==='lost'&&S.frames[i-1]?.status!=='lost');if(next>=0)choose(next,true);else notice('No later loss onset in this run.');};
-  $('fit-map').onclick=()=>{$('follow').checked=false;if(S.scene3d){S.scene3d.fit();return;}Plotly.relayout('scene',{'xaxis.autorange':true,'yaxis.autorange':true}).catch(error=>notice(error.message));};
+  $('fit-map').onclick=()=>{$('follow').checked=false;Plotly.relayout('scene',{'xaxis.autorange':true,'yaxis.autorange':true}).catch(error=>notice(error.message));};
   $('follow').onchange=()=>updateMap();
   $('save-image').onclick=async()=>{
     const button=$('save-image');button.disabled=true;
     try{
-      const image=S.scene3d?S.scene3d.canvas.toDataURL('image/png'):await Plotly.toImage('scene',{format:'png',width:1600,height:1000});
+      const image=await Plotly.toImage('scene',{format:'png',width:1600,height:1000});
       if(window.APEX_REPLAY){const link=document.createElement('a');link.href=image;link.download='apex-scene.png';link.click();}
       else{const result=await api('/api/snapshot',{id:S.run,image});notice(`Scene saved: ${result.path}`);const link=document.createElement('a');link.href=result.url;link.target='_blank';link.rel='noopener';link.textContent=' Open snapshot ↗';$('notice').append(link);}
     }catch(error){notice(error.message);}finally{button.disabled=false;}
   };
   $('new-run').onclick=()=>$('setup-dialog').showModal();
   for(const close of document.querySelectorAll('[data-close]'))close.onclick=()=>$(close.dataset.close).close();
-  $('validate-run').onclick=async()=>{const button=$('validate-run');button.disabled=true;text('validation-message','Reading calibration and checking frozen-map compatibility…');try{const result=await api('/api/validate',requestSettings());$('validation-message').classList.remove('error');text('validation-message',`Compatible / ${result.map_id} / cameras ${result.cameras.join(', ')}. Full asset verification runs at startup.`);}catch(error){$('validation-message').classList.add('error');text('validation-message',error.message);}finally{button.disabled=false;}};
   $('mcap-file').onchange=()=>{S.uploaded=null;$('validation-message').classList.remove('error');const f=$('mcap-file').files[0];text('file-summary',f?`${f.name} / ${(f.size/1024**2).toFixed(1)} MB`:'Select a recording to begin.');};
   $('setup-form').onsubmit=async event=>{
     event.preventDefault();$('start-run').disabled=true;$('validation-message').classList.remove('error');
     try{
-      let result;
-      if($('advanced-settings').open){text('validation-message','Validating manual inputs…');result=await api('/api/start',requestSettings());}
-      else{
-        const file=$('mcap-file').files[0];if(!file)throw new Error('Choose an MCAP file first.');
-        const uploaded=S.uploaded||(S.uploaded=await uploadRecording(file));
-        $('upload-progress').hidden=true;text('validation-message','Detecting initial pose and motion, then starting localization…');
-        result=await api('/api/start-auto',{bag:uploaded.bag});
-      }
+      const file=$('mcap-file').files[0];if(!file)throw new Error('Choose an MCAP file first.');
+      const uploaded=S.uploaded||(S.uploaded=await uploadRecording(file));
+      $('upload-progress').hidden=true;text('validation-message','Detecting initial pose and motion, then starting localization…');
+      const result=await api('/api/start-auto',{bag:uploaded.bag});
       const option=document.createElement('option');option.value=result.id;option.textContent=result.name+' / running';$('run-select').prepend(option);$('latest').checked=true;$('setup-dialog').close();await loadRun(result.id);
     }catch(error){$('validation-message').classList.add('error');text('validation-message',error.message);}
     finally{$('start-run').disabled=false;$('upload-progress').hidden=true;}
   };
-  $('compare').onclick=()=>$('gt-dialog').showModal();
-  $('gt-form').onsubmit=async event=>{event.preventDefault();$('attach-gt').disabled=true;text('gt-message','Verifying and matching reference timestamps…');try{await acceptPayload(await api('/api/compare',{id:S.run,path:$('gt-path').value.trim()}),true);$('gt-dialog').close();$('metric').value='error_m';await drawMap();await drawChart();}catch(error){text('gt-message',error.message);}finally{$('attach-gt').disabled=false;}};
   $('inspect-camera').onchange=()=>scheduleImage(0);
-  for(const button of document.querySelectorAll('[data-browse]'))button.onclick=async()=>{
-    button.disabled=true;
-    try{const result=await api('/api/browse',{kind:button.dataset.browse});const target=$(button.dataset.target);
-      if(result.path){target.value=button.dataset.browse==='pose'?result.content:result.path;target.dispatchEvent(new Event('change'));}}
-    catch(error){notice(error.message);}finally{button.disabled=false;}
-  };
   window.addEventListener('keydown',event=>{if(/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)||document.querySelector('dialog[open]'))return;if(event.code==='Space'){event.preventDefault();togglePlay(!S.playing);}if(event.key==='ArrowLeft'){event.preventDefault();choose(S.index-1,true);}if(event.key==='ArrowRight'){event.preventDefault();choose(S.index+1,true);}});
-  window.addEventListener('resize',()=>{if(S.scene3d)S.scene3d.resize();else if(S.plotReady)Plotly.Plots.resize('scene');if(S.chartReady)Plotly.Plots.resize('timeline');});
+  window.addEventListener('resize',()=>{if(S.plotReady)Plotly.Plots.resize('scene');if(S.chartReady)Plotly.Plots.resize('timeline');});
 }
 async function start() {
   initControls();
@@ -297,14 +269,6 @@ async function start() {
   const [configuration,geometry]=await Promise.all([api('/api/config'),api('/api/scene')]);
   S.config=configuration;S.token=configuration.token;S.geometry=geometry;
   for(const run of configuration.runs){const option=document.createElement('option');option.value=run.id;option.textContent=`${run.name} / ${run.split || 'input'} / ${run.groups??'in progress'}`;$('run-select').append(option);}
-  for(const name of configuration.bags){const option=document.createElement('option');option.value=name;$('bag-options').append(option);}
-  for(const name of configuration.artifacts){const option=document.createElement('option');option.value=name;$('artifact-options').append(option);}
-  $('bag').value=configuration.bags[0]||'';$('artifacts').value=configuration.default_artifacts;
-  const initial=configuration.initial_pose;delete initial.record;
-  $('initial-pose').value=JSON.stringify(initial,(_,v)=>typeof v==='bigint'?v.toString():v,2);$('gt-path').value=configuration.default_gt;
-  $('run-mode').value=initial.timestamp_ns?'tune':'input';
-  const defaultBag=$('bag').value;
-  $('bag').addEventListener('change',()=>{if($('bag').value!==defaultBag){$('run-mode').value='input';$('initial-pose').value='';}});
   const run=configuration.runs.find(r=>r.running)||configuration.runs.find(r=>r.groups&&r.split==='tune')||configuration.runs.find(r=>r.groups);
   if(run)await loadRun(run.id);else{$('setup-dialog').showModal();}
   poll();

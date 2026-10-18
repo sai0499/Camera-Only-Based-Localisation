@@ -24,8 +24,7 @@ extracts one embedded initial pose and detects supported velocity/yaw-rate data.
 After inference completes it extracts that recording's GT for automatic plots and the
 provided scorer. Download the pose CSV and validation report; minimal deliverables
 are also published to `results/ui-<id>/`. Uploads, raw diagnostics and offline GT stay
-in `tmp/replay_ui/`. Unsupported embedded pose formats fail explicitly; manual input
-remains available under Advanced. Full instructions: [UI guide](replay_ui/README.md).
+in `tmp/replay_ui/`. Unsupported embedded pose formats fail explicitly; all UI input settings are automatic. Full instructions: [UI guide](replay_ui/README.md).
 
 For direct CLI use, supply one initial pose JSON, with exactly these keys (replace the example):
 

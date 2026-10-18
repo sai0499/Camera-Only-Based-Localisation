@@ -6,7 +6,13 @@ map-frame initial pose, selects the frozen release bank and detects permitted mo
 Embedded GT is exported only after inference exits and is used by the supplied scorer
 and offline viewer. Minimal deliverables go to `results/ui-<id>/`; raw cache/GT/uploads
 stay in `tmp/replay_ui/`. The original training recording is identified by SHA and uses
-the fixed holdout. Manual controls remain under Advanced.
+the fixed holdout. The UI now has automatic input only; the 3D view, manual GT attachment
+and rejection/height panel are removed. Camera images refresh throughout playback.
+The timer now throttles requests instead of restarting on every frame, which previously
+prevented image requests from firing during continuous playback. This final change
+passes all **1,144 tests** (165.04 s), Ruff, JS syntax and `check_ui_playback.cjs`;
+browser playback also showed the image advancing before pausing. No inference, motion
+selection or frozen asset changes were required.
 
 Verification: **1,144 tests passed**, Ruff and JavaScript/geometry checks passed. A real
 browser picker/upload/run completed a 59-pose recording with automatic scoring and GT

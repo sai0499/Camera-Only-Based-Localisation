@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-18",
+  "branch": "dev/implementation",
+  "removed_ui": ["3D view", "advanced and manual inputs", "Rejections and geometry", "offline GT attachment"],
+  "input": "MCAP upload only; existing automatic initialization and supported motion detection",
+  "motion_policy": "camera plus supported motion when present, camera-only when absent",
+  "playback_fix": "Throttle image requests without resetting the pending timer on each selected output.",
+  "verification": {
+    "pytest_passed": 1144,
+    "pytest_seconds": 165.04,
+    "ruff": "passed: camloc scripts tests",
+    "javascript_syntax": "passed",
+    "continuous_playback_fixture": "passed; images update before playback ends, settle on final selection and follow camera changes",
+    "browser": "Play remained active while the loaded FR image advanced to output 129; pausing at output 340 displayed its matching exposure. New run contained no manual controls."
+  },
+  "core_localizer_motion_selection_frozen_assets_and_split_changed": false,
+  "limits": ["Hidden-test schemas and accuracy remain unverified.", "Camera preview inspection is available after localization completes."]
+}
