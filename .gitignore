@@ -10,6 +10,7 @@ htmlcov/
 
 # Personal implementation guides, shared manually rather than through Git.
 /private_guides/
+/AGENTS.md
 
 # Transfer the recording and videos privately; do not put them in Git.
 /*.mcap
