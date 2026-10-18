@@ -81,7 +81,8 @@ def validate(submission: Path, diagnostics: Path, expected_groups, episode: c.Ep
                 complete = record
     if complete is None:
         raise c.ContractError("RunSummary is missing")
-    stamps, visual = [], 0
+    stamps, visual, full_pose_stamps = [], 0, []
+    lost = 0
     with submission.open(encoding="utf-8", newline="") as handle:
         reader = csv.reader(handle)
         if next(reader, None) != ["timestamp_ns", "x", "y", "yaw"]:
@@ -116,6 +117,16 @@ def validate(submission: Path, diagnostics: Path, expected_groups, episode: c.Ep
             if support is not None and support not in {image.exposure_ns for image in frame.images}:
                 raise c.ContractError("estimate support is not a current camera exposure")
             visual += estimate["evidence_kinds"] != ["prediction_only"]
+            lost += estimate["status"] == c.Status.LOST
+            if any(kind in estimate["evidence_kinds"] for kind in (
+                    c.EvidenceKind.PNP, c.EvidenceKind.HANDOFF_PNP, c.EvidenceKind.RECOVERY_RESET)):
+                full = (selected["reset"]["confirmation"] if selected["reset"] is not None
+                        else selected["pose"])
+                if full is not None and full["record"] == "HandoffEvidence":
+                    full = full["pose"]
+                if full is None or not full["accepted"] or support != full["exposure_ns"]:
+                    raise c.ContractError("full-pose update lacks accepted current-image evidence")
+                full_pose_stamps.append(support)
             stamps.append(stamp)
         if next(reader, None) is not None:
             raise c.ContractError("extra submission rows")
@@ -127,8 +138,13 @@ def validate(submission: Path, diagnostics: Path, expected_groups, episode: c.Ep
     if (coverage < 0.9 or stamps[0] - episode.start_ns > 2 * cadence
             or episode.end_ns - stamps[-1] > 2 * cadence):
         raise c.ContractError("incomplete episode coverage or unexpected output rate")
+    # Full-pose gaps beyond the filter's 3 s loss boundary cannot certify a continuous baseline.
+    anchors = [episode.start_ns, *full_pose_stamps, episode.end_ns]
+    max_full_pose_gap = max(b - a for a, b in zip(anchors[:-1], anchors[1:]))
     return {"valid": True, "rows": len(stamps), "visual_updates": visual,
-            "visual_baseline_gate_passed": visual > 0,
+            "full_pose_updates": len(full_pose_stamps), "lost_rows": lost,
+            "max_full_pose_gap_ns": max_full_pose_gap,
+            "visual_baseline_gate_passed": bool(full_pose_stamps) and max_full_pose_gap <= 3 * c.NS_PER_S,
             "first_timestamp_ns": str(stamps[0]), "last_timestamp_ns": str(stamps[-1]),
             "median_cadence_ns": cadence, "max_gap_ns": max(gaps, default=0),
             "nominal_coverage": min(coverage, 1.0), "exposure_sequence_matches_input": True}

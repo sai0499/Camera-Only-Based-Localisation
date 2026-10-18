@@ -237,7 +237,8 @@ class VisionTracker:
             raise c.ContractError(f"VisionTracker: {len(tracks)} points exceed {limit}")
         points = self.map.points(tracks.landmark_ids)
         solution = pnp.solve_pnp(tracks.pixels, points, observation.K, observation.T_BC,
-                                 self.gates)
+                                 self.gates, valid_mask=(
+                                     observation.valid_mask & self.map.mask(observation.camera_id)))
         evidence = pnp.pose_evidence(
             solution, observation=observation, source=source, track_ids=tracks.track_ids,
             landmark_ids=tracks.landmark_ids, num_candidates=len(tracks), map_id=self.map.map_id)
@@ -330,9 +331,10 @@ class VisionTracker:
             self._active.pop(camera_id, None)
             return pnp.rejected_pose(observation, source, self.map.map_id, "tracks_lost")
         evidence, solution = self._solve(observation, tracks, source, c.MAX_ACTIVE_TRACKS)
-        if solution is not None and solution.T_WB is not None and \
-                solution.inliers.size >= MIN_RETAINED_TRACKS:
-            tracks = tracks.subset(solution.inliers)
+        if evidence.accepted:
+            self._remember_prior(camera_id, observation.exposure_ns, evidence.T_WB)
+        # Keep LK-checked hypotheses for the next image; a weak PnP consensus must not
+        # irreversibly collapse the pool below the 30-point solve threshold.
         self._active[camera_id] = tracks
         return evidence
 
@@ -413,9 +415,7 @@ class VisionTracker:
             support_ns=support, correspondences=carried, pose=pose, map_id=self.map.map_id,
             preprocessing_id=current.preprocessing_id, calibration_id=current.calibration_id,
             accepted=pose.accepted, reason=pose.reason)
-        keep = tracks.subset(solution.inliers) if solution is not None and \
-            solution.inliers.size >= MIN_RETAINED_TRACKS else tracks
-        self._pending[id(evidence)] = (evidence, keep)
+        self._pending[id(evidence)] = (evidence, tracks)
         return evidence
 
     def settle(self, handoff: c.HandoffEvidence, disposition: c.HandoffDisposition) -> None:
@@ -440,6 +440,7 @@ class VisionTracker:
         if not handoff.accepted:
             raise c.ContractError("VisionTracker.settle: only an accepted handoff can be adopted")
         self._adopt(tracks)
+        self._remember_prior(tracks.camera_id, handoff.measurement_ns, handoff.pose.T_WB)
 
     def _adopt(self, tracks: _TrackSet) -> None:
         fresh = dataclasses.replace(tracks, track_ids=self._new_track_ids(len(tracks)))
@@ -475,9 +476,6 @@ class VisionTracker:
             self._candidate = None
             return pnp.rejected_pose(observation, source, self.map.map_id, "tracks_lost")
         evidence, solution = self._solve(observation, candidate, source, c.MAX_HANDOFF_POINTS)
-        if solution is not None and solution.T_WB is not None and \
-                solution.inliers.size >= MIN_RETAINED_TRACKS:
-            candidate = candidate.subset(solution.inliers)
         self._candidate = candidate
         return evidence
 
@@ -501,7 +499,7 @@ class VisionTracker:
         rows = np.flatnonzero(np.isin(promoted.landmark_ids, confirmation.landmark_ids))
         self._active = {camera_id: promoted.subset(rows)}
         self._candidate = None
-        self._priors.clear()
+        self._priors = {camera_id: (confirmation.exposure_ns, confirmation.T_WB)}
         self.events.append({"event": "reset", "reset_id": reset.reset_id,
                             "camera_id": camera_id, "points": int(rows.size)})
 
@@ -640,7 +638,7 @@ class DiskAnchorWorker:
             return result(failed, "insufficient_matches", matched=matched, remaining=remaining)
         pixels = query.keypoints[q]
         solution = pnp.solve_pnp(pixels, self.map.points(l_ids), observation.K,
-                                 observation.T_BC, self.gates)
+                                 observation.T_BC, self.gates, valid_mask=usable)
         # These are provisional source correspondences; full pose gates apply again on
         # the current image at handoff. No worker pose enters the filter.
         if solution.T_WB is None or solution.inliers.size < self.config.min_verified:

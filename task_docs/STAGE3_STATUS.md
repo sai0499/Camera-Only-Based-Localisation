@@ -10,6 +10,66 @@ anchor correspondence worker and ground motion. Its base was the current A+C com
 B's PR also explicitly disclosed this gate as unmet. Do not advertise the prediction-only
 tuning CSV as camera localization or proceed to holdout/optional demo work on that basis.
 
+## Latest recheck: not signed off
+
+Small shareable receipt: [stage3_recheck.json](evidence/stage3_recheck.json). Generated
+maps, full diagnostics and submissions remain local and ignored.
+
+The reviewed fixes now apply the frozen usable-image extent to the PnP grid, retain bounded
+LK hypotheses after weak PnP instead of irreversibly pruning below 30, seed subsequent LK
+from accepted current-image poses, and preserve a compatible unused handoff as a track
+refresh after one filter update. Disagreeing current poses from the same camera now need
+confirmation too. Recovery proposals alternate available cameras; rear recovery keeps its
+image chain and healthy tracking reserves its staggered rear slot. Road patches now gather
+local support around each border, allowing valid wide roads while rejecting distant queries.
+These changes preserve the existing shared records, dependencies and PnP/LK thresholds.
+
+`validate_run.py` no longer signs off a baseline after one visual update. It reports the
+longest gap between applied full poses, including episode edges, and requires at least
+one full pose and no gap exceeding the filter's three-second full-pose loss boundary.
+CSV legality/complete exposure coverage remains a separate result; this continuity check
+does not certify accuracy or runtime.
+
+Fresh process, original forward bank, unchanged full tuning interval:
+
+| `results/tune-stage3-recheck-fr-final` | Measured value |
+|---|---|
+| Output / independently validated rows | 2,708 / 2,708 |
+| Fused full-pose updates / prediction-only rows | **2 / 2,706** |
+| Lost rows / longest full-pose gap | 2,695 / 269.716 s |
+| Frontend errors / backend faults | 0 / 0 |
+| Original x/y RMSE | **5,838.073 m** |
+| Startup / replay elapsed | 24.42 / 57.54 s |
+| CSV/evaluation checks / visual-baseline gate | pass / **fail** |
+
+All three unchanged scorer reports are present and hash-bound to the submitted CSV.
+This is worse than the initial prediction-only position score: a few early measurements
+learn nonzero velocity, then prolonged loss extrapolates it far beyond the track. Complete
+row coverage and faster aggregate replay do not make this a usable localizer.
+
+Fitting-only diagnostics isolated weak horizon-concentrated support, repeated-feature
+ambiguity, and increasing map-to-track residuals. Lowering spatial gates admitted coherent
+wrong poses; larger LK windows, CLAHE, source pruning and subpixel corner refinement did
+not sustain the fitting trajectory. Those experimental algorithm changes are excluded
+from production. A two-camera fitting bank was also built (1,486 references, 64,791
+landmarks); adding the rear bank alone did not close the gate. A fitting-only rear gate
+with four cells and at least 60 inliers still gave only 9 updates in 60 groups and
+39.151 m RMSE; it is also excluded from production. Local failed experiments
+remain under ignored `results/`, with diagnostic scripts under `tmp/`.
+
+Ground-motion qualification also failed on fitting image pairs. A fitted asphalt-plane
+offset was not identifiable with usable residuals, so no guessed height, offset or ground
+correction is enabled. Border physical-association review and global retrieval remain open.
+The remaining acceptance task is a sustained, correctly verified visual trajectory across
+the complete tuning episode, followed by fresh scoring and independent validation.
+
+Whole suite: **937 passed**, no skips/xfails, in 125.63 s. Command:
+`.venv/Scripts/python.exe -B -m pytest --basetemp tmp/stage3-complete-recheck -q`.
+Ruff passed for `camloc scripts tests run.py build_map.py validate_run.py`.
+New regressions cover masked spatial gates, weak-PnP pool retention, current-pose LK
+initialization, rear recovery, compatible refresh without double fusion, same-camera
+disagreement, wide-road support and rejection of a baseline with only early visual updates.
+
 ## Reviewed changes
 
 - C's `camloc/frontend.py` assembles A's canonical observations and B's current-image
@@ -50,12 +110,12 @@ tuning CSV as camera localization or proceed to holdout/optional demo work on th
 Ground-motion corrections remain disabled pending real fitting-image qualification;
 measured accepted motion is logged as unused. Borders retain A's diagnostic-only default
 pending the manual physical-boundary review. Missing startup z/roll/pitch is never filled
-from hidden GT. Rear fitting and global retrieval have not been supplied yet.
+from hidden GT. Rear fitting is now available locally; global retrieval is still absent.
 The bank includes B's static bodywork mask, but no per-reference moving-vehicle masks.
 Real road-branch/height initialization and the manual border-association review also
 remain open; the runner does not invent these prerequisites to enable fallback updates.
 
-## Measured local results, 18 October 2026
+## Initial integration results, 18 October 2026
 
 Both fitting builds used the preserved local recording and unchanged split. The 100-image
 proof build completed in 56.9 s. The larger corrected build used fitting windows [0,90)
@@ -128,5 +188,6 @@ handoff rejection, settlement/identity boundaries, future-image prefix independe
 fitting-only GT support, manifest tampering and submission/metric validation. These
 synthetic checks establish software behavior, not real localization accuracy.
 
-Holdout, global/rear recovery, road/border correction qualification and paced workload
-gates were not run. No protected asset, evaluator source, dependency lock or split changed.
+At the initial integration, holdout, global/rear recovery, road/border correction
+qualification and paced workload gates had not run. The latest recheck above supersedes
+that component status. No protected asset, evaluator source, dependency lock or split changed.

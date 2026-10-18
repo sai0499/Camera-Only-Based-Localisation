@@ -91,6 +91,42 @@ def test_tracking_with_projection_seeded_search(scene, tracker):
     assert _position_error(evidence.T_WB, scene.pose(3)) < 0.05
 
 
+def test_accepted_current_pose_seeds_the_next_search(scene, tracker):
+    obs = _observe(tracker, scene, [0, 1, 2])
+    handoff = tracker.handoff(_result(scene, tracker, 0), obs[1])
+    tracker.settle(handoff, c.HandoffDisposition.ADOPT)
+    assert tracker._priors['fr'][0] == obs[1].exposure_ns
+    np.testing.assert_array_equal(tracker._priors['fr'][1], handoff.pose.T_WB)
+    evidence = tracker.track(obs[2], scene.snapshot(2), c.AuxiliaryGeometry.unavailable('none'))
+    assert evidence.accepted
+    assert tracker._priors['fr'][0] == obs[2].exposure_ns
+    np.testing.assert_array_equal(tracker._priors['fr'][1], evidence.T_WB)
+
+
+def test_weak_pnp_does_not_permanently_prune_lk_hypotheses(scene, tracker, monkeypatch):
+    import dataclasses
+    from camloc import pnp
+
+    obs = _observe(tracker, scene, [0, 1, 2])
+    handoff = tracker.handoff(_result(scene, tracker, 0), obs[1])
+    tracker.settle(handoff, c.HandoffDisposition.ADOPT)
+    original = pnp.solve_pnp
+
+    def weak(*args, **kwargs):
+        solution = original(*args, **kwargs)
+        return dataclasses.replace(solution, inliers=solution.inliers[:12],
+            errors_px=solution.errors_px[:12], reason='too_few_inliers')
+
+    with monkeypatch.context() as patch:
+        patch.setattr(pnp, 'solve_pnp', weak)
+        evidence = tracker.track(obs[2], scene.snapshot(2), c.AuxiliaryGeometry.unavailable('none'))
+    assert not evidence.accepted and evidence.inlier_count == 12
+    assert tracker.active_count('fr') >= 30
+    current = scene.observation(3)
+    tracker.observe(current)
+    assert tracker.track(current, scene.snapshot(3), c.AuxiliaryGeometry.unavailable('none')).accepted
+
+
 @pytest.mark.parametrize(
     ("case", "reason"),
     [("stale", "stale_result"), ("missing_chain", "missing_image_chain"),

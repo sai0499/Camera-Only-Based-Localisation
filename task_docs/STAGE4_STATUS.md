@@ -20,6 +20,10 @@ Implemented:
   group with `t_ns >= delivery_not_before_ns`. Synchronous and background worker modes
   give the same logical schedule. A backend fault disables the scheduler for the rest of the
   run without raising; stale results are never fused.
+  `GroupContext.rear_in_flight` covers any rear-camera job, including recovery, so the
+  frontend preserves its image chain through delivery. Recovery proposals alternate
+  available cameras within the existing four-job ceiling; healthy front tracking reserves
+  the staggered rear slot and decodes its in-flight chain.
   Both modes use one daemon worker thread with a bounded wait. A stuck native/GPU call is
   abandoned, never reused, and disables further jobs; it cannot block process shutdown.
   Priority applies to proposals that pass their rate caps: a capped front proposal cannot
@@ -46,6 +50,9 @@ Implemented:
   Cleanup closes jobs and drains diagnostics before JSONL closes on both normal and fatal
   paths. Fatal source/filter/tracker errors preserve the written prefix, cancel remaining
   jobs with `run_aborted`, and append `RunAborted`; only a completed run gets `RunSummary`.
+  A compatible, unused current-image handoff (within 1 m/2 degrees of the selected pose)
+  can refresh mapped tracks after the selected pose commits. It is settled as `ADOPT`
+  without a second filter update; incompatible/stronger-pose-only unused results are discarded.
 
 Notable implementation choices:
 
@@ -106,22 +113,23 @@ projected point with no compatible image edge is not counted as support.
 
 ## Remaining implementation gates
 
-- B's production map/tracker/worker/retrieval/ground motion and their actual lifecycle
-  behavior are not available in this checkout. Test fakes verify C's calls, not B's behavior.
-- The production evidence-building frontend and raw-MCAP CLI still need assembly with B.
-  A's factories, route reports and C's stream API are exercised together without inventing
-  visual evidence. Do not treat that prediction-only integration test as localization.
+- B's Step 1-3 map, tracker, worker and ground-motion implementation are integrated;
+  the production frontend/raw-MCAP CLI and independent run validator are assembled.
+  Real tuning replay still loses mapped support. See `STAGE3_STATUS.md` for the current
+  measured gate; passing synthetic lifecycle tests does not close that gate.
+- Global EigenPlaces retrieval remains B's later step. The current geometric shortlist
+  cannot recover once the prediction has drifted outside its bounded spatial search.
 - Frozen fitting-only body-to-road height, bodywork/traffic masks and physical-border image
   association still need fitting/review. Ground/border startup must reject missing geometry.
-- Run-level diagnostics validation, paced latency/queue qualification and replay/demo tooling
-  remain subsequent C work. Reuse the existing offline scorer; no evaluator changes or GT
+- Run-level diagnostics validation is implemented; paced latency/queue qualification and
+  replay/demo tooling remain subsequent C work. Reuse the existing offline scorer; no evaluator changes or GT
   callbacks belong in the inference path. An aborted CSV alone is not a completed-run gate.
-- End-to-end tuning accuracy, loss/recovery quality, competition GPU runtime and native
-  higher-rate support remain unverified until the production visual path is available.
+- End-to-end tuning has been measured and fails the continuous visual-baseline gate.
+  Loss/recovery quality, competition GPU runtime and native higher-rate support remain open.
 
 ## Verification boundary
 
-Latest recheck, 18 October: **865 passed**, none skipped or xfailed; Ruff and whitespace
+Prior A+C recheck, 18 October: **865 passed**, none skipped or xfailed; Ruff and whitespace
 checks passed. Command: `.venv/Scripts/python.exe -B -m pytest -q --basetemp tmp/stage4_full_recheck`.
 `tests/test_stage4_decisions.py` covers the resolved lifecycle, exact evaluator boundary,
 eligible-job priority and fatal-run cleanup. `tests/test_borders.py` covers actual matched
@@ -138,4 +146,5 @@ evaluation sources, organizer assets and dependency pins are unchanged.
 
 This is synthetic software and timing verification only. It makes no claim of localization
 accuracy, runtime performance or native high-rate support. Those gates remain open until
-B's visual frontend, worker and tracker are integrated and measured on the recording.
+the integrated visual path passes real-recording validation. Current results and the latest
+whole-suite verification are recorded in `STAGE3_STATUS.md`.

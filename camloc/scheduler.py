@@ -132,8 +132,8 @@ class GroupContext:
     """Per-group view the frontend receives: due results, ``rear_in_flight`` and ``propose``.
 
     ``results`` are the checked ``ok`` AnchorResults whose Delivery_Group is this group, in
-    ascending job id order. ``rear_in_flight`` is True exactly when a ``rear_anchor`` job is
-    in flight (through its Delivery_Group). While the scheduler is faulted both are empty and
+    ascending job id order. ``rear_in_flight`` is True when a rear-camera job, including
+    recovery, is in flight (through its Delivery_Group). While the scheduler is faulted both are empty and
     ``propose`` validates its input and then ignores it.
     """
 
@@ -404,7 +404,7 @@ class AnchorScheduler:
         else:
             rear = (
                 self._in_flight is not None
-                and self._in_flight.request.purpose is c.AnchorPurpose.REAR_ANCHOR
+                and self._in_flight.request.camera_id == c.SECONDARY_CAMERA
             )
             context = GroupContext(frame_set, results, rear, self._max_proposal_ns)
         self._open = context

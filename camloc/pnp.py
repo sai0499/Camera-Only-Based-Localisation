@@ -2,7 +2,7 @@
 
 Gates (FINAL_BUILD_PLAN section 3, starting defaults; tune only on tuning data): >= 30
 inliers, >= 35 % inlier fraction, median error <= 2 px, p90 <= 4 px, inlier support in
->= 6 of the 4 x 4 image-grid cells, positive depths, a non-degenerate (not nearly
+>= 6 of the 4 x 4 usable-image grid cells, positive depths, a non-degenerate (not nearly
 collinear) point spread and a plausible body attitude. The pose is converted to T_WB before
 any check that C applies (innovation gating is C's). A failed gate returns a rejected
 record that keeps everything measured.
@@ -97,6 +97,8 @@ def solve_pnp(
     K: np.ndarray,
     T_BC: np.ndarray,
     gates: PnPGates = DEFAULT_GATES,
+    *,
+    valid_mask: np.ndarray | None = None,
 ) -> PnPSolution:
     """RANSAC PnP (SQPnP minimal solver) + LM refinement on its inliers, then the gates."""
     pixels = np.ascontiguousarray(pixels, np.float64).reshape(-1, 2)
@@ -105,6 +107,18 @@ def solve_pnp(
     n = len(pixels)
     if len(points_W) != n or not (np.isfinite(pixels).all() and np.isfinite(points_W).all()):
         raise c.ContractError("PnP needs equal, finite pixel/world point rows")
+    if valid_mask is not None:
+        if valid_mask.dtype != np.bool_ or valid_mask.shape != (c.CANONICAL_HEIGHT, c.CANONICAL_WIDTH):
+            raise c.ContractError("PnP valid_mask must be canonical bool (464, 960)")
+        if not valid_mask.any():
+            return PnPSolution(None, empty, np.zeros(0), 0, "empty_usable_mask")
+        inside = ((pixels >= -0.5).all(axis=1)
+                  & (pixels[:, 0] <= c.CANONICAL_WIDTH - 0.5)
+                  & (pixels[:, 1] <= c.CANONICAL_HEIGHT - 0.5))
+        u = np.rint(pixels[:, 0]).astype(np.int64).clip(0, c.CANONICAL_WIDTH - 1)
+        v = np.rint(pixels[:, 1]).astype(np.int64).clip(0, c.CANONICAL_HEIGHT - 1)
+        if not (inside & valid_mask[v, u]).all():
+            return PnPSolution(None, empty, np.zeros(0), 0, "masked_correspondences")
     if n < max(gates.min_correspondences, 4):
         return PnPSolution(None, empty, np.zeros(0), 0, "too_few_correspondences")
     # Centre the world points: map coordinates are hundreds of metres from the origin.
@@ -135,7 +149,8 @@ def solve_pnp(
     except c.ContractError:
         return PnPSolution(None, empty, np.zeros(0), 0, "pnp_failed")
     inlier_errors = errors[index]
-    cells = occupied_cells(pixels[index])
+    # Bodywork/remap-invalid pixels cannot provide support; use their frozen usable extent.
+    cells = occupied_cells(pixels[index], valid_mask)
     reason = "accepted"
     if index.size < gates.min_inliers:
         reason = "too_few_inliers"

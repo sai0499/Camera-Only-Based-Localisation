@@ -330,6 +330,11 @@ def _run_stage4(
                         if (stepped.pose is handoff
                                 and estimate.evidence_kinds == (c.EvidenceKind.HANDOFF_PNP,)):
                             disposition = c.HandoffDisposition.ADOPT
+                        elif (stepped.pose is not None
+                              and estimate.evidence_kinds in ((c.EvidenceKind.PNP,), (c.EvidenceKind.HANDOFF_PNP,))
+                              and any(item.evidence is handoff and item.reason == "compatible_refresh"
+                                      for item in stepped.unused)):
+                            disposition = c.HandoffDisposition.ADOPT
                         elif outcome is not None and outcome.candidate_handoff is handoff:
                             disposition = c.HandoffDisposition.CANDIDATE
                         elif (stepped.reset is not None and handoff.pose is stepped.reset.confirmation

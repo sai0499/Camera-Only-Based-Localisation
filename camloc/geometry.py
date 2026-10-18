@@ -492,8 +492,8 @@ class _RoadGeometry:
             return self._invalid(query_xy, branch, "branch_without_border")
 
         left, right = self._borders[branch]
-        left_index, _ = left.nearest_index(query_xy)
-        right_index, _ = right.nearest_index(query_xy)
+        left_index, left_distance = left.nearest_index(query_xy)
+        right_index, right_distance = right.nearest_index(query_xy)
 
         # Association gate: opposing tangents near (anti)parallel, separation roughly
         # perpendicular and within a plausible lane width. A crossing fails here.
@@ -509,13 +509,19 @@ class _RoadGeometry:
             return self._invalid(query_xy, branch, "ambiguous_crossing")
         if separation > _MAX_SEPARATION_M:
             return self._invalid(query_xy, branch, "separation_too_wide")
+        fraction = float((query_xy - left.points_W[left_index, :2]) @ separation_vector) / separation**2
+        margin = 2.0 / separation
+        if (max(left_distance, right_distance) > separation + _PATCH_RADIUS_M
+                or not -margin <= fraction <= 1.0 + margin):
+            return self._invalid(query_xy, branch, "outside_road_corridor")
         separation_unit = separation_vector / separation
         perpendicularity = abs(float(np.dot(separation_unit, left_tangent)))
         if perpendicularity > np.sin(_MAX_PERPENDICULAR_OFFSET):
             return self._invalid(query_xy, branch, "non_perpendicular_separation")
 
-        left_local = left.local_points(query_xy, _PATCH_RADIUS_M)
-        right_local = right.local_points(query_xy, _PATCH_RADIUS_M)
+        # A wide road can put the opposite border farther than the local along-road radius.
+        left_local = left.local_points(left.points_W[left_index, :2], _PATCH_RADIUS_M)
+        right_local = right.local_points(right.points_W[right_index, :2], _PATCH_RADIUS_M)
         if min(len(left_local), len(right_local)) < 3:
             return self._invalid(query_xy, branch, "insufficient_support")
         if np.dot(left_tangent, right_tangent) < 0:
@@ -548,7 +554,6 @@ class _RoadGeometry:
             valid=True,
             reason="valid",
         )
-
 
 def load_road_geometry(map_mcap: str | Path) -> _RoadGeometry:
     """Load the surveyed borders from the static map and return a RoadGeometry.

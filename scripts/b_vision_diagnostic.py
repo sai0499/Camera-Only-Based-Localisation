@@ -149,7 +149,8 @@ def run_anchors(args, landmark_map, worker, calibrations, canonicalizer, gt, sta
         if result.correspondences is not None:
             corr = result.correspondences
             sol = pnp.solve_pnp(corr.pixels, landmark_map.points(corr.landmark_ids),
-                                obs.K, obs.T_BC)
+                                obs.K, obs.T_BC, valid_mask=(
+                                    obs.valid_mask & landmark_map.mask(obs.camera_id)))
             row.update(correspondences=int(corr.landmark_ids.size), pnp=sol.reason,
                        inliers=int(sol.inliers.size), cells=sol.occupied_cells,
                        usable_cells=pnp.occupied_cells(

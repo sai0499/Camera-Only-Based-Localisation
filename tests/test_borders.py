@@ -64,6 +64,13 @@ def _road_from(pairs) -> _RoadGeometry:
 
 
 class RoadPatchTests(unittest.TestCase):
+    def test_wide_road_support_is_local_to_each_border(self):
+        road = _road_from({Branch.TRACK: _straight_borders(width=24.0)})
+        patch = road.road_patch(0.0, -10.0, 0.0, Branch.TRACK)
+        self.assertTrue(patch.valid)
+        self.assertGreaterEqual(patch.support, 6)
+        self.assertFalse(road.road_patch(500., -10., 0., Branch.TRACK).valid)
+
     def test_flat_plane_has_upward_normal_and_tiny_residual(self):
         left, right = _straight_borders(slope=0.0)
         road = _road_from({Branch.TRACK: (left, right)})

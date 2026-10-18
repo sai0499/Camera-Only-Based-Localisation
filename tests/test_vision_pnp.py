@@ -76,3 +76,24 @@ def test_occupied_cells_over_full_image_and_usable_extent():
     mask[:232] = True
     assert pnp.occupied_cells(pixels, mask) == 4
     assert pnp.usable_extent(mask) == (-0.5, 959.5, -0.5, 231.5)
+
+
+def test_spatial_gate_uses_frozen_usable_extent_with_same_pose_limits():
+    scene = vf.Scene(count_u=24, count_v=12)
+    pixels, points, truth = _inputs(scene, k=0)
+    chosen = (pixels[:, 1] > 132) & (pixels[:, 1] < 220)
+    pixels, points = pixels[chosen], points[chosen]
+    mask = np.zeros((c.CANONICAL_HEIGHT, c.CANONICAL_WIDTH), bool)
+    mask[:286] = True
+    full = pnp.solve_pnp(pixels, points, scene.K, scene.T_BC)
+    usable = pnp.solve_pnp(pixels, points, scene.K, scene.T_BC, valid_mask=mask)
+    assert full.reason == "poor_image_coverage" and full.occupied_cells < 6
+    assert usable.accepted and usable.occupied_cells >= 6
+    assert usable.inliers.size == full.inliers.size >= 30
+    np.testing.assert_allclose(usable.T_WB, truth, atol=1e-6)
+    assert usable.errors_px.max() < 1e-6
+    u, v = np.rint(pixels[0]).astype(int)
+    mask[v, u] = False
+    assert pnp.solve_pnp(pixels, points, scene.K, scene.T_BC, valid_mask=mask).reason == "masked_correspondences"
+    mask[:] = False
+    assert pnp.solve_pnp(pixels, points, scene.K, scene.T_BC, valid_mask=mask).reason == "empty_usable_mask"

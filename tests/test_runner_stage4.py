@@ -253,6 +253,27 @@ def test_settle_dispositions_and_reset_calls_follow_the_committed_group(tmp_path
     assert all(r["status"] != "recovering" for r in estimates(out["records"]))
 
 
+@pytest.mark.parametrize('reason, disposition', [
+    ('compatible_refresh', c.HandoffDisposition.ADOPT),
+    ('stronger_pose_selected', c.HandoffDisposition.DISCARD),
+])
+def test_compatible_handoff_refreshes_tracks_without_second_pose_update(tmp_path, reason, disposition):
+    tracker = s4.FakeTracker()
+
+    def frontend(frame, prior):
+        tracker.current_group = frame.group_id
+        image = s4.image_of(frame, 'fr')
+        refresh = handoff(frame.group_id, image, image.exposure_ns - 100_000_000)
+        return f.make_group_evidence(frame_set=frame,
+            pose=pnp(image.exposure_ns, np.random.default_rng(frame.group_id)),
+            unused=(c.UnusedEvidence(reason=reason, evidence=refresh),))
+
+    out = run(tmp_path, s4.synthetic_stream(4, 10), frontend, tracker=tracker)
+    assert all(item['evidence_kinds'] == ['pnp'] for item in estimates(out['records']))
+    settled = [args for name, group, args in tracker.calls if name == 'settle']
+    assert len(settled) == 4 and all(args[1] is disposition for args in settled)
+
+
 def test_run_summary_and_returned_key_sets(tmp_path):
     frames = s4.synthetic_stream(12, 10)
     frontend = anchor_frontend()

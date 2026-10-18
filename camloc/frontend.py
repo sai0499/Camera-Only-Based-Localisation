@@ -23,6 +23,9 @@ class VisualFrontend:
         self.previous = {}
         self.events = []
         self._search = {}
+        self._last_rear_proposal_ns = estimator.initial_pose.timestamp_ns - 750_000_000
+        self._last_recovery_proposal_ns = None
+        self._recovery_camera_index = 0
 
     def drain_diagnostics(self):
         events, self.events = self.events, []
@@ -49,12 +52,13 @@ class VisualFrontend:
 
     def __call__(self, frame: c.FrameSet, prior: c.SearchSnapshot, context: GroupContext):
         observations, poses, rejected, unused = {}, [], [], []
+        rear_due = ("r" in self.tracker.map.cameras
+                    and frame.t_ns - self._last_rear_proposal_ns >= c.NS_PER_S)
         # Rear JPEGs are needed only for a mapped rear stream, an in-flight job or fallback.
         for image in sorted(frame.images, key=lambda item: (item.camera_id != "fr", item.exposure_ns)):
             front_supported = any(item.camera_id == "fr" and self.estimator.pose_in_gate(_pose(item))
                                   for item in poses)
-            if (image.camera_id == "r" and front_supported and not context.rear_in_flight
-                    and "r" not in self.tracker.map.cameras):
+            if image.camera_id == "r" and front_supported and not context.rear_in_flight and not rear_due:
                 continue
             try:
                 obs = self.canonicalizer.canonicalize(image)
@@ -88,7 +92,7 @@ class VisualFrontend:
             (poses if handoff.accepted else rejected).append(handoff)
 
         eligible = [item for item in poses if self.estimator.pose_in_gate(_pose(item))]
-        # Compare cameras at the group exposure using only the preceding causal velocity.
+        # Compare current poses at the group exposure using only the preceding causal velocity.
         common = []
         for item in eligible:
             pose = _pose(item)
@@ -96,7 +100,7 @@ class VisualFrontend:
             T = pose.T_WB
             common.append((item.camera_id, T[:2, 3] + prior.state[3:5] * dt,
                            math.atan2(T[1, 0], T[0, 0]) + prior.state[5] * dt))
-        conflict = any(a[0] != b[0] and (np.linalg.norm(a[1] - b[1]) > 2.0
+        conflict = any((np.linalg.norm(a[1] - b[1]) > 2.0
                        or abs(c.wrap_angle(a[2] - b[2])) > math.radians(3))
                        for i, a in enumerate(common) for b in common[i + 1:])
         selected = None if conflict or not eligible else max(
@@ -104,7 +108,16 @@ class VisualFrontend:
                                         -_pose(item).median_error_px))
         for item in poses:
             if item is not selected:
-                reason = ("innovation_gate" if conflict or not any(item is other for other in eligible)
+                compatible = False
+                if selected is not None and isinstance(item, c.HandoffEvidence):
+                    first, second = _pose(selected), item.pose
+                    dt = (second.exposure_ns - first.exposure_ns) / c.NS_PER_S
+                    delta = second.T_WB[:2, 3] - first.T_WB[:2, 3] - prior.state[3:5] * dt
+                    yaw_delta = (math.atan2(second.T_WB[1, 0], second.T_WB[0, 0])
+                                 - math.atan2(first.T_WB[1, 0], first.T_WB[0, 0]) - prior.state[5] * dt)
+                    compatible = np.linalg.norm(delta) <= 1.0 and abs(c.wrap_angle(yaw_delta)) <= math.radians(2)
+                reason = ("compatible_refresh" if compatible else
+                          "innovation_gate" if conflict or not any(item is other for other in eligible)
                           else "stronger_pose_selected")
                 unused.append(c.UnusedEvidence(reason=reason, evidence=item))
 
@@ -135,16 +148,40 @@ class VisualFrontend:
                 else:
                     rejected.append(value)
 
+        proposals = []
         for camera, obs in observations.items():
             if camera not in self.tracker.map.cameras:
                 continue
             snapshot = self.estimator.snapshot(obs.exposure_ns)
-            supported = selected is not None and selected.camera_id == camera
-            refs = self._references(obs, snapshot, supported)
+            recent_full = (prior.auxiliary.source is c.AuxSource.PNP
+                           and prior.auxiliary.source_ns is not None
+                           and frame.t_ns - prior.auxiliary.source_ns <= 500_000_000)
+            refs = self._references(obs, snapshot, selected is not None or recent_full)
             if refs:
-                context.propose(purpose=(c.AnchorPurpose.FRONT_ANCHOR if camera == "fr"
-                                         else c.AnchorPurpose.REAR_ANCHOR), observation=obs,
-                                reference_ids=refs, track_count=self.tracker.active_count(camera))
+                proposals.append((camera, obs, refs))
+        if selected is None:
+            last = self._last_recovery_proposal_ns
+            if proposals and (last is None or frame.t_ns - last >= 250_000_000):
+                # Alternate available cameras; failed front tracks cannot starve rear rescue.
+                proposal = proposals[self._recovery_camera_index % len(proposals)]
+                self._recovery_camera_index += 1
+                self._last_recovery_proposal_ns = frame.t_ns
+                proposals = [proposal]
+            else:
+                proposals = []
+        elif rear_due and any(camera == "r" for camera, _, _ in proposals):
+            # Reserve this normal slot for the staggered 1 Hz rear anchor.
+            proposals = [proposal for proposal in proposals if proposal[0] == "r"]
+        else:
+            proposals = [proposal for proposal in proposals if proposal[0] == "fr"]
+        for camera, obs, refs in proposals:
+            purpose = (c.AnchorPurpose.RECOVERY if selected is None else
+                       c.AnchorPurpose.FRONT_ANCHOR if camera == "fr" else c.AnchorPurpose.REAR_ANCHOR)
+            context.propose(purpose=purpose, observation=obs, reference_ids=refs,
+                            track_count=max((_pose(item).inlier_count for item in poses
+                                             if item.camera_id == camera), default=0))
+            if camera == "r":
+                self._last_rear_proposal_ns = obs.exposure_ns
         self.previous = observations
         return c.GroupEvidence(frame_set=frame, pose=selected, motion=motion, border=border,
                                reset=None, rejected=tuple(rejected), unused=tuple(unused))

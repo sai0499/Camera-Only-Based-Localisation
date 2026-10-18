@@ -424,7 +424,7 @@ def check_rear_in_flight(run: Run, st: Replay) -> None:
     """``rear_in_flight`` is True exactly while a rear job is in flight (through delivery)."""
     spans = []
     for job, dispatch_group in st.dispatched.items():
-        if st.created[job]["purpose"] == P.REAR_ANCHOR.value:
+        if st.created[job]["camera_id"] == R:
             spans.append((dispatch_group, st.outcome.get(job, (None, math.inf))[1]))
     for gid, ctx in run.contexts.items():
         assert ctx.rear_in_flight == any(lo < gid <= hi for lo, hi in spans), gid
