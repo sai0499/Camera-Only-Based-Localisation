@@ -3,7 +3,9 @@
 Gates (FINAL_BUILD_PLAN section 3, starting defaults; tune only on tuning data): >= 30
 inliers, >= 35 % inlier fraction, median error <= 2 px, p90 <= 4 px, inlier support in
 >= 6 of the 4 x 4 usable-image grid cells, positive depths, a non-degenerate (not nearly
-collinear) point spread and a plausible body attitude. The pose is converted to T_WB before
+collinear) point spread and a plausible body attitude. ``min_usable_cells_without_full``
+(default off) can demand more usable cells when the full-image grid has < 6; a tuning
+replay with 8 lost continuity (task_docs/B_STATUS.md), so it stays off. The pose is converted to T_WB before
 any check that C applies (innovation gating is C's). A failed gate returns a rejected
 record that keeps everything measured.
 """
@@ -28,6 +30,10 @@ class PnPGates:
     max_median_px: float = 2.0
     max_p90_px: float = 4.0
     min_cells: int = 6
+    # Inliers that occupy fewer than ``min_cells`` cells of the full-image grid (support
+    # squeezed into the usable extent above the bodywork) must occupy at least this many
+    # usable-extent cells. 0 disables the extra requirement.
+    min_usable_cells_without_full: int = 0
     ransac_threshold_px: float = 4.0
     ransac_iterations: int = 300
     ransac_confidence: float = 0.999
@@ -47,8 +53,9 @@ class PnPSolution:
     T_WB: np.ndarray | None
     inliers: np.ndarray  # int64 row indices
     errors_px: np.ndarray  # float64 per inlier
-    occupied_cells: int
+    occupied_cells: int  # usable-extent grid (full image when no mask is given)
     reason: str
+    full_image_cells: int = 0  # full-image grid, for diagnostics and the stricter rule
 
     @property
     def accepted(self) -> bool:
@@ -151,6 +158,7 @@ def solve_pnp(
     inlier_errors = errors[index]
     # Bodywork/remap-invalid pixels cannot provide support; use their frozen usable extent.
     cells = occupied_cells(pixels[index], valid_mask)
+    full_cells = occupied_cells(pixels[index])
     reason = "accepted"
     if index.size < gates.min_inliers:
         reason = "too_few_inliers"
@@ -162,6 +170,9 @@ def solve_pnp(
         reason = "high_p90_error"
     elif cells < gates.min_cells:
         reason = "poor_image_coverage"
+    elif (gates.min_usable_cells_without_full and full_cells < gates.min_cells
+          and cells < gates.min_usable_cells_without_full):
+        reason = "poor_image_coverage"
     else:
         centred = pixels[index] - pixels[index].mean(axis=0)
         singular = np.linalg.svd(centred, compute_uv=False)
@@ -170,7 +181,7 @@ def solve_pnp(
             reason = "degenerate_geometry"
         elif max(abs(roll), abs(pitch)) > gates.max_abs_roll_pitch_rad:
             reason = "implausible_attitude"
-    return PnPSolution(T_WB, index.astype(np.int64), inlier_errors, cells, reason)
+    return PnPSolution(T_WB, index.astype(np.int64), inlier_errors, cells, reason, full_cells)
 
 
 def pose_evidence(
