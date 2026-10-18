@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="980" viewBox="0 0 1440 980" role="img" aria-labelledby="title desc">
+<title id="title">TrackCode Apex proposed localisation workspace</title>
+<desc id="desc">Design wireframe, not an implemented UI. Select input, validate, run, monitor, then review in 2D or 3D. Large centre scene, left run configuration, right evidence inspector and bottom timeline. Ground truth is optional and confined to offline review.</desc>
+<style>text{font-family:Segoe UI,Arial,sans-serif;fill:#e7ecf2;font-size:15px}.small{font-size:13px;fill:#a9b4c2}.label{font-size:12px;fill:#a9b4c2;letter-spacing:1.5px}.head{font-size:24px;font-weight:600}.pane{fill:#151c26;stroke:#354153}.line{stroke:#354153;stroke-width:1;fill:none}.accent{fill:#6ad7ea}.muted{fill:#a9b4c2}</style>
+<rect width="1440" height="980" fill="#0d131c"/>
+<text x="30" y="42" class="head">TrackCode Apex</text><text x="270" y="42" class="small">LOCALISATION WORKSPACE / DESIGN PROPOSAL</text>
+<rect x="1135" y="18" width="275" height="36" rx="5" class="pane"/><text x="1150" y="42" class="small">Process state / estimator state</text>
+<text x="30" y="84" class="accent">1 Select input</text><text x="195" y="84">→ 2 Validate</text><text x="350" y="84">→ 3 Run + monitor</text><text x="555" y="84">→ 4 Review 2D / 3D</text><text x="800" y="84">→ 5 Export</text>
+<path d="M30 102H1410" class="line"/>
+<rect x="30" y="123" width="256" height="572" rx="6" class="pane"/>
+<text x="48" y="155" class="label">RUN INPUTS</text>
+<text x="48" y="190">Recording</text><rect x="48" y="202" width="220" height="37" fill="#0d131c" stroke="#354153"/><text x="59" y="226" class="small">Local MCAP…</text>
+<text x="48" y="271">Initial pose</text><rect x="48" y="283" width="220" height="37" fill="#0d131c" stroke="#354153"/><text x="59" y="307" class="small">timestamp / x / y / yaw</text>
+<text x="48" y="352">Frozen artifacts</text><rect x="48" y="364" width="220" height="37" fill="#0d131c" stroke="#354153"/><text x="59" y="388" class="small">Map + retrieval bank…</text>
+<text x="48" y="434">Run mode</text><text x="48" y="461" class="small">New recording / Tune / Holdout</text>
+<text x="48" y="503">Compatibility checks</text><text x="48" y="529" class="small">Cameras · calibration · artifact IDs</text>
+<rect x="48" y="554" width="220" height="41" rx="4" fill="#6ad7ea"/><text x="102" y="581" style="fill:#0d131c;font-weight:600">Start localisation</text>
+<text x="48" y="630" class="small">GT is not an inference input.</text><text x="48" y="653" class="small">Preserve every output and failure.</text>
+<rect x="304" y="123" width="792" height="572" rx="6" class="pane"/>
+<text x="325" y="155" class="accent">Monitor</text><text x="420" y="155">2D replay</text><text x="530" y="155">3D scene</text><text x="644" y="155">Diagnostics</text><text x="943" y="155" class="small">Follow / Fit</text>
+<path d="M304 172H1096" class="line"/>
+<g opacity="0.24"><path d="M340 220H1060M340 300H1060M340 380H1060M340 460H1060M340 540H1060M340 620H1060M400 205V640M520 205V640M640 205V640M760 205V640M880 205V640M1000 205V640" class="line"/></g>
+<path d="M460 600L560 290Q580 230 640 260L720 330Q780 380 880 460L920 540Q900 590 830 600Z" fill="none" stroke="#e7ecf2" stroke-width="2" stroke-dasharray="8 5"/>
+<path d="M460 600L560 290Q580 230 640 260L720 330Q780 380 820 415" fill="none" stroke="#6ad7ea" stroke-width="3"/>
+<path d="M822 406L836 426L813 421Z" fill="#6ad7ea"/>
+<text x="363" y="655" class="small">SCHEMATIC ONLY — not a measured trajectory</text>
+<text x="327" y="198" class="small">Metres / equal map scale / selected exposure</text>
+<rect x="1114" y="123" width="296" height="572" rx="6" class="pane"/>
+<text x="1134" y="155" class="label">CURRENT OUTPUT</text><text x="1134" y="190">Pose + heading</text><text x="1134" y="216" class="small">Exact exposure / group ID</text>
+<path d="M1134 239H1390" class="line"/>
+<text x="1134" y="271">Evidence inspector</text><text x="1134" y="300" class="small">Tracking / anchor / prediction</text><text x="1134" y="327" class="small">Inliers · reprojection · coverage</text><text x="1134" y="354" class="small">Rejection and recovery reasons</text>
+<rect x="1134" y="381" width="256" height="111" fill="#0d131c" stroke="#354153"/><text x="1152" y="418">Optional camera panel</text><text x="1152" y="445" class="small">Exact camera/exposure</text><text x="1152" y="470" class="small">Overlays only with saved pixels</text>
+<text x="1134" y="530">Runtime</text><text x="1134" y="557" class="small">Processing / stalls / errors</text><text x="1134" y="599">Offline review</text><text x="1134" y="626" class="small">Attach GT after run; compare</text><text x="1134" y="653" class="small">Accuracy unavailable without GT</text>
+<rect x="30" y="713" width="1380" height="176" rx="6" class="pane"/>
+<text x="48" y="746">Play / pause   ← Step →   Speed   Time</text><text x="815" y="746" class="small">Shared cursor across scene, images and diagnostics</text>
+<path d="M55 781H1384" stroke="#a9b4c2" stroke-width="2"/><path d="M738 766V868" stroke="#6ad7ea" stroke-width="2"/>
+<text x="48" y="816" class="small">Status + loss/recovery events</text><text x="48" y="842" class="small">Processing time / worker waits</text><text x="48" y="868" class="small">Position / heading errors when an offline reference is available</text>
+<text x="30" y="926" class="small">3D uses real surveyed XYZ and valid auxiliary geometry. Missing height stays missing; no invented 3D accuracy.</text>
+<text x="30" y="952" class="small">Viewer controls never alter estimator evidence or replay the localizer. Hidden input works without GT; official judge interface is unconfirmed.</text>
+</svg>
