@@ -1030,3 +1030,70 @@ def test_threaded_matches_sync_sequences():
             assert _sequence(threaded) == _sequence(sync)
             assert s4.strip_runtime(threaded.events) == s4.strip_runtime(sync.events)
             assert worker.max_concurrency == 1
+
+
+# ---------------------------------------------------------------------------------------
+# Stage 3 gate fix round 2: GroupContext.settled (OK and FAILED results, read-only)
+# ---------------------------------------------------------------------------------------
+
+
+class KeepingMixWorker(MixWorker):
+    """MixWorker that also keeps every returned AnchorResult by job id."""
+
+    def __init__(self, seed: int) -> None:
+        super().__init__(seed)
+        self.returned: dict[int, c.AnchorResult] = {}
+
+    def run(self, request: c.AnchorRequest) -> c.AnchorResult:
+        result = super().run(request)
+        self.returned[request.job_id] = result
+        return result
+
+
+def test_settled_holds_ok_and_failed_results_and_events_are_unchanged():
+    # Feature: stage3-gate-fix-round2, Property 5: Preservation - Supported, no-index and named-reference paths
+    """``settled`` is exactly the delivered and failed results of each group, unchanged and
+    in job order; ``results`` is its ok subset; rejected results never appear; the event
+    log equals the log of the same inputs with an always-ok worker for queue events.
+
+    **Validates: Requirements 2.3, 3.4, 3.5**
+    """
+    seen = {"ok": 0, "failed": 0, "withheld": 0}
+    for i in range(ITERATIONS):
+        rng = np.random.default_rng([31, i])
+        stream = base_stream(RATES[i % 4], i % 3)
+        groups = random_groups(rng, 30, density=0.5)
+        worker = KeepingMixWorker(i)
+        run = Run(stream, worker).drive(groups).finish()
+        outcome_at = {}
+        for e in run.of(*OUTCOME_KINDS):
+            outcome_at.setdefault(e["group_id"], []).append(e)
+        for gid, ctx in run.contexts.items():
+            expected = [e["job_id"] for e in outcome_at.get(gid, [])
+                        if e["kind"] in ("delivered", "failed")]
+            assert [r.job_id for r in ctx.settled] == sorted(expected), (i, gid)
+            assert ctx.results == tuple(r for r in ctx.settled if r.status is c.AnchorStatus.OK)
+            for result in ctx.settled:
+                assert result is worker.returned[result.job_id]  # the worker's own record
+                assert result.status in (c.AnchorStatus.OK, c.AnchorStatus.FAILED)
+                seen["ok" if result.status is c.AnchorStatus.OK else "failed"] += 1
+            seen["withheld"] += sum(e["kind"] == "rejected" for e in outcome_at.get(gid, []))
+            with pytest.raises(AttributeError):
+                ctx.settled = ()
+        ok = Run(stream).drive(groups).finish()
+        kinds = ("created", "replaced", "expired", "dispatched", "rate_limited", "cancelled")
+        assert [queue_key(e) for e in run.of(*kinds)] == [queue_key(e) for e in ok.of(*kinds)]
+    assert all(seen.values()), seen
+
+
+def test_faulted_scheduler_settles_nothing():
+    stream = exact_stream(10, 6)
+    run = Run(stream, s4.FakeWorker(fault="exception", fault_jobs=(0,)))
+    ctx = run.begin(0, S.LOST)
+    run.propose(ctx, 0, P.RECOVERY)
+    run.end(0, S.LOST)
+    for k in range(1, 6):
+        ctx = run.begin(k, S.LOST)
+        assert ctx.settled == () and ctx.results == ()
+        run.end(k, S.LOST)
+    assert run.scheduler.faulted

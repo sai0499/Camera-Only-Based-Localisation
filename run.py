@@ -402,6 +402,9 @@ def main(argv=None):
     parser.add_argument("--initial-pose", type=Path, required=True)
     parser.add_argument("--split", choices=("tune", "holdout"), required=True)
     parser.add_argument("--output", type=Path, required=True, help="fresh result directory")
+    parser.add_argument("--retrieval", action="store_true",
+                        help="load <artifacts>/retrieval.{npz,json} and the pinned EigenPlaces "
+                             "checkpoint for global recovery retrieval (fails if missing)")
     args = parser.parse_args(argv)
     initial = c.read_initial_pose(args.initial_pose)
     episode = c.load_split()[args.split]
@@ -426,14 +429,24 @@ def main(argv=None):
         tracker = vision.load_tracker(bank, calibrations)
         if any(reason != "valid" for reason in tracker.calibration_compatibility.values()):
             raise c.ContractError(f"incompatible map/rig: {tracker.calibration_compatibility}")
-        worker = vision.load_anchor_worker(bank)
+        index = None
+        if args.retrieval:
+            from camloc import retrieval
+
+            # Missing, unbound or mismatched retrieval assets raise; never a silent fallback.
+            if not (args.artifacts / retrieval.INDEX_ARRAYS_NAME).is_file():
+                raise c.ContractError(f"--retrieval: no {retrieval.INDEX_ARRAYS_NAME} in {args.artifacts}")
+            index = retrieval.RetrievalIndex.load(args.artifacts, bank,
+                                                  retrieval.load_pinned_eigenplaces())
+        worker = vision.load_anchor_worker(bank, retrieval=index)
         if tuple(manifest.get("model_ids", ())) != worker.backend.model_ids:
             raise c.ContractError("map checkpoints differ from the installed pinned backend")
         supplied_map = c.PROJECT_ROOT / "23-00-38_cut_120m_update" / "map.mcap"
         road = geometry.load_road_geometry(supplied_map)
         estimator = CameraFilter(initial)
         frontend = VisualFrontend(geometry.make_canonicalizer(calibrations), tracker, estimator,
-            road=road, borders=borders.make_border_source(road), motion=vision.make_ground_motion())
+            road=road, borders=borders.make_border_source(road), motion=vision.make_ground_motion(),
+            retrieval_enabled=index is not None)
         source = io.open_frame_sets(args.bag, initial_pose=initial, episode=episode,
                                    calibrations=calibrations)
         metadata = {"split": args.split, "initial_pose": initial.summary(),
@@ -445,7 +458,9 @@ def main(argv=None):
                         path.read_bytes()).hexdigest() for path in [
                             c.PROJECT_ROOT / "run.py", *sorted((c.PROJECT_ROOT / "camloc").glob("*.py"))]},
                     "border_corrections": False, "ground_motion_corrections": False,
-                    "global_retrieval": False, "startup_seconds": time.perf_counter() - began}
+                    "global_retrieval": index is not None,
+                    **({"retrieval": index.identity()} if index is not None else {}),
+                    "startup_seconds": time.perf_counter() - began}
         (args.output / "run.json").write_text(json.dumps(metadata, indent=2) + "\n", encoding="utf-8")
         replay_began = time.perf_counter()
         counts = run_stream(source, estimator, frontend, output=args.output / "submission.csv",

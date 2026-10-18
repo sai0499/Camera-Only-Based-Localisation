@@ -15,15 +15,33 @@ def _pose(item):
     return item.pose if isinstance(item, c.HandoffEvidence) else item
 
 
+CARRY_FRESH_NS = 500_000_000  # carried candidates come from a source image <= 0.5 s old
+
+
 class VisualFrontend:
-    def __init__(self, canonicalizer, tracker, estimator: CameraFilter, *, road, borders, motion):
+    """Per-group current-image assembly and anchor proposals.
+
+    With ``retrieval_enabled`` (the worker holds a global retrieval index) an unsupported
+    group proposes one recovery job per group: up to two untried lower-ranked candidates
+    carried from the newest settled retrieval result of that camera when its source image
+    is at most 0.5 s older than the proposal image, else a retrieval request
+    (``reference_ids=()``). Without it, the geometric sweep is unchanged.
+    """
+
+    def __init__(self, canonicalizer, tracker, estimator: CameraFilter, *, road, borders, motion,
+                 retrieval_enabled=False):
         self.canonicalizer = canonicalizer
         self.tracker = tracker
         self.estimator = estimator
         self.road, self.borders, self.motion = road, borders, motion
+        self.retrieval_enabled = bool(retrieval_enabled)
         self.previous = {}
         self.events = []
         self._search = {}
+        # camera -> {"source_ns", "ids", "tried"}: candidates of the newest retrieval result.
+        self._carry = {}
+        # camera -> exposures of this frontend's retrieval requests (identifies their results).
+        self._retrieval_exposures = {}
         self._last_rear_proposal_ns = estimator.initial_pose.timestamp_ns - 750_000_000
         self._recovery_camera_index = 0
         self._recovery_switch_ns = None
@@ -34,8 +52,38 @@ class VisualFrontend:
             events.append({"record": "TrackerEvent", **self.tracker.events.popleft()})
         return events
 
+    def _update_carry(self, settled):
+        """Carry the remaining candidates of settled retrieval results; mark matched ids tried."""
+        for result in settled:
+            camera = result.camera_id
+            carry = self._carry.get(camera)
+            if carry is not None:
+                carry["tried"].update(result.matched_reference_ids)
+            requested = self._retrieval_exposures.get(camera, set())
+            if (result.source_exposure_ns in requested and result.remaining_candidate_ids
+                    and (carry is None or result.source_exposure_ns > carry["source_ns"])):
+                self._carry[camera] = {"source_ns": result.source_exposure_ns,
+                                       "ids": tuple(result.remaining_candidate_ids),
+                                       "tried": set(result.matched_reference_ids)}
+
+    def _recovery_references(self, obs):
+        """Fresh untried carried candidates (at most two), else a retrieval request ``()``."""
+        carry = self._carry.get(obs.camera_id)
+        if carry is not None and 0 <= obs.exposure_ns - carry["source_ns"] <= CARRY_FRESH_NS:
+            untried = [ref for ref in carry["ids"] if ref not in carry["tried"]]
+            if untried:
+                return tuple(untried[: c.MAX_REFERENCES_PER_JOB])
+        return ()
+
+    def _proposal_refs(self, obs, snapshot, supported):
+        """Reference ids to propose, ``()`` for a retrieval request, None for no proposal."""
+        if self.retrieval_enabled and not supported:
+            return self._recovery_references(obs)
+        refs = self._references(obs, snapshot, supported)
+        return refs if refs else None
+
     def _references(self, obs, snapshot, supported):
-        # shortcut: geometric search only; B's Step 5 adds global EigenPlaces retrieval.
+        # Geometric search: supported shortlist, or the unsupported sweep without an index.
         bank, camera = self.tracker.map, obs.camera_id
         x, y, yaw = snapshot.state[:3]
         sigma = math.sqrt(max(snapshot.P[0, 0], snapshot.P[1, 1]))
@@ -79,6 +127,8 @@ class VisualFrontend:
                             (0, o[ref]) if o[ref] >= -5.0 else (1, 0.0)))
 
     def __call__(self, frame: c.FrameSet, prior: c.SearchSnapshot, context: GroupContext):
+        if self.retrieval_enabled:
+            self._update_carry(context.settled)
         observations, poses, rejected, unused = {}, [], [], []
         rear_due = ("r" in self.tracker.map.cameras
                     and frame.t_ns - self._last_rear_proposal_ns >= c.NS_PER_S)
@@ -184,8 +234,8 @@ class VisualFrontend:
             recent_full = (prior.auxiliary.source is c.AuxSource.PNP
                            and prior.auxiliary.source_ns is not None
                            and frame.t_ns - prior.auxiliary.source_ns <= 500_000_000)
-            refs = self._references(obs, snapshot, selected is not None or recent_full)
-            if refs:
+            refs = self._proposal_refs(obs, snapshot, selected is not None or recent_full)
+            if refs is not None:  # () is a retrieval request, None no proposal
                 proposals.append((camera, obs, refs))
         if selected is None:
             # Alternate available cameras so failed front tracks cannot starve rear rescue.
@@ -212,6 +262,12 @@ class VisualFrontend:
                                              if item.camera_id == camera), default=0))
             if camera == "r":
                 self._last_rear_proposal_ns = obs.exposure_ns
+            if self.retrieval_enabled and refs == ():
+                # Keep only exposures whose results could still be fresh carry sources.
+                requested = self._retrieval_exposures.setdefault(camera, set())
+                requested.difference_update({ns for ns in requested
+                                             if obs.exposure_ns - ns > 2 * c.NS_PER_S})
+                requested.add(obs.exposure_ns)
         self.previous = observations
         return c.GroupEvidence(frame_set=frame, pose=selected, motion=motion, border=border,
                                reset=None, rejected=tuple(rejected), unused=tuple(unused))

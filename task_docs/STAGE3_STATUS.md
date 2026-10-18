@@ -10,9 +10,54 @@ anchor correspondence worker and ground motion. Its base was the current A+C com
 B's PR also explicitly disclosed this gate as unmet. Do not advertise the prediction-only
 tuning CSV as camera localization or proceed to holdout/optional demo work on that basis.
 
-## Gate-fix recheck, 19 October 2026: not signed off
+## Round 2: global retrieval + joint handoff (not signed off)
 
 Receipt: [stage3_recheck.json](evidence/stage3_recheck.json). Same bank
+(`artifacts/fit-b-integrated-v2`), split, evaluator, validator, gates, thresholds and shared
+contracts; fresh process, full unchanged tuning interval. Suite: **986 passed**; Ruff passed.
+Retrieval artifact `retrieval:294a97a90ef0922c` (680 `fr` references; offline recall@10
+within 25 m 98.5 %, @1 within 15 m 90.0 %; ~18 ms/query on RTX 4060).
+
+| Measured value | `tune-stage3-fix-1` | `tune-stage3-fix-2` (retrieval) | `tune-stage3-fix-3` (+ joint handoff) |
+|---|---|---|---|
+| Full-pose updates (PnP / handoff / reset) | 537 (373/161/3) | 1,328 (953/365/10) | **1,378** (978/390/10) |
+| Lost rows | 1,926 | 708 | **602** |
+| Longest full-pose gap / gaps > 3 s | 125.60 s / — | 12.80 s / 13 | **11.80 s** / 10 |
+| Original = updated x/y RMSE | 323.450 m | 29.586 m | **27.961 m** |
+| Reconciled map x/y / racing-line s/n RMSE | 323.500 / 673.008 m | 29.592 / 30.572 m | 27.967 / 27.878 m |
+| Anchors dispatched / delivered | 1,014 / 304 | 913 / 813 | 910 / 817 |
+| Frontend errors / backend faults | 0 / 0 | 0 / 0 | 0 / 0 |
+| CSV, exposure sequence, coverage 1.0, metrics | pass | pass | pass |
+| Visual-baseline gate | fail | fail | **fail** |
+
+fix-3 gaps over 3 s (t, s): 1.98–5.28, 5.98–12.18, 28.18–34.38, 62.88–66.08,
+104.38–116.18, 138.68–146.68, 160.18–168.08, 180.08–183.48, 232.88–238.48, 258.48–262.18.
+Handoff rejections: `poor_image_coverage` 181, `high_median_error` 92,
+`too_few_correspondences` 40, `too_few_inliers` 21, `degenerate_geometry` 11. Five rows
+are wrong locks (> 10 m). Submission SHA-256 `5f7808ba…d6d9f1`; source hashes in `run.json`
+and the receipt.
+
+Changes:
+
+- `camloc/retrieval.py` (new): EigenPlaces ResNet-18 / 512-D global descriptor, vendored
+  under MIT, with a frozen, hash-identified reference index.
+- `scripts/build_retrieval_index.py` (new): builds that index from the fitting bank.
+- `run.py --retrieval`: loads the index and ranks recovery references by descriptor.
+- `camloc/scheduler.py` / `camloc/frontend.py`: `GroupContext.settled` and frontend carry of
+  a settled candidate across recovery rounds.
+- `camloc/vision.py`: worker-side retrieval ranking and the F2 joint handoff.
+- **For B:** `camloc/retrieval.py` and the `camloc/vision.py` changes are in B's scope and
+  need B's review before they are treated as accepted.
+
+Remaining limitation: the longest gap is 11.8 s and ten gaps exceed the unchanged 3 s bound,
+so the gate still fails; 28 m RMSE is not a certified localizer. The residual gaps are
+weak-support sections where handoffs reach only 4–5 of the ≥6 required grid cells (rejected
+poses have median 2.6 m error). No C-side defect was found; the bank is front-only. Closing
+the gate needs B's map/vision support there, then a fresh scored and validated run.
+
+## Superseded: gate-fix recheck, 19 October 2026 (not signed off)
+
+Receipt (now replaced by round 2): [stage3_recheck.json](evidence/stage3_recheck.json). Same bank
 (`artifacts/fit-b-integrated-v2`), split, evaluator, validator, gates and thresholds; fresh
 process, full unchanged tuning interval, no row cropping. Suite: **963 passed** in 167.19 s
 (`--basetemp tmp/stage3-gate-fix-recheck`); Ruff passed.

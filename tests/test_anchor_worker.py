@@ -131,3 +131,93 @@ def test_unique_pairs_keeps_best_score_per_keypoint_and_landmark():
     keep = vision.unique_pairs(q, lms, s)
     pairs = {(int(q[i]), int(lms[i])) for i in keep}
     assert pairs == {(0, 11), (1, 10), (3, 12)}
+
+
+# --- Stage 3 gate fix round 2: global retrieval for empty-reference requests ----------
+
+
+class StubRetrieval:
+    """Test-only stand-in for ``camloc.retrieval.RetrievalIndex``: a fixed ranking per call."""
+
+    def __init__(self, ranking):
+        self.ranking = tuple(ranking)
+        self.queries = []
+
+    def query(self, observation):
+        self.queries.append((observation.camera_id, observation.exposure_ns))
+        return self.ranking
+
+
+@pytest.fixture()
+def wide_map(scene, tmp_path):
+    """Twelve ``fr`` keyframes (ids 1, 3, ..., 23) so a ranking can exceed RETRIEVAL_CANDIDATES."""
+    return scene.build_map(tmp_path / "wide", keyframes=tuple(range(0, 24, 2)))
+
+
+# Feature: stage3-gate-fix-round2, Property 2: Worker retrieval ranking
+def test_empty_reference_request_uses_retrieval_split(scene, wide_map):
+    """An empty-reference request with an index takes the index ranking: matched = first 2,
+    remaining = next <= 8, the same on every call; the observation is the request's.
+
+    **Validates: Requirements 2.1, 2.2**
+    """
+    ids = [int(k) for k in wide_map.keyframe_ids]
+    for iteration in range(12):
+        rng = f.seeded_rng(611, iteration)
+        ranking = tuple(int(k) for k in rng.permutation(ids)[: int(rng.integers(1, 11))])
+        stub = StubRetrieval(ranking)
+        worker = vision.DiskAnchorWorker(wide_map, FakeBackend(scene, 4), retrieval=stub)
+        request = _request(scene, wide_map, 4)
+        assert worker.candidates(request) == ranking
+        first, second = worker.run(request), worker.run(request)
+        first.check_against(request)
+        assert first.status is c.AnchorStatus.OK, (iteration, first.reason)
+        assert first.matched_reference_ids == ranking[:2]
+        assert first.remaining_candidate_ids == ranking[2:10]
+        assert (second.status, second.matched_reference_ids, second.remaining_candidate_ids) == (
+            first.status, first.matched_reference_ids, first.remaining_candidate_ids)
+        assert first.model_ids == FakeBackend.model_ids  # map identities stay unchanged
+        assert set(stub.queries) == {("fr", scene.t_ns(4))}
+
+
+def test_retrieval_candidates_keep_only_mapped_same_camera_ids(scene, landmark_map):
+    stub = StubRetrieval((99, 5, 3, 1))  # 99 is not a keyframe of this map
+    worker = vision.DiskAnchorWorker(landmark_map, FakeBackend(scene, 4), retrieval=stub)
+    assert worker.candidates(_request(scene, landmark_map, 4)) == (5, 3, 1)
+    stub.ranking = ()
+    result = worker.run(_request(scene, landmark_map, 4))
+    assert result.status is c.AnchorStatus.FAILED and result.reason == "no_reference_candidates"
+    with pytest.raises(c.ContractError, match="retrieval"):
+        vision.DiskAnchorWorker(landmark_map, FakeBackend(scene, 4), retrieval=object())
+
+
+# Feature: stage3-gate-fix-round2, Property 5: Preservation - Supported, no-index and named-reference paths
+def test_named_reference_and_no_index_paths_are_unchanged(scene, wide_map):
+    """Named references never query the index and give the same candidates and result as
+    the no-index worker; empty references without an index keep the geometric search.
+
+    **Validates: Requirements 3.1, 3.2, 3.3**
+    """
+    ids = [int(k) for k in wide_map.keyframe_ids]
+    plain = vision.DiskAnchorWorker(wide_map, FakeBackend(scene, 12))
+    for iteration in range(12):
+        rng = f.seeded_rng(612, iteration)
+        stub = StubRetrieval(tuple(int(k) for k in rng.permutation(ids)[:10]))
+        indexed = vision.DiskAnchorWorker(wide_map, FakeBackend(scene, 12), retrieval=stub)
+        named = tuple(int(k) for k in rng.choice(ids + [99], int(rng.integers(1, 3)),
+                                                 replace=False))
+        request = _request(scene, wide_map, 12, reference_ids=named)
+        assert indexed.candidates(request) == plain.candidates(request)
+        with_index, without = indexed.run(request), plain.run(request)
+        assert (with_index.status, with_index.reason, with_index.matched_reference_ids,
+                with_index.remaining_candidate_ids) == (
+            without.status, without.reason, without.matched_reference_ids,
+            without.remaining_candidate_ids)
+        assert stub.queries == []
+    empty = _request(scene, wide_map, 12)
+    x, y, yaw = (float(v) for v in empty.snapshot.state[:3])
+    expected = wide_map.select_references(
+        "fr", x, y, yaw,
+        sigma_xy_m=min(vision.snapshot_sigma_xy(empty.snapshot), plain.config.max_sigma_xy_m),
+        base_radius_m=plain.config.reference_radius_m, max_heading_rad=plain.config.max_heading_rad)
+    assert plain.candidates(empty) == expected

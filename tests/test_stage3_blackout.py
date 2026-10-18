@@ -48,7 +48,32 @@ class RecordingFilter(CameraFilter):
         return estimate
 
 
-def _blackout_run(tmp_path):
+class StubIndex:
+    """Test-only retrieval index: every eligible ``fr`` keyframe, nearest-to-origin last, so
+    two are matched and one is left for the frontend's carry."""
+
+    def __init__(self, bank):
+        self.ranking = tuple(int(k) for k in bank.keyframe_ids[::-1])
+        self.queries = []
+
+    def query(self, observation):
+        self.queries.append(observation.exposure_ns)
+        return self.ranking
+
+
+class RecordingWorker(vision.DiskAnchorWorker):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.requests, self.results = [], []
+
+    def run(self, request):
+        self.requests.append(request)
+        result = super().run(request)
+        self.results.append(result)
+        return result
+
+
+def _blackout_run(tmp_path, *, retrieval=False, out=None):
     scene = SlowScene()
     bank = scene.build_map(tmp_path / "bank")
     ks = NORMAL + BLACKOUT + RESTORED
@@ -80,11 +105,17 @@ def _blackout_run(tmp_path):
                             yaw=scene.yaw)
     estimator = RecordingFilter(initial)
     tracker = vision.load_tracker(bank)
-    worker = vision.DiskAnchorWorker(bank, Backend())
+    if retrieval:
+        index = StubIndex(bank)
+        worker = RecordingWorker(bank, Backend(), retrieval=index)
+        if out is not None:
+            out.update(index=index, worker=worker)
+    else:
+        worker = vision.DiskAnchorWorker(bank, Backend())
     road = geometry.load_road_geometry(c.PROJECT_ROOT / "23-00-38_cut_120m_update/map.mcap")
     frontend = VisualFrontend(Canonicalizer(), tracker, estimator, road=road,
                               borders=borders.make_border_source(road),
-                              motion=vision.make_ground_motion())
+                              motion=vision.make_ground_motion(), retrieval_enabled=retrieval)
     episode = c.EpisodeBounds(name="tune", start_ns=scene.t_ns(0), end_ns=scene.t_ns(ks[-1] + 1))
     csv, log = tmp_path / "submission.csv", tmp_path / "diagnostics.jsonl"
     counts = run_stream(frames, estimator, frontend, output=csv, diagnostics=log, episode=episode,
@@ -144,6 +175,54 @@ def test_blackout_is_bounded_honest_keeps_searching_and_recovers_only_by_rules(t
     # ... first through an anchor-confirmed handoff/reset, never a bare tracker PnP from Lost.
     assert set(full_after[0].evidence_kinds) <= {c.EvidenceKind.HANDOFF_PNP,
                                                  c.EvidenceKind.RECOVERY_RESET}
+    for estimate in full_after:
+        assert groups[estimate.group_id] in RESTORED
+        assert estimate.max_support_exposure_ns in restored_ns
+    report = validate(csv, log, frames, episode)
+    assert report["valid"] and report["rows"] == len(ks)
+
+
+def test_blackout_with_retrieval_requests_carries_and_recovers_by_rules(tmp_path):
+    """Stage 3 gate fix round 2: the same > 3 s blackout with a stub retrieval index.
+    Unsupported groups send retrieval requests (``()``) answered by the index, carried
+    lower-ranked ids are proposed, the scheduler ceilings hold, and the restored scene is
+    re-acquired only through an anchor-confirmed handoff/reset on restored images."""
+    out = {}
+    scene, ks, frames, episode, csv, log, counts, records, history = _blackout_run(
+        tmp_path, retrieval=True, out=out)
+    index, worker = out["index"], out["worker"]
+    assert counts["frontend_errors"] == 0 and counts.get("backend_faults", 0) == 0
+    blank_ns = {scene.t_ns(k) for k in BLACKOUT}
+    restored_ns = {scene.t_ns(k) for k in RESTORED}
+    retrieval_jobs = [r for r in worker.requests if r.reference_ids == ()]
+    assert any(r.source_exposure_ns in blank_ns for r in retrieval_jobs)
+    assert {r.source_exposure_ns for r in retrieval_jobs} == set(index.queries)
+    # Carried ids: a named recovery request on the left-over candidate of a retrieval job
+    # whose source image is at most 0.5 s older.
+    retrieval_results = [r for r in worker.results if r.remaining_candidate_ids]
+    carried = [r for r in worker.requests if r.purpose is c.AnchorPurpose.RECOVERY
+               and r.reference_ids and any(
+                   set(r.reference_ids) <= set(s.remaining_candidate_ids)
+                   and 0 <= r.source_exposure_ns - s.source_exposure_ns <= 500_000_000
+                   for s in retrieval_results)]
+    assert carried
+    # Ceilings: one job at a time; <= 4 dispatches per 1 s of source time.
+    stamps = [r["source_exposure_ns"] for r in records
+              if r["record"] == "SchedulerEvent" and r["kind"] == "dispatched"]
+    assert stamps == sorted(stamps)
+    for s in stamps:
+        assert sum(s - c.NS_PER_S < t <= s for t in stamps) <= c.RECOVERY_JOBS_PER_S
+    first_blank, first_restored = ks.index(BLACKOUT[0]), ks.index(RESTORED[0])
+    blackout = history[first_blank:first_restored]
+    assert blackout[-1][0].t_ns - blackout[0][1] > module.FULL_POSE_LOSS_NS  # longer than 3 s
+    assert all(not set(e.evidence_kinds) & FULL for e, _ in blackout)
+    assert all(e.status is c.Status.LOST for e, _ in blackout
+               if e.t_ns > blackout[0][1] + module.FULL_POSE_LOSS_NS)
+    full_after = [e for e, _ in history[first_restored:] if set(e.evidence_kinds) & FULL]
+    assert full_after
+    assert set(full_after[0].evidence_kinds) <= {c.EvidenceKind.HANDOFF_PNP,
+                                                 c.EvidenceKind.RECOVERY_RESET}
+    groups = dict(enumerate(ks))
     for estimate in full_after:
         assert groups[estimate.group_id] in RESTORED
         assert estimate.max_support_exposure_ns in restored_ns

@@ -132,13 +132,16 @@ class GroupContext:
     """Per-group view the frontend receives: due results, ``rear_in_flight`` and ``propose``.
 
     ``results`` are the checked ``ok`` AnchorResults whose Delivery_Group is this group, in
-    ascending job id order. ``rear_in_flight`` is True when a rear-camera job, including
-    recovery, is in flight (through its Delivery_Group). While the scheduler is faulted both are empty and
-    ``propose`` validates its input and then ignores it.
+    ascending job id order. ``settled`` (read-only) holds every checked ``ok`` and ``failed``
+    result settled at this group, in job order, unchanged (the frontend reads the remaining
+    candidate ids of failed jobs from it); ``results`` is its ``ok`` subset. ``rear_in_flight``
+    is True when a rear-camera job, including recovery, is in flight (through its
+    Delivery_Group). While the scheduler is faulted all three are empty and ``propose``
+    validates its input and then ignores it.
     """
 
     __slots__ = (
-        "_frame_set", "_max_prior_ns", "_open", "_proposals", "group_id",
+        "_frame_set", "_max_prior_ns", "_open", "_proposals", "_settled", "group_id",
         "rear_in_flight", "results", "t_ns",
     )
 
@@ -148,15 +151,22 @@ class GroupContext:
         results: tuple[c.AnchorResult, ...],
         rear_in_flight: bool,
         max_prior_ns: int | None,
+        settled: tuple[c.AnchorResult, ...] | None = None,
     ) -> None:
         self.group_id: int = frame_set.group_id
         self.t_ns: int = frame_set.t_ns
         self.results: tuple[c.AnchorResult, ...] = results
+        self._settled: tuple[c.AnchorResult, ...] = results if settled is None else tuple(settled)
         self.rear_in_flight: bool = rear_in_flight
         self._frame_set = frame_set
         self._max_prior_ns = max_prior_ns
         self._proposals: list[Proposal] = []
         self._open = True
+
+    @property
+    def settled(self) -> tuple[c.AnchorResult, ...]:
+        """Every ``ok`` and ``failed`` result settled at this group (read-only)."""
+        return self._settled
 
     def propose(
         self,
@@ -387,7 +397,7 @@ class AnchorScheduler:
         self._last_group = (frame_set.group_id, frame_set.t_ns)
         self._snapshot = snapshot
 
-        results: tuple[c.AnchorResult, ...] = ()
+        settled: tuple[c.AnchorResult, ...] = ()
         job = self._in_flight
         if (
             job is not None
@@ -397,16 +407,17 @@ class AnchorScheduler:
             job.delivered_at = frame_set.group_id
             result = self._resolve(job, frame_set)
             if result is not None:
-                results = (result,)
+                settled = (result,)
+        results = tuple(r for r in settled if r.status is c.AnchorStatus.OK)
 
         if self._faulted:
-            context = GroupContext(frame_set, (), False, self._max_proposal_ns)
+            context = GroupContext(frame_set, (), False, self._max_proposal_ns, ())
         else:
             rear = (
                 self._in_flight is not None
                 and self._in_flight.request.camera_id == c.SECONDARY_CAMERA
             )
-            context = GroupContext(frame_set, results, rear, self._max_proposal_ns)
+            context = GroupContext(frame_set, results, rear, self._max_proposal_ns, settled)
         self._open = context
         return context
 
@@ -642,7 +653,8 @@ class AnchorScheduler:
     # -- delivery ---------------------------------------------------------------------
 
     def _resolve(self, job: _Job, frame_set: c.FrameSet) -> c.AnchorResult | None:
-        """Inspect a job's outcome at its Delivery_Group; return a checked ``ok`` result."""
+        """Inspect a job's outcome at its Delivery_Group; return a checked ``ok`` or
+        ``failed`` (settled) result, else None."""
         group_id = frame_set.group_id
         request = job.request
         watchdog = self.policy.watchdog_ns
@@ -699,7 +711,7 @@ class AnchorScheduler:
             self._counts["anchor_failed"] += 1
             self._event("failed", group_id, request, reason=result.reason,
                         result=result.summary(), **extra)
-            return None
+            return result
         self._counts["anchor_delivered"] += 1
         self._event("delivered", group_id, request, reason="ok", result=result.summary(), **extra)
         return result
